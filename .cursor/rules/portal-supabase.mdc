@@ -1,0 +1,32 @@
+---
+description: Escopo do Supabase no portal — Auth, Storage e utilitários (sem Postgres)
+alwaysApply: true
+---
+
+# Supabase neste projeto
+
+Supabase é **serviço auxiliar**. Dados da aplicação ficam no **Postgres próprio via Drizzle**.
+
+## Usar Supabase para
+
+- **Auth** — login, OAuth, sessão, `getUser()`, `signOut()` → `src/lib/auth/`
+- **Storage** — upload, URLs públicas, listagem → `src/lib/supabase/storage.ts`
+- **Edge Functions** — `invokeFunction()` → `src/lib/supabase/functions.ts`
+- **Realtime broadcast/presence** — canais entre clientes → `src/lib/supabase/realtime.ts`
+
+## NÃO usar Supabase para
+
+- Tabelas / CRUD da app (`supabase.from()`)
+- Schema / migrations de dados (usar Drizzle em `src/db/`)
+- Postgres do projeto Supabase como banco principal
+- Realtime `postgres_changes` em tabelas do app (dados estão no Postgres externo)
+
+## Integração Auth ↔ Drizzle
+
+- `user.id` do Supabase Auth pode ser FK em tabelas Drizzle
+- Permissões validadas na app (`getUser()` + checks), não via RLS do Supabase
+
+## Config
+
+- `VITE_SUPABASE_URL` + `VITE_SUPABASE_PUBLISHABLE_KEY` (frontend Vite)
+- Verificar com `isSupabaseConfigured()` antes de features opcionais

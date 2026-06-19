@@ -1,0 +1,44 @@
+---
+name: specify
+description: "Start a new feature specification. This is the first step in the Spec-Driven Development lifecycle."
+ai_assistant: "claude"
+command_prefix: ""
+---
+
+Start a new feature by creating a specification and feature branch for my-web-portal.
+
+This is the first step in the Spec-Driven Development lifecycle.
+
+Given the feature description provided as an argument, do this:
+
+1. Run the command `specifyx run create-feature "description" --json` (or `uvx specifyx run create-feature "description" --json` if specifyx not found) from repo root and parse its JSON output for BRANCH_NAME and SPEC_FILE. All file paths must be absolute.
+
+   **Branch Naming Information:**
+   - Default patterns usually include: `feature/{feature-name}`, `hotfix/{bug-id}`, `bugfix/{bug-id}`, `main`, `development`
+   - The command auto-generates branch names from the first pattern and description unless `--branch-name` is specified
+   - Custom branch names: `specifyx run create-feature "description" --branch-name "feature/custom-name" --json`
+   - **No-branch workflow**: `specifyx run create-feature "description" --no-branch --json` (stays on current branch, no branch switching)
+   - Branch names are validated against patterns in `.specify/config.toml`
+   - Feature descriptions should be 3-100 characters and contain at least one letter
+   - IMPORTANT: It is recommended to use custom branch names to be more clear about the feature
+   
+   **Troubleshooting:**
+   - If command fails, check: `specifyx run create-feature --help` for full usage
+   - If branch exists: switch to it manually or use a different name
+   - If not in git repo: run `git init` first
+   - If patterns unclear: check `.specify/config.toml` under `[branch_naming.patterns]`
+2. Load the generated spec file to understand required sections.
+3. Write the specification to SPEC_FILE using the template structure, replacing placeholders with concrete details derived from the feature description (arguments) while preserving section order and headings.
+4. Report completion with branch name, spec file path, and readiness for the next phase.
+
+**Next Steps After Specification:**
+- **Recommended workflow**: Use `/clarify` to resolve ambiguities, then `/plan` and `/tasks` commands (auto-detect from branch)
+- **Skip clarification**: Use `/plan` directly if specification is very clear (auto-detect from branch)
+- **No-branch workflow**: Use `/clarify` then `/plan` and `/tasks` with `--spec-id` parameter from the JSON output above
+
+Note: The `specifyx run create-feature` command creates and checks out the new branch and initializes the spec file before writing. Use `--no-branch` to skip branch creation and work on the current branch.
+
+
+
+
+

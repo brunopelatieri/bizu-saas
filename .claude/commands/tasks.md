@@ -1,0 +1,85 @@
+---
+name: tasks
+description: "Break down the plan into executable tasks. This is the fourth step in the Spec-Driven Development lifecycle."
+ai_assistant: "claude"
+command_prefix: ""
+---
+
+Break down the plan into executable tasks.
+
+This is the fourth step in the Spec-Driven Development lifecycle.
+
+Given the context provided as an argument, do this:
+
+1. Run `specifyx run generate-tasks "context" --json` (or `uvx specifyx run generate-tasks "context" --json` if specifyx not found) from repo root to automatically generate tasks.md. 
+
+   **For No-Branch Workflow:**
+   - If multiple specs exist on main branch, you must specify which spec to work with: `specifyx run generate-tasks "context" --spec-id 001 --json`
+   - The error message will show available spec IDs if `--spec-id` is required
+   
+   This will:
+   - Scan the current feature directory for available design documents (plan.md, data-model.md, contracts/, etc.)
+   - Analyze the documents and extract entities, contracts, user stories, and tech stack
+   - Generate a complete tasks.md file using the tasks-template.md.j2
+   - Parse the JSON output for TASKS_FILE, FEATURE_DIR, BRANCH, and AVAILABLE_DOCS
+   
+   **Alternative manual approach if generate-tasks fails:**
+   - First run: `specifyx run check-prerequisites --json` to get FEATURE_DIR and AVAILABLE_DOCS
+   - Load and analyze available design documents manually:
+     * Always read plan.md for tech stack and libraries
+     * IF EXISTS: Read data-model.md for entities
+     * IF EXISTS: Read contracts/ for API endpoints  
+     * IF EXISTS: Read research.md for technical decisions
+     * IF EXISTS: Read quickstart.md for test scenarios
+   - If commands are unclear: `specifyx run generate-tasks --help` or `specifyx run check-prerequisites --help`
+
+2. If using the automated approach, verify the generated tasks.md:
+   - Use `.specify/templates/tasks-template.j2` as the base
+   - Replace example tasks with actual tasks based on:
+     * **Setup tasks**: Project init, dependencies, linting
+     * **Test tasks [P]**: One per contract, one per integration scenario
+     * **Core tasks**: One per entity, service, CLI command, endpoint
+     * **Integration tasks**: DB connections, middleware, logging
+     * **Polish tasks [P]**: Unit tests, performance, docs
+
+4. Task generation rules:
+   - Each contract file → contract test task marked [P]
+   - Each entity in data-model → model creation task marked [P]
+   - Each endpoint → implementation task (not parallel if shared files)
+   - Each user story → integration test marked [P]
+   - Different files = can be parallel [P]
+   - Same file = sequential (no [P])
+
+5. Order tasks by dependencies:
+   - Setup before everything
+   - Tests before implementation (TDD)
+   - Models before services
+   - Services before endpoints
+   - Core before integration
+   - Everything before polish
+
+6. Include parallel execution examples:
+   - Group [P] tasks that can run together
+   - Show actual Task agent commands
+
+7. Create FEATURE_DIR/tasks.md with:
+   - Correct feature name from implementation plan
+   - Numbered tasks (T001, T002, etc.)
+   - Clear file paths for each task
+   - Dependency notes
+   - Parallel execution guidance
+
+Context for task generation: 
+
+The tasks.md should be immediately executable - each task must be specific enough that an LLM can complete it without additional context.
+
+
+
+
+
+
+
+**Next Steps After Task Planning:**
+- **Continue workflow**: Use `/analyze` to validate consistency across spec, plan, and tasks (auto-detect from branch)
+- **Skip analysis**: Use `/implement` or `/guide` directly if confident in task consistency (auto-detect from branch)
+- **No-branch workflow**: Use `/analyze` with `--spec-id` parameter if working on main branch

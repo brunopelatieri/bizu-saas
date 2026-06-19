@@ -1,0 +1,17 @@
+[project]
+name = "my-web-portal"
+
+[project.branch_naming]
+description = "Single-branch workflow - develop all features on current branch or manually created branch"
+patterns = [
+    "current",
+]
+validation_rules = []
+default_pattern = "feature/{feature-name}"
+
+[project.template_settings]
+ai_assistants = [
+    "claude",
+]
+config_directory = ".specify"
+template_cache_enabled = true

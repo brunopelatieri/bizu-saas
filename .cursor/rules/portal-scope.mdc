@@ -1,0 +1,19 @@
+---
+description: Escopo e rotas do portal (MVP)
+alwaysApply: true
+---
+
+# Escopo do portal
+
+Rotas do MVP:
+- `/` — landing
+- `/sobre` — bio e credenciais
+- `/projetos` — grid de cases
+- `/contato` — formulário (Drizzle → seu Postgres)
+- `/login` — auth Supabase (e-mail/senha)
+
+Regras:
+- Navbar e footer compartilhados via layout
+- Mobile-first
+- Não adicionar auth de usuários, dashboard ou pagamentos sem spec aprovada
+- Novas páginas exigem atualização de `src/lib/constants/navigation.ts`

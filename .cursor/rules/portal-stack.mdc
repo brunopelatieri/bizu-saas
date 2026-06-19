@@ -1,0 +1,26 @@
+---
+description: Stack do portal (Vite + shadcn/ui + Drizzle + Supabase auxiliar)
+globs: **/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Stack do portal
+
+- **Frontend:** Vite + React + React Router + shadcn/ui (`src/components/ui/`)
+- **API:** Hono em `server/` (proxy `/api` via Vite)
+- **Postgres:** Drizzle ORM → seu Postgres (`src/db/`, `DATABASE_URL`)
+- **Supabase:** Auth + Storage + Edge Functions + Realtime (`VITE_SUPABASE_*`)
+
+## Divisão
+
+| Camada | Ferramenta |
+|--------|-----------|
+| UI / rotas | Vite + shadcn/ui |
+| Dados | Drizzle via API Hono |
+| Auth / arquivos | Supabase client (`src/lib/supabase/`) |
+
+## Convenções
+
+- Componentes shadcn em `src/components/ui/` — adicionar com `npx shadcn@latest add <nome>`
+- Não usar `supabase.from()` — CRUD via Drizzle na API
+- Idioma UI: pt-BR

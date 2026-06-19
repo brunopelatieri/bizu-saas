@@ -1,0 +1,83 @@
+---
+name: implement
+description: "Execute all tasks automatically from tasks.md. This is the sixth step in the Spec-Driven Development lifecycle."
+ai_assistant: "claude"
+command_prefix: ""
+---
+
+Execute all tasks automatically from tasks.md in proper dependency order.
+
+This is the sixth step in the Spec-Driven Development lifecycle - automated implementation of all planned tasks.
+
+Given any implementation context provided as an argument, do this:
+
+**If you have access to subagents** (like Task tool in Claude Code):
+1. Generate agent prompt(s) using `scaffold-agent`:
+   - Single agent: `specifyx run scaffold-agent implementer:feature-implementation --json`
+   - Multiple agents: `specifyx run scaffold-agent implementer:feature-impl code-reviewer:quality-check test-reviewer:coverage --json`
+2. Launch the subagent(s) with the generated prompt(s) to handle systematic task execution following TDD principles
+3. When dispatching multiple agents in parallel, consider creating shared context first:
+   - Create context: `specifyx run scaffold-agent context:shared-implementation-context --json`
+   - Reference the context file path when launching multiple agents to ensure they work with consistent information
+
+**If you do NOT have access to subagents**:
+1. Navigate to your spec directory (e.g., `specs/001-feature-name/`) and examine the files:
+   - `tasks.md` - Contains your implementation tasks
+   - `plan.md` - Shows implementation phases and progress
+   - `spec.md` - Contains the feature specification
+
+2. Review the current implementation status by examining:
+   - Task completion status in `tasks.md` (marked with `- [x]` for completed)
+   - Phase progress in `plan.md` (checkboxes for completed phases)
+   - Current branch and feature directory from your git status
+
+3. Execute tasks systematically following these phases:
+
+   **Phase 1: Validation & Prerequisites**
+   - Verify constitution exists (`.specify/memory/constitution.md`)
+   - Validate spec, plan, and tasks files are complete
+   - Check project structure and dependencies
+   - Ensure all task dependencies form a valid DAG (no circular dependencies)
+
+   **Phase 2: TDD Enforcement (MANDATORY)**
+   - Write and execute all test tasks BEFORE their corresponding implementation tasks
+   - Tasks marked with [TEST] must pass before implementation can proceed
+   - Failed tests must be resolved before continuing
+
+   **Phase 3: Task Execution**
+   - Execute tasks in dependency order
+   - Tasks marked with [P] can be done in parallel when dependencies allow
+   - Mark completed tasks as [x] in tasks.md as you finish them
+   - Track progress and document any blockers
+
+4. Handle errors and failures:
+   - **Critical failures**: Halt and document the issue in tasks.md
+   - **Test failures**: Stop related implementation tasks until tests pass
+   - **Dependency failures**: Mark dependent tasks as blocked
+
+5. Track implementation progress:
+   - Update task status in tasks.md: `- [ ]` → `- [x]` as you complete each task
+   - Document any deviations from the plan
+   - Log significant decisions and their rationale
+
+6. Final validation:
+   - Run full test suite to verify implementation integrity
+   - Validate that all acceptance criteria from spec.md are met
+   - Check that no tasks remain in pending state
+   - Update documentation as needed
+
+**Next Steps After Implementation:**
+- Review implementation against acceptance criteria
+- Run final test suite and quality checks
+- Update documentation if needed
+- Prepare for deployment or next feature iteration
+
+**Important Notes:**
+- The `/implement` command enforces TDD by design - all tests must be written and pass before implementation tasks can execute
+- Use `/guide` command if you prefer detailed manual step-by-step instructions
+- If you have subagent support, leverage `scaffold-agent` to generate specialized agent prompts for complex tasks
+
+
+
+
+
