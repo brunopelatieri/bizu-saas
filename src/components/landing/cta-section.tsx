@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import { Button } from "@/components/ui/button";
+import { siteConfig } from "@/lib/constants/navigation";
 
 export function CtaSection() {
   return (
@@ -7,29 +8,28 @@ export function CtaSection() {
       <div className="mx-auto max-w-3xl px-6 text-center">
         <div className="rounded-2xl border border-primary/20 bg-primary/5 px-8 py-16 shadow-sm">
           <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            Eleve o padrão da sua comunicação com clientes.
+            Comece seu próximo projeto com vantagem.
           </h2>
           <p className="mx-auto mb-8 max-w-xl text-lg text-muted-foreground">
-            Junte-se a profissionais que pararam de responder "qual o status?" e
-            começaram a entregar uma experiência premium — automaticamente.
+            Clone a base, leia o contexto e coloque sua ideia para rodar em
+            minutos — com humanos e IA no mesmo fluxo de engenharia.
           </p>
 
           <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link to="/login">
+            <a href={siteConfig.links.repo} target="_blank" rel="noreferrer">
               <Button size="lg" className="min-w-48 text-base font-semibold">
-                Criar conta grátis
+                Clonar no GitHub
               </Button>
-            </Link>
-            <Link to="#como-funciona">
+            </a>
+            <Link to="/contato">
               <Button variant="outline" size="lg" className="min-w-48 text-base">
-                Ver como funciona
+                Falar com a equipe
               </Button>
             </Link>
           </div>
 
           <p className="mt-5 text-sm text-muted-foreground">
-            Sem cartão de crédito · Configuração em 5 minutos · 30 dias de
-            garantia
+            Open source · Stack moderna · Pronto para VPS com Docker
           </p>
         </div>
       </div>

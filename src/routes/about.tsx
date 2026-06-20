@@ -1,15 +1,14 @@
 import type { MetaFunction } from "react-router";
 import { AboutPage } from "@/pages/about-page";
+import { buildMeta } from "@/lib/seo";
 
-export const meta: MetaFunction = () => [
-  { title: "Sobre — Bizu SaaS" },
-  {
-    name: "description",
-    content: "Conheça quem está por trás do Bizu SaaS e como trabalhamos.",
-  },
-  { property: "og:title", content: "Sobre — Bizu SaaS" },
-  { property: "og:type", content: "website" },
-];
+export const meta: MetaFunction = () =>
+  buildMeta({
+    title: "Sobre — Bruno Pelatieri Goulart | Bizu SaaS",
+    description:
+      "Desenvolvedor Full Stack desde 2006: IA, automação com n8n e LangChain, agentes autônomos, Web3 e arquitetura escalável. Quem está por trás do Bizu SaaS.",
+    path: "/sobre",
+  });
 
 export default function About() {
   return <AboutPage />;

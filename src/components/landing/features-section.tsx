@@ -1,33 +1,33 @@
 const features = [
   {
-    icon: "📊",
-    title: "Dashboard em tempo real",
-    body: "Seus clientes visualizam o progresso de cada projeto assim que você faz uma atualização. Sem e-mail, sem WhatsApp.",
+    icon: "⚡",
+    title: "SSR nas páginas públicas",
+    body: "React Router v7 em Framework Mode com SSR e meta/Open Graph por rota. Landing, blog e páginas indexáveis prontas para SEO.",
   },
   {
-    icon: "🏷️",
-    title: "Status por etapa",
-    body: "Divida cada projeto em etapas e marque o avanço. O cliente sabe exatamente onde está e o que vem a seguir.",
+    icon: "🔌",
+    title: "API no mesmo processo",
+    body: "Hono montado junto do SSR em um único processo Node. Sem proxy, sem segundo servidor — frontend e API compartilham origem.",
   },
   {
-    icon: "📁",
-    title: "Repositório de arquivos",
-    body: "Compartilhe assets, contratos e entregas em um lugar só. Organizado por projeto, acessível pelo cliente.",
-  },
-  {
-    icon: "🔔",
-    title: "Notificações automáticas",
-    body: "O cliente recebe um aviso quando você atualiza o status ou adiciona um arquivo. Nenhuma mensagem manual.",
+    icon: "🗄️",
+    title: "Postgres próprio via Drizzle",
+    body: "Seus dados no seu Postgres, com migrations versionadas e tipagem ponta a ponta. Schema como fonte de verdade.",
   },
   {
     icon: "🔐",
-    title: "Portal exclusivo por cliente",
-    body: "Cada cliente acessa apenas seus próprios projetos. Isolamento total de dados e privacidade garantida.",
+    title: "Auth + dashboard prontos",
+    body: "Login com Supabase Auth e área autenticada client-side, sem expor dados sensíveis no HTML inicial.",
   },
   {
-    icon: "📋",
-    title: "Histórico completo",
-    body: "Todas as atualizações, comentários e entregas ficam registrados com data e hora. Rastreabilidade total.",
+    icon: "🎨",
+    title: "UI moderna out-of-the-box",
+    body: "shadcn/ui + Tailwind v4, tema claro/escuro com anti-flash e componentes acessíveis prontos para compor telas.",
+  },
+  {
+    icon: "🐳",
+    title: "Deploy simples em VPS",
+    body: "Dockerfile multi-stage para Ubuntu + Docker + Portainer. Um processo, healthcheck e build de produção enxuto.",
   },
 ];
 
@@ -40,14 +40,14 @@ export function FeaturesSection() {
       <div className="mx-auto max-w-5xl px-6">
         <div className="mb-14 text-center">
           <p className="mb-3 text-sm font-medium uppercase tracking-widest text-primary">
-            Funcionalidades
+            O que vem pronto
           </p>
           <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            Tudo que você precisa para impressionar seus clientes
+            Fundação completa, sem o trabalho repetitivo
           </h2>
           <p className="mx-auto max-w-2xl text-muted-foreground">
-            Ferramentas pensadas para freelancers e pequenos estúdios que querem
-            entregar uma experiência premium sem complexidade.
+            Os módulos que todo produto web precisa, já integrados e com boas
+            práticas — para você começar pela regra de negócio.
           </p>
         </div>
 

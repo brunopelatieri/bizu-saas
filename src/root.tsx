@@ -16,7 +16,6 @@ import { siteConfig } from "@/lib/constants/navigation";
 import stylesheet from "@/index.css?url";
 
 export const links: LinksFunction = () => [
-  { rel: "canonical", href: siteConfig.url },
   { rel: "preconnect", href: "https://fonts.googleapis.com" },
   {
     rel: "preconnect",
@@ -31,12 +30,9 @@ export const links: LinksFunction = () => [
 ];
 
 export const meta: MetaFunction = () => [
-  { title: "Bizu SaaS" },
-  {
-    name: "description",
-    content:
-      "Acompanhe o progresso dos seus projetos em tempo real, com transparência total.",
-  },
+  { title: `${siteConfig.name} — Boilerplate full-stack com AI Software Engineering` },
+  { name: "description", content: siteConfig.description },
+  { name: "theme-color", content: "#0b0b0c" },
 ];
 
 export function Layout({ children }: { children: ReactNode }) {

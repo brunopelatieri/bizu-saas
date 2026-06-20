@@ -9,7 +9,7 @@ const posts = [
       "Comunicação proativa não é um diferencial — é uma necessidade. Veja como um portal centralizado muda a dinâmica dos seus projetos.",
     readTime: "5 min",
     date: "12 Jun 2026",
-    slug: "#",
+    slug: "/blog",
   },
   {
     tag: "Negócios",
@@ -18,7 +18,7 @@ const posts = [
       "Saber cobrar pelo valor real do seu trabalho começa por entender sua proposta de valor. Veja como estruturar seus planos.",
     readTime: "8 min",
     date: "3 Jun 2026",
-    slug: "#",
+    slug: "/blog",
   },
   {
     tag: "Ferramentas",
@@ -27,7 +27,7 @@ const posts = [
       "React, shadcn/ui, Supabase e Drizzle — como essa combinação entrega uma experiência de usuário premium sem complexidade desnecessária.",
     readTime: "6 min",
     date: "28 Mai 2026",
-    slug: "#",
+    slug: "/blog",
   },
 ];
 
@@ -45,7 +45,7 @@ export function BlogSection() {
             </h2>
           </div>
           <Link
-            to="#"
+            to="/blog"
             className="shrink-0 text-sm font-medium text-primary transition hover:opacity-80"
           >
             Ver todos os posts →

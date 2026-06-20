@@ -427,17 +427,17 @@ Home atual (`src/pages/home-page.tsx`) compoe secoes em
 - `HeroSection`
 - `AboutSection`
 - `FeaturesSection`
-- `HowItWorksSection`
-- `TestimonialsSection`
-- `PricingSection`
+- `HowItWorksSection` (metodologia AI Software Engineering)
+- `StackSection`
+- `AudienceSection`
 - `BlogSection`
 - `FaqSection`
 - `CtaSection`
 
 Objetivo:
 
-- Promover o trabalho do desenvolvedor.
-- Apresentar o portal/SaaS como produto.
+- Posicionar o Bizu SaaS como boilerplate full-stack com AI Software Engineering.
+- Destacar tecnologias, metodologia e publico-alvo (empresas, investidores, empreendedores e devs).
 - Servir como base para landing pages de projetos derivados.
 
 Observacao:

@@ -1,45 +1,40 @@
 import { useState } from "react";
+import { siteConfig } from "@/lib/constants/navigation";
 
 const faqs = [
   {
-    question: "Meu cliente precisa instalar alguma coisa?",
+    question: "O Bizu SaaS é open source?",
     answer:
-      "Não. O portal é 100% web. Basta o cliente receber o convite por e-mail, criar uma senha e acessar pelo navegador. Funciona em qualquer dispositivo — celular, tablet ou desktop.",
+      "Sim. O código está no GitHub e pode ser clonado para iniciar seus projetos. A ideia é ser um ponto de partida sólido, não uma caixa-preta.",
   },
   {
-    question: "Posso usar meu próprio domínio?",
+    question: "Que tipo de projeto posso criar com ele?",
     answer:
-      "Sim, no plano Pro e Agência você pode conectar um domínio personalizado (ex: portal.suaagencia.com.br). Basta configurar um registro CNAME no seu DNS. O processo leva menos de 5 minutos.",
+      "SaaS, portal de clientes, site institucional, landing page, blog, dashboard/admin e sistemas web de aplicação. A base é genérica o suficiente para se adaptar ao seu produto.",
   },
   {
-    question: "O que acontece com meus dados se eu cancelar?",
+    question: "O que é a metodologia de AI Software Engineering aqui?",
     answer:
-      "Você tem 30 dias após o cancelamento para exportar todos os seus dados (projetos, arquivos, histórico). Após esse período, os dados são removidos permanentemente. Nunca vendemos ou compartilhamos dados com terceiros.",
+      "Especificar antes de implementar, manter contexto técnico vivo (AI_CONTEXT e spec) e fazer mudanças pequenas e documentadas. Assim humanos e agentes de IA decidem com o mesmo mapa técnico.",
   },
   {
-    question: "Posso mudar de plano a qualquer momento?",
+    question: "Por que Supabase e Postgres juntos?",
     answer:
-      "Sim. Upgrade imediato com cobrança proporcional. Downgrade ao final do período atual. Sem contratos de fidelidade, sem taxas de cancelamento.",
+      "O Supabase é auxiliar — Auth, Storage, Functions e Realtime. Os dados da aplicação ficam no seu próprio Postgres via Drizzle, mantendo controle e portabilidade.",
   },
   {
-    question: "Tem garantia de reembolso?",
+    question: "Onde faço o deploy?",
     answer:
-      "Sim. 30 dias de garantia incondicional. Se por qualquer motivo o portal não atender suas expectativas, devolvemos 100% do valor pago — sem perguntas, sem burocracia.",
+      "O caminho natural do template é VPS + Docker + Portainer, com um único processo Node. A demo pública roda na Vercel e exigiu adaptações de arquitetura — use-a como referência visual, não como espelho do repositório.",
   },
   {
-    question: "O portal funciona para qualquer tipo de serviço?",
+    question: "Preciso saber IA para usar?",
     answer:
-      "Sim. Desenvolvimento web, design gráfico, marketing digital, consultoria, arquitetura — qualquer serviço que tenha etapas e entregas se beneficia de um portal de acompanhamento.",
+      "Não. O projeto funciona como um boilerplate tradicional. A metodologia de IA é um acelerador opcional, mas o contexto documentado ajuda qualquer pessoa a se situar rápido.",
   },
 ];
 
-function FaqItem({
-  question,
-  answer,
-}: {
-  question: string;
-  answer: string;
-}) {
+function FaqItem({ question, answer }: { question: string; answer: string }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -87,10 +82,12 @@ export function FaqSection() {
           <p className="text-muted-foreground">
             Não encontrou o que precisava?{" "}
             <a
-              href="mailto:contato@meuportal.com.br"
+              href={siteConfig.links.whatsapp}
+              target="_blank"
+              rel="noreferrer"
               className="text-primary underline-offset-4 hover:underline"
             >
-              Fale conosco
+              Fale com a gente
             </a>
             .
           </p>
