@@ -74,6 +74,24 @@ Atualize este arquivo e `PROJECT_TECHNICAL_SPEC.md` quando mudar:
 Se a mudança afetar onboarding, atualize também `README.md`.
 Se a mudança afetar agentes/LLMs, atualize também `.cursor/rules/`.
 
+## Onboarding Local (Primeira Execução)
+
+```bash
+npm install
+cp .env.example .env.local
+docker compose up -d          # Postgres em localhost:15432
+npm run db:migrate
+npm run dev
+```
+
+- `drizzle-kit` está em **devDependencies** — disponível após `npm install`; não
+  instalar globalmente. Scripts `db:*` usam o binário local via npm.
+- `drizzle.config.ts` carrega `.env.local` e usa `DIRECT_URL` (fallback
+  `DATABASE_URL`).
+- Postgres local: porta **15432** no host (5432 reservada/bloqueada em muitos
+  Windows). Ver `docker-compose.yml` e `.env.example`.
+- Se migrate falhar por conexão: `docker compose ps` + conferir `.env.local`.
+
 ## Status Atual
 
 - Demo em [https://bizu.bru.ia.br](https://bizu.bru.ia.br) — hospedada na **Vercel**.

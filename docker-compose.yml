@@ -2,6 +2,7 @@ services:
   postgres:
     image: postgres:16-alpine
     ports:
+      # 15432 no host evita conflito com portas reservadas no Windows (5432/5433)
       - "15432:5432"
     environment:
       POSTGRES_USER: portal

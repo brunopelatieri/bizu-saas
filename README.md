@@ -73,7 +73,7 @@ cd bizu-saas
 npm install
 cp .env.example .env.local
 
-docker compose up -d
+docker compose up -d          # Postgres na porta 15432
 npm run db:migrate
 npm run dev
 ```
@@ -83,6 +83,27 @@ App em desenvolvimento:
 ```text
 http://localhost:5173
 ```
+
+### Banco local e Drizzle
+
+O **`drizzle-kit`** já está em `devDependencies`. Depois do `npm install`, os
+scripts `npm run db:migrate`, `db:generate` e `db:studio` usam o binário local
+automaticamente — **não instale globalmente** (`npm i -g drizzle-kit`).
+
+Ordem recomendada na primeira execução:
+
+1. `npm install` — instala dependências + `drizzle-kit`
+2. `cp .env.example .env.local` — URLs em `localhost:15432` (porta do Docker no Windows)
+3. `docker compose up -d` — sobe o Postgres
+4. `npm run db:migrate` — aplica migrations em `drizzle/`
+5. `npm run dev`
+
+**Se `db:migrate` falhar:**
+
+- **`drizzle-kit` não encontrado** — rode `npm install` antes do migrate.
+- **Erro de conexão** — confira se o Postgres está up (`docker compose ps`) e se
+  `.env.local` existe com `DATABASE_URL` / `DIRECT_URL` apontando para
+  `localhost:15432` (não `5432`; no Windows a porta 5432 costuma estar reservada).
 
 Servidor de produção local:
 
