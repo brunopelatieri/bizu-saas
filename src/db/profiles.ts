@@ -3,37 +3,49 @@ import { eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { profiles } from "@/db/schema";
 
+function metadataText(user: User, key: string) {
+  const value = user.user_metadata?.[key];
+  return typeof value === "string" ? value : null;
+}
+
 /**
  * Espelha o usuário do Supabase Auth na tabela local `profiles`, dando às tabelas
- * da aplicação um alvo real de FK, em qualquer Postgres.
+ * da aplicação um alvo real de FK, em qualquer Postgres. Só grava se algo mudou.
  *
- * Só grava se necessário. O e-mail segue o Auth; `full_name` é copiado na criação
- * e depois pertence à aplicação, para não sobrescrever edições locais.
+ * O Auth é a origem de `email`, `full_name` e `phone`: altere esses dados com
+ * `supabase.auth.updateUser`. Campos próprios da aplicação devem ficar em colunas
+ * que esta função não sobrescreve.
  * `user_metadata` é editável pelo próprio usuário: use só para exibição, nunca
  * para decidir permissões.
  */
 export async function syncProfile(user: User) {
   const db = getDb();
-  const email = user.email ?? null;
+  const values = {
+    email: user.email ?? null,
+    fullName: metadataText(user, "full_name"),
+    phone: metadataText(user, "phone"),
+  };
 
   const [existing] = await db
     .select()
     .from(profiles)
     .where(eq(profiles.id, user.id));
 
-  if (existing?.email === email) return existing;
-
-  const fullName =
-    typeof user.user_metadata?.full_name === "string"
-      ? user.user_metadata.full_name
-      : null;
+  if (
+    existing &&
+    existing.email === values.email &&
+    existing.fullName === values.fullName &&
+    existing.phone === values.phone
+  ) {
+    return existing;
+  }
 
   const [profile] = await db
     .insert(profiles)
-    .values({ id: user.id, email, fullName })
+    .values({ id: user.id, ...values })
     .onConflictDoUpdate({
       target: profiles.id,
-      set: { email, updatedAt: sql`now()` },
+      set: { ...values, updatedAt: sql`now()` },
     })
     .returning();
 

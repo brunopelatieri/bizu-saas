@@ -63,7 +63,9 @@ Discuta o modelo antes de tarefas relevantes. A regra é usar o mais leve que re
 
 ## Orçamento de contexto
 
-- Baseline (`CLAUDE.md` + INDEX + rules sem `paths:`): abaixo de 400 linhas.
+- Baseline (`CLAUDE.md`, INDEX, rules sem `paths:` e descrições de skills): abaixo de
+  ~3 mil tokens. Meça em bytes ÷ 4; contar linhas esconde tabelas longas.
+- INDEX: uma linha por tarefa. Paths ficam nas rules, não no índice.
 - Arquivo de domínio: até ~300 linhas; acima disso, divida.
 - Rule de domínio: até 40 linhas.
 - Meça com `/context-budget`.
@@ -78,6 +80,6 @@ Para as tarefas de código, siga `docs/context/receitas.md`.
 3. Atualize `docs/context/core.md` e `docs/context/status.md`.
 4. Crie um arquivo em `docs/context/` para cada domínio de negócio novo.
 5. Para cada domínio, crie rule com `paths:` e, se for grande, skill `ctx-<domínio>`.
-6. Registre tudo no INDEX e remova o que não se aplica.
+6. Registre os arquivos novos no INDEX e remova o que não se aplica.
 7. Escolha onde o Postgres roda: local, VPS ou Supabase. Só muda a `DATABASE_URL`.
 8. Comece a primeira feature por `/prd`.

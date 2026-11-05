@@ -29,6 +29,7 @@ profiles (espelho local do Supabase Auth)
   id uuid primary key            mesmo valor de user.id
   email text
   full_name text
+  phone text
   created_at timestamp with timezone default now
   updated_at timestamp with timezone default now
 ```
@@ -58,8 +59,9 @@ Regra arquitetural:
 - Nao usar `supabase.from()` para CRUD da app.
 - Tabelas ligadas a usuario referenciam `profiles.id`. Nao use FK para `auth.users`:
   com Postgres fora do Supabase ela nem existe.
-- `syncProfile` (`src/db/profiles.ts`) cria o perfil em `GET /api/me` e so grava se o
-  e-mail mudar. `full_name` e copiado na criacao e depois pertence a aplicacao.
+- `syncProfile` (`src/db/profiles.ts`) espelha `email`, `full_name` e `phone` em
+  `GET /api/me` e so grava se algo mudou. O Auth e a origem desses campos: altere-os com
+  `supabase.auth.updateUser`. Campos proprios da aplicacao ficam em outras colunas.
 
 ---
 

@@ -1,3 +1,4 @@
+import { DrizzleQueryError } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.stubEnv("TRUSTED_PROXY_HOPS", "1");
@@ -70,13 +71,23 @@ describe("POST /api/contact", () => {
     const spy = vi.spyOn(console, "error").mockImplementation(() => {});
     const cause = Object.assign(new Error("falha"), { code: "42501" });
     values.mockRejectedValue(
-      new Error(`Failed query: insert\nparams: ${valid.email}`, { cause }),
+      new DrizzleQueryError("insert", [valid.email, valid.message], cause),
     );
 
     await contact(valid, "10.0.0.8");
 
     expect(JSON.stringify(spy.mock.calls)).not.toContain(valid.email);
     expect(JSON.stringify(spy.mock.calls)).toContain("42501");
+    spy.mockRestore();
+  });
+
+  it("mantém no log o diagnóstico de erros comuns", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    values.mockRejectedValue(new Error("DATABASE_URL is not set"));
+
+    await contact(valid, "10.0.0.9");
+
+    expect(JSON.stringify(spy.mock.calls)).toContain("DATABASE_URL is not set");
     spy.mockRestore();
   });
 
@@ -117,5 +128,20 @@ describe("rotas privadas e headers", () => {
 
     expect(apiResponse.headers.get("X-Content-Type-Options")).toBe("nosniff");
     expect(pageResponse.headers.get("X-Frame-Options")).toBe("SAMEORIGIN");
+  });
+
+  it("deixa o HSTS para o reverse proxy", async () => {
+    const response = await api.request("/login");
+
+    expect(response.headers.has("Strict-Transport-Security")).toBe(false);
+  });
+
+  it("limita /api/me antes de consultar o Auth", async () => {
+    const headers = { "X-Forwarded-For": "10.0.1.1" };
+    for (let i = 0; i < 60; i += 1) await api.request("/api/me", { headers });
+
+    const blocked = await api.request("/api/me", { headers });
+
+    expect(blocked.status).toBe(429);
   });
 });

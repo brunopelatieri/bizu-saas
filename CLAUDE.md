@@ -53,7 +53,7 @@ camadas sem spec aprovada: elas mudam o propósito do template.
 - Toda rota privada da API usa `requireAuth` (`src/api/auth.ts`). O `ProtectedRoute`
   roda no cliente e não protege dados.
 - Dashboard sem `loader` server-side com dados sensíveis; use TanStack Query e `apiFetch`.
-- `VITE_*` vai para o navegador: só valores públicos. Nodemailer só no servidor.
+- `VITE_*` vai para o navegador: só valores públicos.
 - Segredos nunca são commitados; só `.env.example` é versionado.
 
 **Contratos**
@@ -72,7 +72,8 @@ camadas sem spec aprovada: elas mudam o propósito do template.
 ## Regra de contexto vivo
 
 Mudança de código em um domínio exige atualizar, no mesmo trabalho, o arquivo
-correspondente em `docs/context/`. Se o escopo do domínio mudar (arquivo novo,
-paths, responsabilidade), atualize também `docs/context/INDEX.md`. Se afetar
+correspondente em `docs/context/`. Se surgir um arquivo ou uma responsabilidade
+nova, atualize também `docs/context/INDEX.md`. Se os paths do domínio mudarem,
+atualize as rules. Se afetar
 onboarding, atualize `README.md`. Se afetar decisões futuras de agentes, atualize
 as rules em `.claude/rules/` e `.cursor/rules/`.

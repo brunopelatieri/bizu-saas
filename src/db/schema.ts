@@ -20,6 +20,7 @@ export const profiles = pgTable("profiles", {
   id: uuid("id").primaryKey(),
   email: text("email"),
   fullName: text("full_name"),
+  phone: text("phone"),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
     .notNull()
     .defaultNow(),

@@ -1,5 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+const config = vi.hoisted(() => ({ configured: true }));
+
+vi.mock("@/lib/supabase/config", () => ({
+  isSupabaseConfigured: () => config.configured,
+}));
+
 vi.mock("@/lib/supabase/client", () => ({
   getSupabase: () => ({
     auth: {
@@ -25,6 +31,7 @@ function sentHeaders(fetchMock: ReturnType<typeof mockFetch>) {
 describe("apiFetch", () => {
   afterEach(() => {
     vi.unstubAllGlobals();
+    config.configured = true;
   });
 
   it("envia o token da sessão", async () => {
@@ -35,6 +42,14 @@ describe("apiFetch", () => {
     expect(sentHeaders(fetchMock).get("Authorization")).toBe(
       "Bearer token-da-sessao",
     );
+  });
+
+  it("funciona sem Supabase, sem enviar token", async () => {
+    config.configured = false;
+    const fetchMock = mockFetch(Response.json({ ok: true }));
+
+    await expect(apiFetch("/api/publica")).resolves.toEqual({ ok: true });
+    expect(sentHeaders(fetchMock).has("Authorization")).toBe(false);
   });
 
   it("marca corpo em texto como JSON", async () => {

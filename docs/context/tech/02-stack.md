@@ -52,9 +52,6 @@
 | React Hook Form | Formularios performaticos |
 | Zod | Validacao compartilhavel front/back |
 | `@hookform/resolvers` | Integracao React Hook Form + Zod |
-| TanStack Table | Tabelas de admin/dashboard |
-| Recharts | Graficos do dashboard |
-| date-fns | Datas, formatacao e manipulacao |
 
 ### Backend / API / Banco
 
@@ -73,10 +70,8 @@
 | Ferramenta | Uso |
 |------------|-----|
 | Supabase JS | Auth, Storage, Edge Functions e Realtime auxiliar |
-| Nodemailer | E-mails transacionais server-side (instalado; ainda sem uso) |
 
-Importante: Nodemailer nao deve ser importado em componentes React client-side.
-Use em `src/api/`, loaders/actions server-side ou servicos server-only.
+Tabelas, graficos, datas e e-mail sao opcionais: veja `docs/context/receitas.md`.
 
 ### Qualidade
 

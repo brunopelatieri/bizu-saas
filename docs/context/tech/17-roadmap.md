@@ -24,7 +24,7 @@ disso deve tratar como projeto SaaS, com spec propria.
 
 ### Longo prazo
 
-- E-mails transacionais via Nodemailer.
+- E-mails transacionais, quando o projeto precisar.
 - Papeis simples (ex.: admin e usuario) em `profiles`, se o projeto precisar.
 - Observabilidade: logs estruturados, health/readiness, tracing.
 - CI com typecheck/build/test.

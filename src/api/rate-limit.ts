@@ -66,5 +66,8 @@ export function rateLimit({ limit, windowMs, maxKeys = 10_000 }: RateLimitOption
     }
 
     await next();
+
+    // Falha do servidor não consome a tentativa de quem só quer tentar de novo.
+    if (c.res.status >= 500) bucket.count -= 1;
   });
 }

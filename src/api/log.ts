@@ -1,12 +1,25 @@
+import { DrizzleQueryError } from "drizzle-orm";
+
+const URL_CREDENTIALS = /\/\/[^/@\s]+@/g;
+
 /**
- * Registra só o tipo e o código do erro. Mensagens de erro podem carregar dados
- * sensíveis: o DrizzleQueryError inclui os parâmetros da query, e um
- * ERR_INVALID_URL traz a connection string com a senha.
+ * Registra o erro sem dados sensíveis. A mensagem do DrizzleQueryError traz os
+ * parâmetros da query, ou seja, dados pessoais: dela ficam só tipo e código.
+ * Nos demais erros, a mensagem é mantida para diagnóstico, sem credenciais de URL.
  */
 export function logError(context: string, error: unknown) {
-  const root =
-    error instanceof Error && error.cause instanceof Error ? error.cause : error;
-  const { name, code } = (root ?? {}) as { name?: string; code?: string };
+  if (error instanceof DrizzleQueryError) {
+    const { name, code } = (error.cause ?? {}) as { name?: string; code?: string };
+    console.error(context, { name: name ?? error.name, code });
+    return;
+  }
 
-  console.error(context, { name, code });
+  if (error instanceof Error) {
+    const { code } = error as { code?: string };
+    const message = error.message.replace(URL_CREDENTIALS, "//***@");
+    console.error(context, { name: error.name, code, message });
+    return;
+  }
+
+  console.error(context, { message: "Erro desconhecido." });
 }

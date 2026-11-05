@@ -21,11 +21,15 @@ import { contactMessageSchema } from "@/lib/schemas/contact";
 export const api = new Hono();
 
 // Em todas as rotas, inclusive as páginas SSR, que passam por este middleware.
-api.use("*", secureHeaders());
+// HSTS fica com o reverse proxy, que conhece o domínio e seus subdomínios.
+api.use("*", secureHeaders({ strictTransportSecurity: false }));
+
+// Vem antes de `requireAuth`: cada token validado é uma chamada ao Supabase Auth.
+const authRateLimit = rateLimit({ limit: 60, windowMs: 60 * 1000 });
 
 api.get("/api/health", (c) => c.json({ ok: true }));
 
-api.get("/api/me", requireAuth, async (c) => {
+api.get("/api/me", authRateLimit, requireAuth, async (c) => {
   try {
     const profile = await syncProfile(c.get("user"));
     return c.json({ profile });

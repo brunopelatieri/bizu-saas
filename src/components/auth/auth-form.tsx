@@ -142,6 +142,7 @@ function SignupForm({ nextPath }: { nextPath: string }) {
         email: values.email,
         password: values.password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             full_name: values.name,
             phone: values.phone,

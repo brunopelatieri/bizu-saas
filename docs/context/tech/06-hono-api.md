@@ -22,18 +22,21 @@ Autenticacao:
 - `requireAuth` (`src/api/auth.ts`) exige `Authorization: Bearer <access_token>`,
   valida o token no Supabase Auth e coloca o usuario em `c.get("user")`.
 - Sem token ou com token invalido: 401. Auth indisponivel ou limitando (429, 5xx): 503.
-- Toda rota privada usa esse middleware; o `ProtectedRoute` nao protege dados.
+- Toda rota privada usa `authRateLimit` (60 por minuto) antes de `requireAuth`, porque
+  cada token validado e uma chamada ao Supabase Auth. O `ProtectedRoute` nao protege dados.
 - No cliente, use `apiFetch` (`src/lib/api/client.ts`), que envia o token da sessao.
 
 Protecoes:
 
-- `secureHeaders` em todas as rotas, inclusive paginas SSR. Ainda nao ha CSP.
+- `secureHeaders` em todas as rotas, inclusive paginas SSR. Ainda nao ha CSP, e o HSTS
+  fica com o reverse proxy, que conhece o dominio e seus subdominios.
 - `/api/contact`: `rateLimit` (5 por 10 minutos, por cliente) e `bodyLimit` (16 KB).
 - O rate limit usa o IP da conexao. Atras de proxies, defina `TRUSTED_PROXY_HOPS`
   com a quantidade deles; sem isso, todos os clientes dividem o IP do proxy.
 - O limite fica em memoria: com varias instancias, use um store compartilhado.
-- `logError` (`src/api/log.ts`) registra so tipo e codigo do erro, porque mensagens
-  do Drizzle trazem os parametros da query. O cliente recebe mensagem generica.
+- Respostas 5xx nao consomem tentativa; erros de validacao, sim.
+- `logError` (`src/api/log.ts`) remove os parametros de query e credenciais de URL, e
+  mantem o diagnostico dos demais erros. O cliente recebe mensagem generica.
 
 Validacao:
 

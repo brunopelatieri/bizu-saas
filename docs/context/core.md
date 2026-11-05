@@ -12,7 +12,8 @@
 
 1. Localize no `docs/context/INDEX.md` o arquivo do domínio tocado.
 2. Edite esse arquivo. Não crie resumo paralelo nem duplique regra em outro lugar.
-3. Se o escopo mudou (arquivo novo, paths, responsabilidade), ajuste a linha do INDEX.
+3. Se surgiu um arquivo ou uma responsabilidade nova, ajuste o INDEX. Se os paths
+   mudaram, ajuste as rules e o cabeçalho do arquivo.
 4. Se a decisão deve valer para agentes futuros, ajuste a rule do domínio.
 5. Se um arquivo passar de ~300 linhas, divida-o e registre a divisão no INDEX.
 
@@ -20,7 +21,7 @@
 
 | Nível | Conteúdo | Carregamento |
 |---|---|---|
-| Fixo | `CLAUDE.md`, INDEX e rules sem `paths:` | Toda sessão; mantenha abaixo de 400 linhas |
+| Fixo | `CLAUDE.md`, INDEX, rules sem `paths:` e descrições de skills | Toda sessão; mantenha abaixo de ~3 mil tokens |
 | Por escopo | Rules com `paths:`/`globs` | Ao tocar os arquivos cobertos |
 | Sob demanda | `docs/context/**` e skills `ctx-*` | Quando a tarefa pede |
 | Arquivo morto | `docs/context/archive/` | Só por pedido explícito |

@@ -38,11 +38,11 @@ npm run db:migrate
 
 ## Criar uma rota privada
 
-Em `src/api/app.ts`, use `requireAuth` e **filtre sempre pelo dono**. O middleware só
+Em `src/api/app.ts`, use `authRateLimit` e `requireAuth`, e **filtre sempre pelo dono**. O middleware só
 prova quem é o usuário; quem decide o que ele pode ver é a query.
 
 ```ts
-api.get("/api/notes", requireAuth, async (c) => {
+api.get("/api/notes", authRateLimit, requireAuth, async (c) => {
   const user = c.get("user");
   const rows = await getDb()
     .select()
@@ -71,6 +71,17 @@ const { data } = useQuery({
   queryFn: () => apiFetch<{ notes: Note[] }>("/api/notes"),
 });
 ```
+
+## Adicionar recursos opcionais
+
+O template não instala o que nem todo projeto usa. Quando precisar:
+
+| Recurso | Pacote | Observação |
+|---|---|---|
+| Tabelas ricas | `@tanstack/react-table` | Junto com o componente `table` do shadcn/ui |
+| Gráficos | `recharts` | Use os tokens `chart-1` a `chart-5` |
+| Datas | `date-fns` | Formate em pt-BR |
+| E-mail | `nodemailer` | Só em `src/api/`, com SMTP em variáveis de runtime |
 
 ## Criar uma página pública
 

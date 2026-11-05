@@ -13,6 +13,7 @@ paths:
 - Segredos nunca são versionados; `.env.example` leva só valores de exemplo.
 - Migrations são etapa separada do container da aplicação.
 - Atrás de reverse proxy, defina `TRUSTED_PROXY_HOPS`; sem isso, todos dividem o mesmo rate limit.
+- HSTS é configurado no reverse proxy, não no app.
 - `VITE_*` é fixado no build: passe com `--build-arg`, e só valores públicos.
 
 Para entender este domínio, leia: docs/context/infra-deploy.md

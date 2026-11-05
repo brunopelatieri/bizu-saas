@@ -22,7 +22,7 @@ A demo em `https://bizu.bru.ia.br` roda na Vercel a partir de outro repositório
 
 | Ambiente | Aplicação | Banco |
 |---|---|---|
-| Dev | `http://localhost:3000` (ou a porta exibida pelo dev server) | `localhost:15432` |
+| Dev | `http://localhost:5173` | `localhost:15432` |
 | Container | Porta `3000` (`PORT`) | `DATABASE_URL` |
 
 - Healthcheck: `GET /api/health`, usado pelo `HEALTHCHECK` do `Dockerfile`.
@@ -48,6 +48,7 @@ A demo em `https://bizu.bru.ia.br` roda na Vercel a partir de outro repositório
 - Migrations rodam fora do container da aplicação, como etapa separada.
 - A role da `DATABASE_URL` deve ser dona das tabelas, porque elas têm RLS sem policies.
 - Atrás de reverse proxy, defina `TRUSTED_PROXY_HOPS=1` (um valor por proxy na frente).
+- HSTS é configurado no reverse proxy, não no app. Só inclua subdomínios se todos usarem HTTPS.
 
 ## Riscos e pendências
 

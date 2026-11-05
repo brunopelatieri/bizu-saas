@@ -40,7 +40,7 @@ Arquivos:
 - Radius tokens.
 - Cores shadcn (`background`, `foreground`, `card`, `popover`, `primary`,
   `secondary`, `muted`, `accent`, `destructive`, `border`, `input`, `ring`).
-- Chart tokens (`chart-1` a `chart-5`), preparados para Recharts.
+- Chart tokens (`chart-1` a `chart-5`), preparados para bibliotecas de graficos.
 - Sidebar tokens (`sidebar-*`), preparados para layouts admin.
 - Font tokens:
   - Inter

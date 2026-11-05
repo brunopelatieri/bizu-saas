@@ -8,10 +8,12 @@ function buildApp(limit = 2, maxKeys?: number) {
   return app;
 }
 
-function get(app: Hono, forwardedFor?: string) {
-  return app.request("/", {
-    headers: forwardedFor ? { "X-Forwarded-For": forwardedFor } : {},
-  });
+function get(app: Hono, forwardedFor?: string, address = "192.0.2.1") {
+  return app.request(
+    "/",
+    { headers: forwardedFor ? { "X-Forwarded-For": forwardedFor } : {} },
+    { incoming: { socket: { remoteAddress: address } } },
+  );
 }
 
 describe("rateLimit", () => {
@@ -32,6 +34,33 @@ describe("rateLimit", () => {
     const blocked = await get(app, "3.3.3.3");
 
     expect(blocked.status).toBe(429);
+  });
+
+  it("sem proxy, separa clientes pelo IP da conexão", async () => {
+    const app = buildApp(1);
+
+    await get(app, undefined, "192.0.2.1");
+    const blocked = await get(app, undefined, "192.0.2.1");
+    const other = await get(app, undefined, "192.0.2.2");
+
+    expect(blocked.status).toBe(429);
+    expect(other.status).toBe(200);
+  });
+
+  it("falha do servidor não consome a tentativa", async () => {
+    const app = new Hono();
+    let status: 200 | 500 = 500;
+    app.get("/", rateLimit({ limit: 1, windowMs: 1000 }), (c) =>
+      c.text("resposta", status),
+    );
+
+    for (let i = 0; i < 3; i += 1) {
+      expect((await get(app)).status).toBe(500);
+    }
+
+    status = 200;
+    expect((await get(app)).status).toBe(200);
+    expect((await get(app)).status).toBe(429);
   });
 
   it("com um proxy, ignora o que o cliente envia à esquerda", async () => {

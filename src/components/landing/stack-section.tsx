@@ -9,7 +9,7 @@ const groups = [
   },
   {
     label: "Backend & API",
-    items: ["Hono", "Zod", "react-router-hono-server", "Nodemailer"],
+    items: ["Hono", "Zod", "react-router-hono-server"],
   },
   {
     label: "Dados",
@@ -17,7 +17,7 @@ const groups = [
   },
   {
     label: "Estado & Dados no cliente",
-    items: ["Zustand", "TanStack Query", "React Hook Form", "TanStack Table"],
+    items: ["Zustand", "TanStack Query", "React Hook Form"],
   },
   {
     label: "Deploy",

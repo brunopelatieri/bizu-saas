@@ -1,4 +1,5 @@
 import { getSupabase } from "@/lib/supabase/client";
+import { isSupabaseConfigured } from "@/lib/supabase/config";
 
 export class ApiError extends Error {
   constructor(
@@ -10,10 +11,16 @@ export class ApiError extends Error {
   }
 }
 
-/** Chama a API do próprio app enviando o token da sessão atual do Supabase. */
-export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+async function getAccessToken() {
+  if (!isSupabaseConfigured()) return undefined;
+
   const { data } = await getSupabase().auth.getSession();
-  const token = data.session?.access_token;
+  return data.session?.access_token;
+}
+
+/** Chama a API do próprio app, enviando o token da sessão quando houver uma. */
+export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const token = await getAccessToken();
 
   const headers = new Headers(init?.headers);
   if (token) headers.set("Authorization", `Bearer ${token}`);

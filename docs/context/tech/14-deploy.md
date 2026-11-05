@@ -76,13 +76,7 @@ Migrations:
 
 - `DIRECT_URL`
 
-E-mail, quando usado:
-
-- `SMTP_HOST`
-- `SMTP_PORT`
-- `SMTP_USER`
-- `SMTP_PASS`
-- `MAIL_FROM`
+E-mail, quando adicionado ao projeto: credenciais SMTP, como variaveis de runtime.
 
 ---
 
