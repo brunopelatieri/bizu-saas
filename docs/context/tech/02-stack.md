@@ -1,0 +1,85 @@
+# Stack principal
+
+- **Escopo:** Ferramentas e versões por camada: runtime, frontend, UI, dados, backend e serviços.
+- **Specs relacionadas:** nenhuma citada
+- **Paths do código:** `src/api/`, `src/api/app.ts`, `src/components/ui/`, `src/root.tsx`
+
+<!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L72-149 -->
+## 2. Stack Principal
+
+### Runtime e Linguagem
+
+| Camada | Ferramenta | Uso |
+|--------|------------|-----|
+| Runtime | Node.js 22 | Runtime do build Docker e servidor de producao |
+| Linguagem | TypeScript 5.9 | Tipagem estrita em front, server e configs |
+| Package manager | npm | Instalacao e scripts |
+| Modulos | ESM (`type: module`) | Padrao moderno exigido pela integracao RR/Hono |
+
+### Frontend / Framework
+
+| Ferramenta | Versao atual | Uso |
+|------------|--------------|-----|
+| React | 19.2 | UI |
+| React DOM | 19.2 | Render/hidratacao |
+| React Router | 7.18 | Framework Mode, SSR, loaders, meta functions e rotas |
+| `@react-router/dev` | 7.18 | CLI `react-router dev/build/typegen` |
+| `@react-router/node` | 7.18 | Utilitarios server-side do RR |
+| Vite | 7.2 | Build tool por baixo do Framework Mode |
+| `react-router-hono-server` | 2.21 | Servidor Hono integrado ao build/SSR do RR |
+
+### UI / Design System
+
+| Ferramenta | Uso |
+|------------|-----|
+| Tailwind CSS v4 | Styling utilitario |
+| `@tailwindcss/vite` | Plugin Tailwind para Vite |
+| shadcn/ui | Componentes copiados para `src/components/ui/` |
+| Base UI | Dependencia base de alguns componentes |
+| `class-variance-authority` | Variants de componentes |
+| `clsx` | Composicao condicional de classes |
+| `tailwind-merge` | Merge seguro de classes Tailwind |
+| `tw-animate-css` | Animacoes para componentes Radix/shadcn |
+| Lucide React | Icones |
+| Sonner | Toast notifications |
+
+### Estado, Forms e Dados no Cliente
+
+| Ferramenta | Uso previsto |
+|------------|--------------|
+| Zustand | Estado global leve; atualmente usado no tema |
+| TanStack Query | Server state, cache, loading/error states — `QueryProvider` em `src/root.tsx` |
+| React Hook Form | Formularios performaticos |
+| Zod | Validacao compartilhavel front/back |
+| `@hookform/resolvers` | Integracao React Hook Form + Zod |
+| TanStack Table | Tabelas de admin/dashboard |
+| Recharts | Graficos do dashboard |
+| date-fns | Datas, formatacao e manipulacao |
+
+### Backend / API / Banco
+
+| Ferramenta | Uso |
+|------------|-----|
+| Hono | API HTTP em `src/api/app.ts` |
+| `@hono/zod-validator` | Validacao Zod nas rotas Hono (instalado; ainda nao aplicado) |
+| Drizzle ORM | ORM tipado para Postgres |
+| Drizzle Kit | Migrations, generate, studio |
+| postgres.js | Driver Postgres |
+| Postgres 16 | Banco proprio da aplicacao |
+| dotenv | Carregamento de `.env.local` em desenvolvimento |
+
+### Auth, Storage e Servicos Externos
+
+| Ferramenta | Uso |
+|------------|-----|
+| Supabase JS | Auth, Storage, Edge Functions e Realtime auxiliar |
+| Stripe | API server-side de pagamentos |
+| `@stripe/stripe-js` | Checkout/Stripe.js no browser |
+| Nodemailer | E-mails transacionais server-side |
+
+Importante: Stripe server-side e Nodemailer nao devem ser importados em
+componentes React client-side. Use em `src/api/`, loaders/actions server-side ou
+servicos server-only.
+
+---
+
