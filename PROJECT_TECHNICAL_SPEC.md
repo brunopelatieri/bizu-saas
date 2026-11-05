@@ -151,16 +151,8 @@ servicos server-only.
 
 ```text
 .
-|-- .claude/
-|   |-- agents/               agentes especializados para revisao/implementacao
-|   `-- commands/             comandos SpecifyX (/specify, /plan, /tasks...)
 |-- .cursor/
 |   `-- rules/                regras de contexto do workspace
-|-- .specify/
-|   |-- config.toml           config do SpecifyX
-|   |-- memory/constitution.md
-|   |-- scripts/
-|   `-- templates/
 |-- drizzle/                  migrations Drizzle
 |-- src/
 |   |-- api/app.ts            Hono API (/api/*)
@@ -545,45 +537,7 @@ Componentes recomendados para proximas etapas:
 
 ---
 
-## 13. SpecifyX, Skills e Rules Implantadas
-
-### SpecifyX
-
-Arquivos principais:
-
-- `.specify/config.toml`
-- `.specify/memory/constitution.md`
-- `.specify/templates/`
-- `.specify/scripts/`
-
-Constituicao:
-
-- Spec-Driven Development.
-- Fluxo: Specify -> Clarify -> Plan -> Tasks -> Analyze -> Implement.
-- TDD obrigatorio.
-- Templates padronizados.
-- Automacao Python cross-platform.
-- Governanca por constituicao.
-
-Comandos disponiveis em `.claude/commands/`:
-
-- `/constitution`
-- `/specify`
-- `/clarify`
-- `/plan`
-- `/tasks`
-- `/analyze`
-- `/implement`
-- `/guide`
-
-Agentes definidos em `.claude/agents/`:
-
-- `architecture-reviewer`
-- `code-reviewer`
-- `documentation-reviewer`
-- `implementer`
-- `spec-reviewer`
-- `test-reviewer`
+## 13. Skills e Rules Implantadas
 
 ### Rules do Cursor
 
@@ -632,8 +586,8 @@ Arquivos criados/atualizados para orientar agentes de IA:
 - `AI_CONTEXT.md` — contexto operacional curto, leitura obrigatoria inicial.
 - `.cursor/rules/ai-context-governance.mdc` — rule always-on para manter o
   contexto tecnico atualizado.
-- `CLAUDE.md` — aponta para `AI_CONTEXT.md`, `PROJECT_TECHNICAL_SPEC.md`,
-  `MIGRATION_NOTES.md` e constituicao SpecifyX.
+- `CLAUDE.md` — aponta para `AI_CONTEXT.md`, `PROJECT_TECHNICAL_SPEC.md` e
+  `MIGRATION_NOTES.md`.
 - `PROJECT_TECHNICAL_SPEC.md` — documento tecnico completo.
 - `README.md` — onboarding humano e operacional.
 

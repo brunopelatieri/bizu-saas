@@ -25,8 +25,7 @@ Projetos-alvo:
 1. `AI_CONTEXT.md` — visão rápida e regras de atualização de contexto.
 2. `PROJECT_TECHNICAL_SPEC.md` — especificação técnica completa.
 3. `MIGRATION_NOTES.md` — decisões da migração para React Router Framework Mode.
-4. `.specify/memory/constitution.md` — constituição SpecifyX.
-5. `.cursor/rules/*.mdc` — regras operacionais do workspace.
+4. `.cursor/rules/*.mdc` — regras operacionais do workspace.
 
 ## Arquitetura Atual
 
@@ -69,7 +68,7 @@ Atualize este arquivo e `PROJECT_TECHNICAL_SPEC.md` quando mudar:
 - Banco/schema.
 - Regras de uso de Supabase.
 - Estratégia de auth, billing, multi-tenant ou dashboard.
-- Convenções de IA/SpecifyX.
+- Convenções de IA.
 
 Se a mudança afetar onboarding, atualize também `README.md`.
 Se a mudança afetar agentes/LLMs, atualize também `.cursor/rules/`.

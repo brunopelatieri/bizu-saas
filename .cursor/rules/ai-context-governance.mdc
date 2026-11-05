@@ -16,7 +16,6 @@ Leia primeiro:
 - `AI_CONTEXT.md`
 - `PROJECT_TECHNICAL_SPEC.md`
 - `MIGRATION_NOTES.md`
-- `.specify/memory/constitution.md`
 - regras em `.cursor/rules/`
 
 ## Mantenha o contexto vivo
@@ -31,7 +30,7 @@ Ao alterar qualquer item abaixo, atualize documentação na mesma sessão:
 - Supabase/Auth/Storage
 - dashboard/admin
 - billing/pagamentos
-- regras/skills/SpecifyX
+- regras/skills
 
 Arquivos mínimos a considerar:
 

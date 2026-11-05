@@ -71,7 +71,6 @@ Antes de pedir mudanças para uma IA ou abrir uma feature relevante, leia primei
 | `AI_CONTEXT.md` | Visão rápida e regras de atualização de contexto |
 | `PROJECT_TECHNICAL_SPEC.md` | Especificação técnica completa |
 | `MIGRATION_NOTES.md` | Decisões da migração para React Router Framework Mode |
-| `.specify/memory/constitution.md` | Princípios de desenvolvimento SpecifyX |
 
 > **Regra prática:** use o `AI_CONTEXT.md` para entender o projeto em poucos minutos e o `PROJECT_TECHNICAL_SPEC.md` quando precisar mexer em arquitetura, rotas, deploy, banco ou autenticação.
 
@@ -167,4 +166,4 @@ npm run db:studio    # abre Drizzle Studio
 ## Autor
 
 **Bruno Pelatieri Goulart**
-Enterprise Automation Architect • AI • DevOps • n8n Specialist
+Enterprise Automation Architect • AI • DevOps • n8n Specialist
