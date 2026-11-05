@@ -62,17 +62,31 @@ React Router v7 Framework Mode + SSR global
 
 ## Metodologia Sugerida
 
-Este template foi pensado para trabalhar com humanos e agentes de IA no mesmo fluxo. A ideia é aplicar **AI Software Engineering**: especificar antes de implementar, manter contexto técnico vivo e deixar decisões importantes documentadas.
+Este template foi pensado para trabalhar com humanos e agentes de IA no mesmo fluxo. A ideia é aplicar **AI Software Engineering**: PRD/spec antes do código, contexto enxuto carregado sob demanda e decisões importantes documentadas.
 
-Antes de pedir mudanças para uma IA ou abrir uma feature relevante, leia primeiro:
+```text
+PRD -> SPEC -> implementação -> typecheck + build -> /code-review -> atualizar contexto
+```
 
-| Documento | Quando consultar |
+Em vez de carregar toda a documentação em cada sessão, o agente começa por um índice e abre só o que a tarefa pede. Isso reduz o consumo de tokens sem perder precisão:
+
+| Nível | O que é | Quando carrega |
+|---|---|---|
+| Fixo | `CLAUDE.md` + `docs/context/INDEX.md` | Toda sessão |
+| Por escopo | Rules em `.claude/rules/` e `.cursor/rules/` | Ao tocar os arquivos cobertos |
+| Sob demanda | `docs/context/**` e skills `ctx-*` | Quando a tarefa pede |
+| Arquivo morto | `docs/context/archive/` | Só por pedido explícito |
+
+Comandos disponíveis no Claude Code:
+
+| Comando | Função |
 |---|---|
-| `AI_CONTEXT.md` | Visão rápida e regras de atualização de contexto |
-| `PROJECT_TECHNICAL_SPEC.md` | Especificação técnica completa |
-| `MIGRATION_NOTES.md` | Decisões da migração para React Router Framework Mode |
+| `/prd <feature>` | Cria o PRD em `docs/specs/<feature>/` |
+| `/spec <feature>` | Escreve a SPEC técnica a partir do PRD |
+| `/ctx-banco-drizzle`, `/ctx-supabase-auth`, `/ctx-api-hono`, `/ctx-dashboard`, `/ctx-infra-deploy` | Carregam o contexto do domínio |
+| `/context-budget` | Mede o contexto sempre carregado |
 
-> **Regra prática:** use o `AI_CONTEXT.md` para entender o projeto em poucos minutos e o `PROJECT_TECHNICAL_SPEC.md` quando precisar mexer em arquitetura, rotas, deploy, banco ou autenticação.
+> **Regra prática:** mudou código em um domínio? Atualize o arquivo correspondente em `docs/context/` no mesmo trabalho. O método completo, incluindo escolha de modelo e como adaptar o template a um novo projeto, está em `docs/context/ai-engineering.md`.
 
 ---
 
@@ -156,10 +170,17 @@ npm run db:studio    # abre Drizzle Studio
 
 | Arquivo | Conteúdo |
 |---|---|
-| `AI_CONTEXT.md` | O que faz, para quem é e como agentes devem se orientar |
-| `PROJECT_TECHNICAL_SPEC.md` | Arquitetura, stack, rotas, deploy e decisões |
-| `MIGRATION_NOTES.md` | Histórico técnico da migração para SSR + Hono |
-| `.cursor/rules/` | Regras persistentes para agentes no Cursor |
+| `docs/context/INDEX.md` | Mapa de todo o contexto: ponto de partida para pessoas e agentes |
+| `docs/context/core.md` | Objetivo, arquitetura e regras de decisão |
+| `docs/context/ai-engineering.md` | Método de trabalho, economia de tokens e adaptação do template |
+| `docs/context/tech/` | Especificação técnica, um arquivo por seção |
+| `docs/context/infra-deploy.md` | Topologia, credenciais e riscos de deploy |
+| `docs/specs/` | Templates de PRD/SPEC e specs de features |
+| `docs/context/archive/` | Histórico, incluindo as notas de migração para SSR + Hono |
+| `.claude/rules/`, `.cursor/rules/` | Regras por domínio para agentes |
+| `.claude/skills/` | Skills de contexto e de fluxo |
+
+`AI_CONTEXT.md` e `PROJECT_TECHNICAL_SPEC.md` agora são stubs que apontam para `docs/context/`.
 
 ---
 

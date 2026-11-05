@@ -53,7 +53,8 @@ partida para projetos derivados: simples de entender, de trocar e de remover.
 
 ## Fluxo de trabalho
 
-1. **PRD/spec:** feature relevante começa em `docs/specs/<feature>/`, antes do código.
+1. **PRD/spec:** feature relevante começa em `docs/specs/<feature>/`, antes do código
+   (`/prd`, `/spec`). Método completo: `docs/context/ai-engineering.md`.
 2. **Plano:** defina onde entra (pública SSR, API Hono ou dashboard client-side).
 3. **Implementação:** mudanças pequenas e cirúrgicas, verificáveis por etapa.
 4. **Verificação:** `npm run typecheck` e `npm run build`.

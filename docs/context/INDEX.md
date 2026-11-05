@@ -10,6 +10,8 @@ Caminhos relativos a `docs/context/`. Nunca carregue tudo de uma vez.
 | Núcleo | `core.md` | Decisão de arquitetura; dúvida sobre regras; atualização de contexto | `src/server.ts`, `src/api/app.ts` |
 | Status | `status.md` | Saber o que está pronto e o que está pendente | — |
 | Onboarding | `onboarding.md` | Primeira execução; erro de setup local, Docker ou migrate | `drizzle.config.ts`, `docker-compose.yml` |
+| Método | `ai-engineering.md` | Planejar feature, escolher modelo, reduzir tokens, adaptar o template | — |
+| Specs | `docs/specs/README.md` | Escrever PRD/SPEC ou retomar feature em andamento | `docs/specs/` |
 | Infra e deploy | `infra-deploy.md` | Topologia, credenciais, riscos de VPS, Docker e Portainer | `Dockerfile`, `docker-compose.yml`, `.dockerignore` |
 
 ## Domínios técnicos
@@ -46,6 +48,8 @@ A `description` de cada skill fica sempre carregada; o corpo só entra ao invoca
 | api-hono | `ctx-api-hono` | Use ao criar ou alterar endpoints /api/* e contratos Zod. | `docs/context/tech/06-hono-api.md` |
 | dashboard | `ctx-dashboard` | Use ao alterar a área autenticada /dashboard. | `docs/context/tech/11-dashboard.md` |
 | infra-deploy | `ctx-infra-deploy` | Use em tarefas de Docker, Portainer, VPS ou variáveis de ambiente. | `docs/context/infra-deploy.md` |
+
+Fluxo: `prd` e `spec` criam documentos em `docs/specs/`; `context-budget` mede o baseline.
 
 ## Arquivo morto
 
