@@ -150,6 +150,14 @@ Por padrão, o `start` usa `PORT=3000`.
 | `VITE_SUPABASE_URL` | URL pública do projeto Supabase |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave pública do Supabase |
 
+Em imagem Docker, as variáveis `VITE_*` entram no build, não em runtime:
+
+```bash
+docker build -t bizu-saas \
+  --build-arg VITE_SUPABASE_URL=https://your-project-ref.supabase.co \
+  --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key .
+```
+
 ---
 
 ## Scripts Úteis

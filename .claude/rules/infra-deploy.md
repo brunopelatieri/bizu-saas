@@ -12,6 +12,6 @@ paths:
 - `docker-compose.yml` é só o Postgres de desenvolvimento, na porta `15432`.
 - Segredos nunca são versionados; `.env.example` leva só valores de exemplo.
 - Migrations são etapa separada do container da aplicação.
-- `VITE_*` é fixado no build: confira como a variável chega ao bundle.
+- `VITE_*` é fixado no build: passe com `--build-arg`, e só valores públicos.
 
 Para entender este domínio, leia: docs/context/infra-deploy.md

@@ -9,7 +9,7 @@ const steps = [
     number: "02",
     verb: "Contexto vivo",
     title: "Mantenha o mapa técnico atualizado",
-    body: "AI_CONTEXT e a spec técnica descrevem arquitetura, rotas e decisões. A IA lê o contexto e propõe mudanças dentro do padrão do projeto.",
+    body: "Um índice em docs/context aponta arquitetura, rotas e decisões por domínio. A IA lê só o que a tarefa pede e propõe mudanças dentro do padrão do projeto.",
   },
   {
     number: "03",

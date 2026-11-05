@@ -16,7 +16,7 @@ const faqs = [
   {
     question: "O que é a metodologia de AI Software Engineering aqui?",
     answer:
-      "Especificar antes de implementar, manter contexto técnico vivo (AI_CONTEXT e spec) e fazer mudanças pequenas e documentadas. Assim humanos e agentes de IA decidem com o mesmo mapa técnico.",
+      "Especificar antes de implementar (PRD e SPEC), manter contexto técnico vivo e enxuto em docs/context e fazer mudanças pequenas e documentadas. Assim humanos e agentes de IA decidem com o mesmo mapa técnico.",
   },
   {
     question: "Por que Supabase e Postgres juntos?",

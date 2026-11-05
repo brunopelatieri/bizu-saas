@@ -3,6 +3,7 @@
 - **Escopo:** Demo, modelo de deploy, container, compose e variáveis de ambiente.
 - **Specs relacionadas:** nenhuma citada
 - **Paths do código:** não declarado
+- **Nota:** `VITE_*` é variável de build, não de runtime, ao contrário da lista abaixo. Veja `docs/context/infra-deploy.md`.
 
 <!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L610-688 -->
 ## 14. Deploy em VPS Ubuntu + Docker + Portainer

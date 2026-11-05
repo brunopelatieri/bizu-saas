@@ -10,7 +10,7 @@ build
 Dockerfile
 .dockerignore
 README.md
-MIGRATION_NOTES.md
+docs
 .claude
 .cursor
 drizzle

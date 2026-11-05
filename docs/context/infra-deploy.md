@@ -30,7 +30,10 @@ A demo em `https://bizu.bru.ia.br` roda na Vercel a partir de outro repositório
 
 ## Credenciais
 
-- Em produção, as variáveis são injetadas pelo Portainer/container.
+- Em produção, as variáveis de runtime são injetadas pelo Portainer/container.
+- `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY` são de build: passe com
+  `--build-arg` (ou `build.args` na stack). Trocar o valor exige rebuild da imagem.
+- Variável `VITE_*` vai para o navegador; nunca coloque segredo nesse prefixo.
 - Em dev, ficam em `.env.local` (ignorado pelo git).
 - Só `.env.example` é versionado, sempre com valores de exemplo.
 - `NODE_ENV=production` faz o servidor ignorar `.env.local`.
@@ -48,10 +51,6 @@ A demo em `https://bizu.bru.ia.br` roda na Vercel a partir de outro repositório
 
 Somente listados; nenhum foi resolvido aqui.
 
-- **Variáveis `VITE_*` no build Docker:** o cliente lê `VITE_SUPABASE_*` por
-  `import.meta.env`, valor fixado pelo Vite no build. O `Dockerfile` não declara
-  `ARG` e o `.dockerignore` exclui `.env.*`, então injetá-las só em runtime não deve
-  alcançar o bundle. Inferido do código; não confirmado com um build real.
 - **Migrations:** o runtime não inclui `drizzle-kit` nem `drizzle/`; falta documentar
   o job ou pipeline.
 - **Stack Portainer:** ainda não existe stack com app, Postgres e reverse proxy.

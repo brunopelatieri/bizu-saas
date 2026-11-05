@@ -27,7 +27,7 @@ export default [
   // ---------------------------------------------------------------------------
   // Área autenticada — client-only (SEM loader de servidor).
   // O ProtectedRoute faz o gate no cliente; nenhum dado sensível é
-  // renderizado no HTML inicial (ver MIGRATION_NOTES.md).
+  // renderizado no HTML inicial (ver docs/context/tech/01-visao-geral.md).
   // ---------------------------------------------------------------------------
   layout("components/auth/protected-route.tsx", [
     route("dashboard", "components/layout/dashboard-layout.tsx", [
