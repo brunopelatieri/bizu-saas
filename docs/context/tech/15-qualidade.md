@@ -21,9 +21,15 @@ Verificacoes recentes realizadas:
 Comandos recomendados antes de cada entrega:
 
 ```bash
+npm run lint
 npm run typecheck
+npm test
 npm run build
 ```
+
+O CI em `.github/workflows/ci.yml` roda os mesmos comandos em push para `main` e em
+pull requests. Os testes ficam ao lado do codigo (`src/**/*.test.ts`); hoje cobrem a
+autenticacao e as protecoes da API.
 
 Para smoke test local de producao:
 

@@ -5,15 +5,18 @@ paths:
   - "drizzle.config.ts"
 ---
 
-# Schema, migrations e queries com Drizzle no Postgres próprio
+# Schema, migrations e queries com Drizzle em qualquer Postgres
 
-- Dados da aplicação ficam no Postgres próprio, via Drizzle. Nunca em `supabase.from()`.
+- Dados da aplicação passam sempre pelo Drizzle, nunca por `supabase.from()`.
+- O Postgres pode ser local, VPS ou o do Supabase: muda só a `DATABASE_URL`.
+- Toda tabela nova leva `.enableRLS()`, sem policies: fecha a Data API no Supabase.
 - Toda mudança de schema em `src/db/schema.ts` gera migration: `npm run db:generate` e `npm run db:migrate`.
 - `DATABASE_URL` é de runtime; `DIRECT_URL` é do Drizzle Kit.
 - `drizzle-kit` é devDependency: rode pelos scripts `db:*`, sem instalar globalmente.
-- `user.id` do Supabase Auth pode ser FK em tabelas Drizzle.
-- Permissões são validadas na aplicação, não por RLS do Supabase.
+- Dados de usuário referenciam `profiles.id`. Não crie FK para `auth.users`.
+- Permissões são validadas no servidor, com `requireAuth` + checks, não por RLS.
 - Loaders acessam o banco direto, sem chamada HTTP interna.
 - Migrations rodam fora do container da aplicação.
+- A role da `DATABASE_URL` precisa ser dona das tabelas, por causa do RLS sem policies.
 
 Para entender este domínio, leia: docs/context/tech/07-banco-drizzle.md

@@ -143,5 +143,38 @@ Acao recomendada:
 
 - Criar tabela `posts` no Drizzle quando o blog virar feature real.
 
+### RISK-004 — Alertas moderados em dependencias
+
+Estado atual:
+
+- `npm audit --omit=dev` aponta 5 alertas moderados, sem altos ou criticos, todos na
+  cadeia do `react-router-hono-server` (`@hono/node-server`, `@hono/node-ws`,
+  `@hono/vite-dev-server` e `minimatch`).
+
+Impacto:
+
+- O mais relevante e o `serveStatic` do `@hono/node-server`, usado em producao.
+
+Acao recomendada:
+
+- A correcao exige `@hono/node-server` 2, que depende de `react-router-hono-server` 4
+  e React Router 8. Fazer como migracao propria, nao como ajuste pontual.
+
+### RISK-005 — Rate limit em memoria
+
+Estado atual:
+
+- O limite de `/api/contact` vive na memoria do processo. A chave e o IP da conexao,
+  ou o de `X-Forwarded-For` quando `TRUSTED_PROXY_HOPS` esta definido.
+
+Impacto:
+
+- Atras de proxy e sem `TRUSTED_PROXY_HOPS`, todos dividem o limite do IP do proxy.
+- Com varias instancias, cada uma conta separadamente.
+
+Acao recomendada:
+
+- Definir `TRUSTED_PROXY_HOPS` no deploy. Ao escalar, usar um store compartilhado.
+
 ---
 

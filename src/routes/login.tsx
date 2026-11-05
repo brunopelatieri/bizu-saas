@@ -2,7 +2,7 @@ import type { MetaFunction } from "react-router";
 import { LoginPage } from "@/pages/login-page";
 
 export const meta: MetaFunction = () => [
-  { title: "Entrar — Bizu SaaS" },
+  { title: "Entrar — Bizu Starter" },
   { name: "robots", content: "noindex" },
 ];
 

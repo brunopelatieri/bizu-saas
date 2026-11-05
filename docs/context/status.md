@@ -20,11 +20,17 @@
 - shadcn/ui expandido: `dialog`, `dropdown-menu`, `sheet`, `table`, `form`, `select`, `skeleton`, `tooltip`, `avatar`.
 - Tema dark/light com Zustand e script anti-flash.
 - Sonner montado globalmente.
+- Autenticação no servidor: `requireAuth` em `src/api/auth.ts` e `GET /api/me` como exemplo.
+- Tabela `profiles` espelhando o Supabase Auth, com sincronização em `src/db/profiles.ts`.
+- `/api/contact` com rate limit, limite de corpo e headers de segurança.
+- Drizzle aceita Postgres local, VPS ou Supabase, inclusive pelo pooler com `?prepare=false`.
+- Biome, Vitest e CI no GitHub Actions.
 - Dockerfile multi-stage para VPS.
 
 <!-- ORIGEM: AI_CONTEXT.md L111-115 -->
 ## Pendências Técnicas Conhecidas
 
 - Evoluir blog estático para tabela Drizzle quando virar feature real.
+- Migrar para React Router 8 e `react-router-hono-server` 4 para zerar os alertas moderados restantes (`tech/16-bugs-riscos.md`).
 - Criar schemas compartilhados adicionais conforme novos forms/APIs surgirem.
 - Criar stack Portainer completa para app + Postgres + reverse proxy.

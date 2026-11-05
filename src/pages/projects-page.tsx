@@ -10,13 +10,13 @@ import {
 import { siteConfig } from "@/lib/constants/navigation";
 
 const targetProjects = [
-  "SaaS",
   "Portal de clientes",
+  "Área de membros",
   "Site institucional",
   "Landing page",
   "Blog com SSR",
   "Dashboard / Admin",
-  "Sistemas web de aplicação",
+  "Sistemas internos",
 ];
 
 const readyModules = [
@@ -34,7 +34,7 @@ const readyModules = [
   },
   {
     title: "Base de produto",
-    body: "shadcn/ui + Tailwind v4, tema dark/light, formulários, estado com Zustand e ferramentas prontas para Stripe e e-mail.",
+    body: "shadcn/ui + Tailwind v4, tema dark/light, formulários, estado com Zustand e dashboard com dados protegidos no servidor.",
   },
 ];
 
@@ -66,8 +66,8 @@ export function ProjectsPage() {
     <>
       <PageHero
         eyebrow="Projeto em destaque"
-        title="Bizu SaaS"
-        description="Boilerplate full-stack para iniciar projetos web rápido, com base robusta, documentação viva e metodologia de AI Software Engineering."
+        title="Bizu Starter"
+        description="Ponto de partida para projetos pequenos e médios com site público, login e dashboard, usando Supabase Auth e Drizzle."
         actions={
           <>
             <a href={siteConfig.links.repo} target="_blank" rel="noreferrer noopener">
@@ -92,11 +92,11 @@ export function ProjectsPage() {
             O propósito
           </h2>
           <p>
-            O <strong className="text-foreground">Bizu SaaS</strong> é uma base
-            moderna, robusta e reutilizável para acelerar a criação de produtos
-            web de diferentes portes. Em vez de gastar semanas montando a
+            O <strong className="text-foreground">Bizu Starter</strong> é uma base
+            moderna e reutilizável para projetos pequenos e médios que não são
+            SaaS, mas precisam de login e dashboard. Em vez de gastar semanas montando a
             fundação, você começa com SSR, API, banco, autenticação, UI e deploy
-            já integrados — e foca no que diferencia o seu produto.
+            já integrados — e foca no que diferencia o seu projeto.
           </p>
           <p>
             O diferencial é a metodologia de{" "}

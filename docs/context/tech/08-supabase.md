@@ -26,9 +26,8 @@ Uso permitido:
 
 Uso proibido pelo projeto:
 
-- Banco principal.
-- CRUD via `supabase.from()`.
-- Migrations/schema de dados da aplicacao.
+- CRUD via `supabase.from()`, mesmo quando o Postgres for o do Supabase.
+- Migrations/schema de dados fora do Drizzle.
 - Realtime `postgres_changes` para tabelas da app.
 
 Autenticacao atual:
@@ -36,7 +35,9 @@ Autenticacao atual:
 - `AuthProvider` roda no cliente.
 - Usa `supabase.auth.getUser()`.
 - Escuta `onAuthStateChange`.
-- `ProtectedRoute` protege `/dashboard/**` no cliente.
+- `ProtectedRoute` faz o gate de `/dashboard/**` no cliente; os dados sao protegidos
+  no servidor por `requireAuth` (`src/api/auth.ts`).
+- O Postgres do projeto Supabase pode ser o banco da aplicacao, sempre via Drizzle.
 - `/login`: UI premium dark (Engineering AI Design), Tabs Login/Cadastro.
 - Cadastro exige Nome, E-mail e Telefone Celular (`react-hook-form` + Zod em
   `src/lib/schemas/auth.ts`); metadados enviados ao Supabase Auth (`full_name`,

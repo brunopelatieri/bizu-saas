@@ -28,19 +28,19 @@ export function HeroSection() {
       <div className="relative mx-auto max-w-5xl px-6 py-28 text-center md:py-36">
         <Badge variant="outline" className="mb-6 gap-2 px-3 py-1.5 text-xs">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
-          Boilerplate full-stack · AI Software Engineering
+          Starter full-stack · AI Software Engineering
         </Badge>
 
         <h1 className="mx-auto max-w-3xl text-4xl font-bold tracking-tight text-foreground md:text-6xl">
-          Comece projetos robustos.{" "}
-          <span className="text-primary">Com IA, do primeiro commit.</span>
+          Site, login e dashboard.{" "}
+          <span className="text-primary">Prontos para o seu projeto.</span>
         </h1>
 
         <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
-          O <strong className="text-foreground">Bizu SaaS</strong> é uma base
-          full-stack pronta para criar SaaS, portais, sites e dashboards — com
-          arquitetura moderna e contexto vivo para humanos e agentes de IA
-          trabalharem juntos.
+          O <strong className="text-foreground">Bizu Starter</strong> é o ponto
+          de partida para projetos pequenos e médios: site público, área de
+          login e dashboard, com Supabase Auth e Drizzle em qualquer Postgres.
+          Sem a complexidade de um SaaS.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -80,7 +80,7 @@ export function HeroSection() {
           </div>
           <img
             src={siteConfig.screenshot}
-            alt="Preview do Bizu SaaS"
+            alt="Preview do Bizu Starter"
             className="block w-full object-cover object-top"
           />
         </div>

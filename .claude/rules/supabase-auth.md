@@ -12,25 +12,26 @@ paths:
   - "supabase/**"
 ---
 
-# Supabase auxiliar: Auth, Storage, Edge Functions e Realtime
+# Supabase para Auth, Storage, Edge Functions e Realtime
 
-Supabase é serviço auxiliar. Dados da aplicação ficam no Postgres próprio via Drizzle.
+Supabase cuida de Auth e serviços. Dados da aplicação passam sempre pelo Drizzle.
 
 **Usar para:**
-- Auth: `AuthProvider` em `src/providers/auth-provider.tsx`, com `getUser()` e `onAuthStateChange`.
+- Auth no cliente: `AuthProvider` em `src/providers/auth-provider.tsx`.
+- Auth no servidor: `requireAuth` em `src/api/auth.ts`, que valida o token.
 - Storage: `src/lib/supabase/storage.ts`.
 - Edge Functions: `invokeFunction()` em `src/lib/supabase/functions.ts`.
 - Realtime broadcast/presence: `src/lib/supabase/realtime.ts`.
 
 **Não usar para:**
 - Tabelas ou CRUD da aplicação (`supabase.from()`).
-- Schema ou migrations de dados.
-- Postgres do projeto Supabase como banco principal.
+- Schema ou migrations de dados fora do Drizzle.
 - Realtime `postgres_changes` em tabelas da aplicação.
 
 **Configuração:**
 - `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`, vistas pelo cliente.
 - Use `isSupabaseConfigured()` antes de features opcionais.
-- Permissões são validadas na aplicação (`getUser()` + checks), não por RLS.
+- `user_metadata` é editável pelo usuário: nunca use para permissões.
+- Permissões são validadas no servidor (`requireAuth` + checks), não por RLS.
 
 Para entender este domínio, leia: docs/context/tech/08-supabase.md

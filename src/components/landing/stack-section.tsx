@@ -20,8 +20,8 @@ const groups = [
     items: ["Zustand", "TanStack Query", "React Hook Form", "TanStack Table"],
   },
   {
-    label: "Pagamentos & Deploy",
-    items: ["Stripe", "Docker", "VPS + Portainer"],
+    label: "Deploy",
+    items: ["Docker", "VPS + Portainer"],
   },
 ];
 

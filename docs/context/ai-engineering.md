@@ -19,7 +19,7 @@ custa só quando é lido.
 | PRD | `docs/specs/<feature>/prd.md` | O quê e por quê, sem detalhe técnico |
 | SPEC | `docs/specs/<feature>/spec.md` | Como, com plano em etapas verificáveis |
 | Implementação | Código | Mudanças pequenas, seguindo o plano |
-| Verificação | `npm run typecheck` e `npm run build` | Cada etapa confirmada antes da próxima |
+| Verificação | `npm run lint`, `typecheck`, `test` e `build` | Cada etapa confirmada antes da próxima |
 | Revisão | `/code-review` | De preferência em sessão nova |
 | Contexto | `docs/context/` | Atualizado no mesmo trabalho |
 
@@ -70,9 +70,14 @@ Discuta o modelo antes de tarefas relevantes. A regra é usar o mais leve que re
 
 ## Adaptar para um novo projeto
 
-1. Reescreva "Domínio" e "Regras inegociáveis" no `CLAUDE.md`.
-2. Atualize `docs/context/core.md` e `docs/context/status.md`.
-3. Crie um arquivo em `docs/context/` para cada domínio de negócio novo.
-4. Para cada domínio, crie rule com `paths:` e, se for grande, skill `ctx-<domínio>`.
-5. Registre tudo no INDEX e remova o que não se aplica.
-6. Comece a primeira feature por `/prd`.
+Para as tarefas de código, siga `docs/context/receitas.md`.
+
+1. Confirme o encaixe: se o projeto precisa de multi-tenant ou cobrança recorrente, ele
+   é um SaaS e está fora do propósito deste starter.
+2. Reescreva "Domínio" e "Regras inegociáveis" no `CLAUDE.md`.
+3. Atualize `docs/context/core.md` e `docs/context/status.md`.
+4. Crie um arquivo em `docs/context/` para cada domínio de negócio novo.
+5. Para cada domínio, crie rule com `paths:` e, se for grande, skill `ctx-<domínio>`.
+6. Registre tudo no INDEX e remova o que não se aplica.
+7. Escolha onde o Postgres roda: local, VPS ou Supabase. Só muda a `DATABASE_URL`.
+8. Comece a primeira feature por `/prd`.

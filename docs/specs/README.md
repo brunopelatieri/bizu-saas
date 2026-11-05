@@ -18,14 +18,14 @@ docs/specs/
 |---|---|
 | Correção pequena ou ajuste visual | Nada; vá direto ao código |
 | Mudança técnica localizada | Só `spec.md`, enxuta |
-| Feature de produto, pagamentos, multi-tenant ou schema novo | `prd.md` e `spec.md` |
+| Feature nova para o usuário, integração externa ou schema novo | `prd.md` e `spec.md` |
 
 ## Fluxo
 
 1. `/prd <feature>`: cria o PRD a partir do template.
 2. `/spec <feature>`: lê o PRD, carrega só o contexto necessário e escreve a SPEC.
 3. Implementa seguindo o plano da SPEC, em etapas verificáveis.
-4. Roda `npm run typecheck`, `npm run build` e `/code-review`.
+4. Roda `npm run lint`, `npm run typecheck`, `npm test`, `npm run build` e `/code-review`.
 5. Atualiza `docs/context/` e marca PRD e SPEC como entregues.
 
 ## Regras

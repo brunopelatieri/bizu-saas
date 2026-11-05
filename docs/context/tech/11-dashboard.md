@@ -36,6 +36,8 @@ Estado atual:
 - Dashboard inicial com cards zerados e quick actions.
 - Subrotas estão como "Em breve".
 - Sem `loader` de servidor; dados devem ser buscados no cliente via TanStack Query.
+- `AccountCard` (`src/components/dashboard/account-card.tsx`) e o exemplo de dados
+  privados: `useQuery` + `apiFetch` -> `GET /api/me` -> `requireAuth` -> Drizzle.
 
 ---
 

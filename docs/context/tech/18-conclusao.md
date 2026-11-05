@@ -7,18 +7,16 @@
 <!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L885-901 -->
 ## 18. Conclusao
 
-O projeto esta bem posicionado como template moderno e reutilizavel para:
+O projeto esta bem posicionado como starter moderno e reutilizavel para projetos pequenos e medios:
 
-- Landing pages.
-- Sites institucionais.
-- Blogs com SEO/OG.
 - Portais de clientes.
-- SaaS com auth, dashboard e billing futuro.
-- Sistemas web com admin.
+- Areas de membros.
+- Sites institucionais com painel.
+- Blogs com SEO/OG e area administrativa.
+- Sistemas internos com dashboard.
 
 A base tecnica esta consistente: React Router Framework Mode com SSR, Hono no
-mesmo processo, Drizzle/Postgres como fonte de dados, Supabase auxiliar,
+mesmo processo, Drizzle em qualquer Postgres, Supabase para Auth e servicos,
 Tailwind/shadcn como design system e Docker para VPS.
 
-Os principais ajustes agora sao de alinhamento documental/regras e limpeza de
-dependencias, nao de arquitetura.
+SaaS multi-tenant com cobranca recorrente esta fora do escopo.

@@ -3,27 +3,35 @@
 - **Escopo:** Árvore do repositório e papel de cada diretório.
 - **Specs relacionadas:** nenhuma citada
 - **Paths do código:** não declarado
-- **Nota:** Anterior a `docs/context/`; a árvore não lista essa pasta.
 
 <!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L150-188 -->
 ## 3. Estrutura de Pastas
 
 ```text
 .
+|-- .claude/
+|   |-- rules/                regras por dominio (carregadas por paths)
+|   `-- skills/               skills de contexto e de fluxo
 |-- .cursor/
-|   `-- rules/                regras de contexto do workspace
+|   `-- rules/                regras por dominio para o Cursor
+|-- .github/workflows/        CI: lint, tipos, testes e build
+|-- docs/
+|   |-- context/              contexto para LLMs, a partir do INDEX.md
+|   `-- specs/                templates de PRD/SPEC e specs de features
 |-- drizzle/                  migrations Drizzle
 |-- src/
-|   |-- api/app.ts            Hono API (/api/*)
+|   |-- api/                  Hono API (/api/*): app, auth e rate limit
 |   |-- components/
 |   |   |-- auth/
 |   |   |-- contact/
+|   |   |-- dashboard/
 |   |   |-- landing/
 |   |   |-- layout/
 |   |   |-- projects/
 |   |   `-- ui/               shadcn/ui
-|   |-- db/                   Drizzle schema + client
+|   |-- db/                   Drizzle: schema, client e profiles
 |   |-- lib/
+|   |   |-- api/              cliente da API com token da sessao
 |   |   |-- constants/
 |   |   |-- content/
 |   |   |-- supabase/

@@ -1,6 +1,12 @@
 import { Hono } from "hono";
+import { bodyLimit } from "hono/body-limit";
+import { secureHeaders } from "hono/secure-headers";
 import { zValidator } from "@hono/zod-validator";
+import { requireAuth } from "@/api/auth";
+import { logError } from "@/api/log";
+import { rateLimit } from "@/api/rate-limit";
 import { getDb } from "@/db";
+import { syncProfile } from "@/db/profiles";
 import { contactMessages } from "@/db/schema";
 import { contactMessageSchema } from "@/lib/schemas/contact";
 
@@ -9,13 +15,33 @@ import { contactMessageSchema } from "@/lib/schemas/contact";
  * É montado dentro do servidor SSR do React Router em src/server.ts,
  * rodando no mesmo processo Node — por isso não há mais necessidade de CORS
  * (front e API compartilham a mesma origem).
+ *
+ * Rota privada: use `requireAuth`, que coloca o usuário em `c.get("user")`.
  */
 export const api = new Hono();
 
+// Em todas as rotas, inclusive as páginas SSR, que passam por este middleware.
+api.use("*", secureHeaders());
+
 api.get("/api/health", (c) => c.json({ ok: true }));
+
+api.get("/api/me", requireAuth, async (c) => {
+  try {
+    const profile = await syncProfile(c.get("user"));
+    return c.json({ profile });
+  } catch (error) {
+    logError("Falha ao sincronizar perfil", error);
+    return c.json({ error: "Não foi possível carregar sua conta." }, 500);
+  }
+});
 
 api.post(
   "/api/contact",
+  rateLimit({ limit: 5, windowMs: 10 * 60 * 1000 }),
+  bodyLimit({
+    maxSize: 16 * 1024,
+    onError: (c) => c.json({ error: "Mensagem muito grande." }, 413),
+  }),
   zValidator("json", contactMessageSchema, (result, c) => {
     if (!result.success) {
       return c.json(
@@ -32,12 +58,10 @@ api.post(
 
     try {
       await getDb().insert(contactMessages).values(body);
-    } catch {
+    } catch (error) {
+      logError("Falha ao salvar mensagem de contato", error);
       return c.json(
-        {
-          error:
-            "Falha ao salvar. Verifique DATABASE_URL e as migrations do Drizzle.",
-        },
+        { error: "Não foi possível enviar agora. Tente novamente." },
         500,
       );
     }

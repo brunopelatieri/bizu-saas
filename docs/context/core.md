@@ -1,4 +1,4 @@
-# Núcleo do Bizu SaaS
+# Núcleo do Bizu Starter
 
 - **Escopo:** Objetivo, arquitetura em alto nível, regras de decisão e manutenção do contexto.
 - **Specs relacionadas:** nenhuma citada
@@ -25,28 +25,29 @@
 | Sob demanda | `docs/context/**` e skills `ctx-*` | Quando a tarefa pede |
 | Arquivo morto | `docs/context/archive/` | Só por pedido explícito |
 
-**Leitura dos blocos abaixo:** eles foram movidos do `AI_CONTEXT.md` sem alteração.
-Neles, "este arquivo" significa `docs/context/core.md`, e `PROJECT_TECHNICAL_SPEC.md`
-significa os arquivos de `docs/context/tech/`. Em caso de conflito sobre onde
-atualizar o contexto, vale a seção acima.
+**Leitura dos blocos abaixo:** vieram do antigo `AI_CONTEXT.md`. Neles, "este arquivo"
+significa `docs/context/core.md`, e `PROJECT_TECHNICAL_SPEC.md` significa os arquivos
+de `docs/context/tech/`. Em caso de conflito sobre onde atualizar o contexto, vale a
+seção acima. As marcas `ORIGEM` em `docs/context/` indicam de onde cada bloco veio, no
+commit `7de0d3c`; o texto evolui depois disso.
 
 <!-- ORIGEM: AI_CONTEXT.md L6-22 -->
 ## Objetivo
 
-Boilerplate full-stack para iniciar projetos rapidamente com metodologia de
+Ponto de partida full-stack para projetos pequenos e médios que não são SaaS, mas
+têm site público, área de login e dashboard. Usa metodologia de
 **AI Software Engineering**: contexto explícito, decisões documentadas,
-desenvolvimento guiado por especificação e stack moderna para entregar projetos
-com velocidade, precisão e escalabilidade.
+desenvolvimento guiado por especificação e stack moderna para entregar rápido.
 
 Projetos-alvo:
 
-- SaaS
 - portal de clientes
-- site institucional
-- landing page
-- blog
-- dashboard/admin
-- sistemas web de aplicação
+- área de membros
+- site institucional com painel
+- blog com área administrativa
+- sistemas internos e dashboards
+
+Fora do escopo: SaaS multi-tenant, planos e cobrança recorrente.
 
 <!-- ORIGEM: AI_CONTEXT.md L30-47 -->
 ## Arquitetura Atual
@@ -63,8 +64,8 @@ Hono API no mesmo processo:
   `-- src/api/app.ts (/api/*)
 
 Dados:
-  |-- Drizzle ORM + postgres.js -> Postgres próprio
-  `-- Supabase apenas auxiliar (Auth, Storage, Edge Functions, Realtime)
+  |-- Drizzle ORM + postgres.js -> qualquer Postgres (local, VPS ou Supabase)
+  `-- Supabase para Auth, Storage, Edge Functions e Realtime (nunca supabase.from)
 ```
 
 <!-- ORIGEM: AI_CONTEXT.md L48-59 -->
@@ -73,6 +74,7 @@ Dados:
 - Não reintroduzir `src/App.tsx`, `src/main.tsx`, `index.html` ou `server/` antigo.
 - Não adicionar proxy `/api` no Vite; API e frontend compartilham origem.
 - Não usar `supabase.from()` para CRUD da aplicação.
+- Toda rota privada da API usa `requireAuth`; FKs de usuário apontam para `profiles.id`.
 - Não colocar dados sensíveis do dashboard em `loader` server-side.
 - Use `meta` nativo do React Router para SEO/Open Graph.
 - Use loaders server-side para dados públicos indexáveis (blog, landing dinâmica).
@@ -90,8 +92,8 @@ Atualize este arquivo e `PROJECT_TECHNICAL_SPEC.md` quando mudar:
 - Stack ou dependências relevantes.
 - Deploy/Docker/Portainer.
 - Banco/schema.
-- Regras de uso de Supabase.
-- Estratégia de auth, billing, multi-tenant ou dashboard.
+- Regras de uso de Supabase e de onde o Postgres pode rodar.
+- Estratégia de auth ou dashboard.
 - Convenções de IA.
 
 Se a mudança afetar onboarding, atualize também `README.md`.

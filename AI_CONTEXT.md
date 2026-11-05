@@ -1,4 +1,4 @@
-# AI Context — Bizu SaaS
+# AI Context — Bizu Starter
 
 Este arquivo é o ponto de entrada rápido para qualquer LLM/AI Agent entender o
 projeto antes de propor ou executar mudanças.

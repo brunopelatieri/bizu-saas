@@ -4,7 +4,7 @@ import { buildMeta } from "@/lib/seo";
 
 export const meta: MetaFunction = () =>
   buildMeta({
-    title: "Contato — Bizu SaaS",
+    title: "Contato — Bizu Starter",
     description:
       "Fale com Bruno Pelatieri Goulart: WhatsApp, e-mail e redes. Projetos de SaaS, automação com IA, agentes e arquitetura full-stack.",
     path: "/contato",

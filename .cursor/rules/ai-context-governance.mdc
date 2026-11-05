@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Governança de Contexto IA
 
-Este projeto é um template de **AI Software Engineering**: PRD/spec primeiro,
+Este projeto é um starter para sites com login e dashboard, feito com **AI Software Engineering**: PRD/spec primeiro,
 contexto enxuto carregado sob demanda e decisões técnicas documentadas.
 
 ## Antes de mudanças relevantes
@@ -24,9 +24,11 @@ Mudança de código em um domínio exige atualizar, no mesmo trabalho:
 
 ## Regras globais
 
-- Dados da app no Postgres próprio via Drizzle; Supabase é apenas auxiliar.
+- Dados da app sempre via Drizzle, em qualquer Postgres; Supabase para Auth e serviços.
+- Rota privada da API usa `requireAuth`; o gate do cliente não protege dados.
 - Preserve TypeScript estrito.
-- Pagamentos, multi-tenant e features de produto exigem spec antes do código.
+- Multi-tenant e cobrança recorrente estão fora do escopo do template.
+- Features novas exigem spec antes do código.
 
 ## Método de trabalho
 

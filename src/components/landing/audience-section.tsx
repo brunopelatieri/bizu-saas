@@ -2,12 +2,12 @@ const audiences = [
   {
     icon: "🏢",
     title: "Empresas",
-    body: "Reduza o tempo de descoberta ao MVP. Uma base padronizada acelera squads, facilita onboarding e diminui dívida técnica desde o dia um.",
+    body: "Coloque no ar portais e sistemas internos sem montar a fundação do zero. Uma base padronizada facilita a manutenção e reduz a dívida técnica.",
   },
   {
-    icon: "📈",
-    title: "Investidores",
-    body: "Execução comprovada em tecnologias emergentes — IA, automação e arquitetura escalável — com visão de produto e capacidade de entrega.",
+    icon: "🤝",
+    title: "Agências e freelancers",
+    body: "Entregue portais e áreas de cliente em dias, com a mesma base em todos os projetos e menos retrabalho em login, dashboard e deploy.",
   },
   {
     icon: "🚀",
@@ -33,8 +33,8 @@ export function AudienceSection() {
             Feito para quem precisa entregar com velocidade e robustez
           </h2>
           <p className="mx-auto max-w-2xl text-muted-foreground">
-            Da validação de uma ideia ao produto em produção, com um fluxo que
-            une engenharia consolidada e inteligência artificial.
+            De um site com área logada a um sistema interno, com um fluxo que une
+            engenharia consolidada e inteligência artificial.
           </p>
         </div>
 

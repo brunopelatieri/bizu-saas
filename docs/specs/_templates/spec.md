@@ -15,11 +15,11 @@
 
 ## Modelo de dados (Drizzle)
 
-Dados da aplicação ficam no Postgres próprio.
+Dados passam sempre pelo Drizzle. Toda tabela nova leva `.enableRLS()`.
 
 | Tabela | Colunas principais | Observações |
 |---|---|---|
-| `<tabela>` | `<colunas>` | <FK, índices; `user.id` do Supabase pode ser FK> |
+| `<tabela>` | `<colunas>` | <FK, índices; dados de usuário referenciam `profiles.id`> |
 
 - **Migration:** alteração em `src/db/schema.ts` + `npm run db:generate`.
 - **Rollout:** <impacto em dados existentes e etapa separada do deploy>.
@@ -28,7 +28,7 @@ Dados da aplicação ficam no Postgres próprio.
 
 | Método e rota | Entrada (schema Zod) | Saída | Autorização |
 |---|---|---|---|
-| `POST /api/<recurso>` | `<schema>` em `src/lib/schemas/` | `<resposta>` | <check na aplicação> |
+| `POST /api/<recurso>` | `<schema>` em `src/lib/schemas/` | `<resposta>` | <`requireAuth` + check de permissão> |
 
 ## Supabase
 
@@ -36,13 +36,13 @@ Só preencha se usar Auth, Storage, Edge Functions ou Realtime broadcast/presenc
 CRUD da aplicação nunca passa por aqui.
 
 - **Serviço:** <qual e para quê>
-- **Permissão:** <validada na aplicação, com `getUser()` + checks>
+- **Permissão:** <validada no servidor, com `requireAuth` + checks>
 
 ## Interface
 
 - **Rotas e telas:** <o que muda>
 - **Estados:** carregando, vazio, erro e sucesso.
-- **Dados no cliente:** <queries do TanStack Query, se houver>
+- **Dados no cliente:** <queries do TanStack Query com `apiFetch`, se houver>
 - **Navegação:** atualizar `src/lib/constants/navigation.ts` se houver página nova.
 
 ## Segurança
@@ -57,7 +57,9 @@ Etapas pequenas, cada uma verificável por conta própria.
 
 ## Verificação
 
+- [ ] `npm run lint`
 - [ ] `npm run typecheck`
+- [ ] `npm test`
 - [ ] `npm run build`
 - [ ] <cenário manual ou teste que cobre cada critério de aceite do PRD>
 - [ ] `/code-review`

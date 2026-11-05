@@ -3,9 +3,9 @@ import type { Project } from "@/types/project";
 export const sampleProjects: Project[] = [
   {
     id: "1",
-    title: "Bizu SaaS",
+    title: "Bizu Starter",
     description:
-      "Boilerplate full-stack para SaaS com React Router, Hono, Drizzle e Supabase auxiliar.",
+      "Ponto de partida para projetos com login e dashboard: React Router, Hono, Supabase Auth e Drizzle.",
     href: "https://bizu.bru.ia.br",
     tags: ["React Router", "Hono", "Drizzle", "Supabase"],
   },

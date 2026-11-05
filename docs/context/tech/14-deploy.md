@@ -3,7 +3,6 @@
 - **Escopo:** Demo, modelo de deploy, container, compose e variáveis de ambiente.
 - **Specs relacionadas:** nenhuma citada
 - **Paths do código:** não declarado
-- **Nota:** `VITE_*` é variável de build, não de runtime, ao contrário da lista abaixo. Veja `docs/context/infra-deploy.md`.
 
 <!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L610-688 -->
 ## 14. Deploy em VPS Ubuntu + Docker + Portainer
@@ -53,7 +52,7 @@ Destino planejado:
 
 Para producao via Portainer, recomenda-se stack com:
 
-- Container app (`bizu-saas`).
+- Container app (`bizu-starter`).
 - Container Postgres ou Postgres externo/gerenciado.
 - Rede Docker compartilhada.
 - Reverse proxy com TLS.
@@ -65,7 +64,11 @@ Runtime:
 
 - `NODE_ENV=production`
 - `PORT=3000`
+- `TRUSTED_PROXY_HOPS` (quantidade de reverse proxies; 1 com um proxy)
 - `DATABASE_URL`
+
+Build (`--build-arg`, fixadas no bundle):
+
 - `VITE_SUPABASE_URL`
 - `VITE_SUPABASE_PUBLISHABLE_KEY`
 
@@ -73,10 +76,8 @@ Migrations:
 
 - `DIRECT_URL`
 
-Pagamentos/e-mail futuros:
+E-mail, quando usado:
 
-- `STRIPE_SECRET_KEY`
-- `VITE_STRIPE_PUBLISHABLE_KEY`
 - `SMTP_HOST`
 - `SMTP_PORT`
 - `SMTP_USER`

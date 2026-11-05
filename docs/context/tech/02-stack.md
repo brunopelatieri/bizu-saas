@@ -25,7 +25,7 @@
 | React Router | 7.18 | Framework Mode, SSR, loaders, meta functions e rotas |
 | `@react-router/dev` | 7.18 | CLI `react-router dev/build/typegen` |
 | `@react-router/node` | 7.18 | Utilitarios server-side do RR |
-| Vite | 7.2 | Build tool por baixo do Framework Mode |
+| Vite | 7.3 | Build tool por baixo do Framework Mode |
 | `react-router-hono-server` | 2.21 | Servidor Hono integrado ao build/SSR do RR |
 
 ### UI / Design System
@@ -61,7 +61,7 @@
 | Ferramenta | Uso |
 |------------|-----|
 | Hono | API HTTP em `src/api/app.ts` |
-| `@hono/zod-validator` | Validacao Zod nas rotas Hono (instalado; ainda nao aplicado) |
+| `@hono/zod-validator` | Validacao Zod nas rotas Hono |
 | Drizzle ORM | ORM tipado para Postgres |
 | Drizzle Kit | Migrations, generate, studio |
 | postgres.js | Driver Postgres |
@@ -73,13 +73,18 @@
 | Ferramenta | Uso |
 |------------|-----|
 | Supabase JS | Auth, Storage, Edge Functions e Realtime auxiliar |
-| Stripe | API server-side de pagamentos |
-| `@stripe/stripe-js` | Checkout/Stripe.js no browser |
-| Nodemailer | E-mails transacionais server-side |
+| Nodemailer | E-mails transacionais server-side (instalado; ainda sem uso) |
 
-Importante: Stripe server-side e Nodemailer nao devem ser importados em
-componentes React client-side. Use em `src/api/`, loaders/actions server-side ou
-servicos server-only.
+Importante: Nodemailer nao deve ser importado em componentes React client-side.
+Use em `src/api/`, loaders/actions server-side ou servicos server-only.
+
+### Qualidade
+
+| Ferramenta | Uso |
+|------------|-----|
+| Biome | Lint de `src/` (`npm run lint`), sem formatacao |
+| Vitest | Testes da API (`npm test`), configurados em `vitest.config.ts` |
+| GitHub Actions | CI em `.github/workflows/ci.yml`: lint, tipos, testes e build |
 
 ---
 

@@ -35,7 +35,7 @@ export const links: LinksFunction = () => [
 ];
 
 export const meta: MetaFunction = () => [
-  { title: `${siteConfig.name} — Boilerplate full-stack com AI Software Engineering` },
+  { title: `${siteConfig.name} — Site, login e dashboard prontos para o seu projeto` },
   { name: "description", content: siteConfig.description },
   { name: "theme-color", content: "#0b0b0c" },
 ];
@@ -46,6 +46,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
+        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: script estático do tema, sem entrada do usuário */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <Meta />
         <Links />

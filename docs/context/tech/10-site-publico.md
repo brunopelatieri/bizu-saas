@@ -22,8 +22,8 @@ Home atual (`src/pages/home-page.tsx`) compoe secoes em
 
 Objetivo:
 
-- Posicionar o Bizu SaaS como boilerplate full-stack com AI Software Engineering.
-- Destacar tecnologias, metodologia e publico-alvo (empresas, investidores, empreendedores e devs).
+- Posicionar o Bizu Starter como ponto de partida para projetos pequenos e medios com login e dashboard.
+- Destacar tecnologias, metodologia e publico-alvo (empresas, agencias e freelancers, empreendedores e devs).
 - Servir como base para landing pages de projetos derivados.
 
 Observacao:

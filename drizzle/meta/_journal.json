@@ -8,6 +8,13 @@
       "when": 1781874398393,
       "tag": "0000_cloudy_miracleman",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1793916200820,
+      "tag": "0001_harsh_stick",
+      "breakpoints": true
     }
   ]
 }

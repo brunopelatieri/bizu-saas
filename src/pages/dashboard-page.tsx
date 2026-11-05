@@ -1,5 +1,6 @@
 import { BarChart3, FileStack, FolderKanban, Users } from "lucide-react";
 import { Link } from "react-router";
+import { AccountCard } from "@/components/dashboard/account-card";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -77,6 +78,8 @@ export function DashboardPage() {
           Bem-vindo ao seu dashboard. Comece criando seu primeiro projeto.
         </p>
       </div>
+
+      <AccountCard />
 
       {/* Stat cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

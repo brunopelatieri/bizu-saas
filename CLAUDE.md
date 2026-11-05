@@ -1,8 +1,9 @@
-# Bizu SaaS — Roteador de Contexto
+# Bizu Starter — Roteador de Contexto
 
-Boilerplate full-stack para iniciar SaaS, portais, sites, blogs, dashboards e
-sistemas web com **AI Software Engineering**: PRD/spec primeiro, contexto enxuto
-carregado sob demanda e decisões técnicas documentadas.
+Ponto de partida full-stack para projetos pequenos e médios que **não são SaaS**,
+mas têm site público, área de login e dashboard. Usa Supabase Auth e Drizzle em
+qualquer Postgres, com **AI Software Engineering**: PRD/spec primeiro, contexto
+enxuto carregado sob demanda e decisões técnicas documentadas.
 
 ## Como carregar contexto
 
@@ -20,6 +21,9 @@ não leia AI_CONTEXT.md/PROJECT_TECHNICAL_SPEC.md inteiros.
 Template reutilizável, não um produto final. Toda decisão deve servir de ponto de
 partida para projetos derivados: simples de entender, de trocar e de remover.
 
+Fora do escopo: multi-tenant, planos e cobrança recorrente. Não adicione essas
+camadas sem spec aprovada: elas mudam o propósito do template.
+
 - Público com SSR: `/`, `/sobre`, `/projetos`, `/contato`, `/blog`, `/blog/:slug`.
 - Auth standalone: `/login`, `/auth/callback`.
 - Área autenticada client-only: `/dashboard/**`.
@@ -32,19 +36,24 @@ partida para projetos derivados: simples de entender, de trocar e de remover.
 - Hono em `src/api/app.ts`, montado por `src/server.ts`, em processo único. Sem
   proxy `/api` no Vite: API e frontend compartilham origem.
 
-**Dados: Drizzle é a fonte da verdade**
-- Dados da aplicação ficam no Postgres próprio, via Drizzle (`src/db/`).
+**Dados: Drizzle é a única camada de dados**
+- Dados da aplicação passam sempre pelo Drizzle (`src/db/`). O Postgres pode ser
+  local, em VPS ou o do Supabase: muda só a `DATABASE_URL`.
+- Usuários: `profiles` espelha o Supabase Auth; FKs apontam para `profiles.id`.
+- Tabela nova leva `.enableRLS()`, que fecha a Data API no Postgres do Supabase.
 - Mudança de schema é sempre migration Drizzle (`npm run db:generate`, `db:migrate`).
 - Loaders acessam o banco direto, sem volta HTTP interna.
 
-**Supabase: apenas auxiliar**
+**Supabase: Auth e serviços, nunca acesso a dados**
 - Permitido: Auth, Storage, Edge Functions, Realtime broadcast/presence.
-- Proibido: `supabase.from()`, schema/migrations de dados e `postgres_changes`.
-- Permissões são validadas na aplicação (`getUser()` + checks), não por RLS.
+- Proibido: `supabase.from()`, schema/migrations fora do Drizzle e `postgres_changes`.
+- Permissões são validadas no servidor, com `requireAuth` + checks, não por RLS.
 
 **Segurança**
-- Dashboard sem `loader` server-side com dados sensíveis; use TanStack Query.
-- Stripe server-side e Nodemailer nunca entram em componentes React.
+- Toda rota privada da API usa `requireAuth` (`src/api/auth.ts`). O `ProtectedRoute`
+  roda no cliente e não protege dados.
+- Dashboard sem `loader` server-side com dados sensíveis; use TanStack Query e `apiFetch`.
+- `VITE_*` vai para o navegador: só valores públicos. Nodemailer só no servidor.
 - Segredos nunca são commitados; só `.env.example` é versionado.
 
 **Contratos**
@@ -57,7 +66,7 @@ partida para projetos derivados: simples de entender, de trocar e de remover.
    (`/prd`, `/spec`). Método completo: `docs/context/ai-engineering.md`.
 2. **Plano:** defina onde entra (pública SSR, API Hono ou dashboard client-side).
 3. **Implementação:** mudanças pequenas e cirúrgicas, verificáveis por etapa.
-4. **Verificação:** `npm run typecheck` e `npm run build`.
+4. **Verificação:** `npm run lint`, `npm run typecheck`, `npm test` e `npm run build`.
 5. **`/code-review`:** revisão antes de entregar.
 
 ## Regra de contexto vivo

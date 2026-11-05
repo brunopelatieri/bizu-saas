@@ -13,6 +13,8 @@
 | `npm run build` | Gera `build/client` e `build/server` |
 | `npm run start` | Roda producao local: `node ./build/server/index.js` |
 | `npm run typecheck` | `react-router typegen && tsc` |
+| `npm run lint` | Lint com Biome |
+| `npm test` | Testes com Vitest |
 | `npm run db:generate` | Gera migrations Drizzle |
 | `npm run db:migrate` | Aplica migrations |
 | `npm run db:push` | Push direto do schema |

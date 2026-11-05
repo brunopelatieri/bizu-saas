@@ -1,9 +1,8 @@
-# Bizu SaaS — Especificacao Tecnica do Template
+# Bizu Starter — Especificacao Tecnica do Template
 
-Este documento descreve o estado tecnico atual do projeto `bizu-saas` como
-boilerplate full-stack para iniciar rapidamente projetos de diferentes portes:
-SaaS, portal de clientes, site institucional, landing page, blog, dashboard
-admin e sistemas web de aplicacao.
+Este documento descreve o estado tecnico atual do projeto `bizu-starter` como
+ponto de partida full-stack para projetos pequenos e medios que nao sao SaaS,
+mas tem site publico, area de login e dashboard.
 
 O objetivo do template e ser uma base moderna, robusta e reutilizavel, com boa
 separacao de responsabilidades, SSR nas rotas publicas, area autenticada

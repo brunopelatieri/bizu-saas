@@ -205,7 +205,7 @@ export function resolveSocialPlatform(label: string, href: string): SocialPlatfo
   if (normalizedLabel.includes("repo vercel") || normalizedHref.includes("bizu-saas-vercel")) {
     return "repo-vercel";
   }
-  if (normalizedLabel.includes("repositório") || normalizedHref.includes("bizu-saas")) {
+  if (normalizedLabel.includes("repositório") || normalizedHref.includes("bizu-starter")) {
     return "repo";
   }
   if (normalizedLabel.includes("github") || normalizedHref.includes("github.com")) {

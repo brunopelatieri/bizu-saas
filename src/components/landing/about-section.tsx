@@ -57,10 +57,10 @@ export function AboutSection() {
             Uma base pronta, pensada para humanos e IA.
           </h2>
           <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-            O <strong className="text-foreground">Bizu SaaS</strong> entrega
-            arquitetura moderna, módulos essenciais e documentação viva. Você
-            parte de uma fundação confiável e foca no que diferencia o seu
-            produto — com agentes de IA que entendem o projeto antes de mexer.
+            O <strong className="text-foreground">Bizu Starter</strong> entrega
+            site público, login e dashboard já integrados, com documentação viva.
+            Você parte de uma fundação confiável e foca no que diferencia o seu
+            projeto — com agentes de IA que entendem o código antes de mexer.
           </p>
         </div>
       </div>

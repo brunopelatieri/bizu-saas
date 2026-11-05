@@ -4,14 +4,24 @@ import { siteConfig } from "@/lib/constants/navigation";
 
 const faqs = [
   {
-    question: "O Bizu SaaS é open source?",
+    question: "O Bizu Starter é open source?",
     answer:
       "Sim. O código está no GitHub e pode ser clonado para iniciar seus projetos. A ideia é ser um ponto de partida sólido, não uma caixa-preta.",
   },
   {
     question: "Que tipo de projeto posso criar com ele?",
     answer:
-      "SaaS, portal de clientes, site institucional, landing page, blog, dashboard/admin e sistemas web de aplicação. A base é genérica o suficiente para se adaptar ao seu produto.",
+      "Portal de clientes, área de membros, site institucional com painel, blog com área administrativa e sistemas internos: projetos pequenos e médios que precisam de login e dashboard.",
+  },
+  {
+    question: "Serve para criar um SaaS?",
+    answer:
+      "Não é o foco. Ele não traz multi-tenant, planos nem cobrança recorrente. A proposta é ser simples para projetos com um único cliente ou organização; um SaaS exigiria essas camadas a mais.",
+  },
+  {
+    question: "Preciso usar o Postgres do Supabase?",
+    answer:
+      "Não. O Supabase Auth cuida do login e o Drizzle acessa qualquer Postgres: local, na sua VPS ou o do próprio Supabase. Para trocar de banco, basta mudar a DATABASE_URL.",
   },
   {
     question: "O que é a metodologia de AI Software Engineering aqui?",
@@ -31,7 +41,7 @@ const faqs = [
   {
     question: "Preciso saber IA para usar?",
     answer:
-      "Não. O projeto funciona como um boilerplate tradicional. A metodologia de IA é um acelerador opcional, mas o contexto documentado ajuda qualquer pessoa a se situar rápido.",
+      "Não. O projeto funciona como um starter tradicional. A metodologia de IA é um acelerador opcional, mas o contexto documentado ajuda qualquer pessoa a se situar rápido.",
   },
 ];
 
@@ -41,6 +51,7 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
   return (
     <div className="border-b border-border/60 last:border-0">
       <button
+        type="button"
         onClick={() => setOpen(!open)}
         className="flex w-full items-center justify-between gap-4 py-5 text-left"
         aria-expanded={open}
@@ -56,6 +67,7 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
             fill="currentColor"
             className="h-5 w-5"
           >
+            <title>Alternar resposta</title>
             <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
           </svg>
         </span>

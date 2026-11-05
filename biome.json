@@ -1,0 +1,21 @@
+{
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"files": {
+		"includes": ["src/**/*.ts", "src/**/*.tsx", "!src/components/ui"]
+	},
+	"formatter": {
+		"enabled": false
+	},
+	"assist": {
+		"enabled": false
+	},
+	"linter": {
+		"enabled": true,
+		"domains": {
+			"react": "recommended"
+		},
+		"rules": {
+			"preset": "recommended"
+		}
+	}
+}
