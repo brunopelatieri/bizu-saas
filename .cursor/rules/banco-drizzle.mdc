@@ -1,0 +1,18 @@
+---
+description: Schema, migrations e queries com Drizzle no Postgres próprio
+globs: src/db/**,drizzle/**,drizzle.config.ts
+alwaysApply: false
+---
+
+# Schema, migrations e queries com Drizzle no Postgres próprio
+
+- Dados da aplicação ficam no Postgres próprio, via Drizzle. Nunca em `supabase.from()`.
+- Toda mudança de schema em `src/db/schema.ts` gera migration: `npm run db:generate` e `npm run db:migrate`.
+- `DATABASE_URL` é de runtime; `DIRECT_URL` é do Drizzle Kit.
+- `drizzle-kit` é devDependency: rode pelos scripts `db:*`, sem instalar globalmente.
+- `user.id` do Supabase Auth pode ser FK em tabelas Drizzle.
+- Permissões são validadas na aplicação, não por RLS do Supabase.
+- Loaders acessam o banco direto, sem chamada HTTP interna.
+- Migrations rodam fora do container da aplicação.
+
+Para entender este domínio, leia: docs/context/tech/07-banco-drizzle.md

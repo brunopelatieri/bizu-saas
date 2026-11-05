@@ -5,53 +5,32 @@ alwaysApply: true
 
 # Governança de Contexto IA
 
-Este projeto é um template de **AI Software Engineering**. O objetivo é permitir
-que humanos e LLMs criem SaaS, portais, sites, blogs, dashboards e sistemas web
-rapidamente, mantendo decisões técnicas precisas e rastreáveis.
+Este projeto é um template de **AI Software Engineering**: PRD/spec primeiro,
+contexto enxuto carregado sob demanda e decisões técnicas documentadas.
 
 ## Antes de mudanças relevantes
 
-Leia primeiro:
-
-- `AI_CONTEXT.md`
-- `PROJECT_TECHNICAL_SPEC.md`
-- `MIGRATION_NOTES.md`
-- regras em `.cursor/rules/`
+Use `docs/context/INDEX.md` para decidir qual contexto carregar. Leia só o arquivo
+do domínio tocado. Rules específicas entram por `globs`.
 
 ## Mantenha o contexto vivo
 
-Ao alterar qualquer item abaixo, atualize documentação na mesma sessão:
+Mudança de código em um domínio exige atualizar, no mesmo trabalho:
 
-- arquitetura
-- rotas
-- stack/dependências
-- deploy/Docker/Portainer
-- banco/schema/migrations
-- Supabase/Auth/Storage
-- dashboard/admin
-- billing/pagamentos
-- regras/skills
+- o arquivo correspondente em `docs/context/`;
+- `docs/context/INDEX.md`, se o escopo mudar;
+- `README.md`, se afetar onboarding;
+- as rules em `.claude/rules/` e `.cursor/rules/`, se afetar agentes futuros.
 
-Arquivos mínimos a considerar:
+## Regras globais
 
-- `AI_CONTEXT.md` para resumo operacional
-- `PROJECT_TECHNICAL_SPEC.md` para detalhes técnicos
-- `README.md` para onboarding
-- `.cursor/rules/*.mdc` para orientar agentes futuros
-
-## Regras arquiteturais
-
-- Não voltar para SPA antigo com `src/App.tsx`, `src/main.tsx` e `index.html`.
-- Não recriar pasta `server/`; Hono vive em `src/api/app.ts` e `src/server.ts`.
-- Não adicionar proxy `/api` no Vite; servidor é origem única.
-- Não usar Supabase como banco principal; CRUD da app via Drizzle/Postgres.
-- Não expor dados sensíveis do dashboard em SSR/server loader.
-- Prefira schemas Zod compartilhados para APIs e formulários.
+- Dados da app no Postgres próprio via Drizzle; Supabase é apenas auxiliar.
 - Preserve TypeScript estrito.
+- Pagamentos, multi-tenant e features de produto exigem spec antes do código.
 
 ## Método de trabalho
 
-- Spec antes de feature relevante.
+- PRD/spec em `docs/specs/<feature>/` antes de feature relevante.
 - Mudanças pequenas, verificáveis e documentadas.
 - Para bugs, identificar causa e validação antes de editar.
 - Para novas features, definir onde entram: pública SSR, API Hono ou dashboard client-side.

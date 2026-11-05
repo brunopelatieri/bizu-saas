@@ -1,0 +1,16 @@
+---
+description: API Hono em processo único, com contratos Zod
+globs: src/api/**,src/server.ts,src/lib/schemas/**
+alwaysApply: false
+---
+
+# API Hono em processo único, com contratos Zod
+
+- API em `src/api/app.ts`, montada por `src/server.ts`. Não recriar a pasta `server/`.
+- Sem proxy `/api` no Vite: API e frontend compartilham origem.
+- Entrada validada com `zValidator` e schema Zod compartilhado em `src/lib/schemas/`.
+- O formulário reutiliza o mesmo schema da API.
+- Stripe server-side e Nodemailer ficam aqui, nunca em componentes React.
+- CORS só volta em escopo controlado, se a API for exposta a outra origem.
+
+Para entender este domínio, leia: docs/context/tech/06-hono-api.md

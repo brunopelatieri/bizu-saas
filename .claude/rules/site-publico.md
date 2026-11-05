@@ -1,0 +1,23 @@
+---
+paths:
+  - "src/components/landing/**"
+  - "src/components/contact/**"
+  - "src/components/projects/**"
+  - "src/components/layout/site-*.tsx"
+  - "src/components/layout/root-layout.tsx"
+  - "src/components/layout/page-hero.tsx"
+  - "src/pages/home-page.tsx"
+  - "src/pages/about-page.tsx"
+  - "src/pages/contact-page.tsx"
+  - "src/pages/projects-page.tsx"
+---
+
+# Landing, páginas públicas e layout compartilhado
+
+- Mobile-first, sem overflow horizontal.
+- Navbar e footer são compartilhados via layout.
+- Idioma da interface: pt-BR.
+- A `BlogSection` da landing é vitrine estática; o blog real está em `/blog`.
+- Landing page nova segue o skill indicado em `docs/context/tech/13-skills-rules.md`.
+
+Para entender este domínio, leia: docs/context/tech/10-site-publico.md

@@ -1,0 +1,21 @@
+---
+paths:
+  - "src/components/ui/**"
+  - "src/styles/**"
+  - "src/index.css"
+  - "src/lib/theme.ts"
+  - "src/stores/**"
+  - "src/providers/theme-provider.tsx"
+  - "src/components/theme-toggle.tsx"
+  - "components.json"
+---
+
+# Componentes shadcn/ui, Tailwind v4, tokens e tema
+
+- Componentes shadcn ficam em `src/components/ui/`; adicione com `npx shadcn@latest add <nome>`.
+- Tokens de design ficam em `src/styles/theme.css`.
+- O tema usa Zustand e script anti-flash; não adicione outro provider de tema.
+- Sonner acompanha o tema via `useResolvedTheme()`.
+- Detalhes do design system: `docs/context/tech/12-shadcn-ui.md`.
+
+Para entender este domínio, leia: docs/context/tech/09-tema-css.md

@@ -1,0 +1,18 @@
+---
+description: Rotas do React Router Framework Mode, SSR, loaders e meta
+globs: src/routes/**,src/routes.ts,src/root.tsx,src/lib/content/**,src/lib/constants/navigation.ts,react-router.config.ts
+alwaysApply: false
+---
+
+# Rotas do React Router Framework Mode, SSR, loaders e meta
+
+- Rotas são declaradas em `src/routes.ts`, com route modules em `src/routes/`.
+- `ssr: true` é global: não existe flag de SSR por rota.
+- Não reintroduzir `src/App.tsx`, `src/main.tsx` nem `index.html`.
+- Use `meta` nativo para SEO e Open Graph.
+- Use `loader` server-side só para dados públicos indexáveis.
+- Rotas de `/dashboard/**` não têm `loader` server-side.
+- Página nova exige atualizar `src/lib/constants/navigation.ts`.
+- Conteúdo do blog vem de `src/lib/content/posts.ts`; preserve a assinatura pública das funções.
+
+Para entender este domínio, leia: docs/context/tech/05-react-router.md
