@@ -35,6 +35,18 @@ Caminhos relativos a `docs/context/`. Nunca carregue tudo de uma vez.
 | Roadmap | `tech/17-roadmap.md` | Planejar evolução técnica | — |
 | Conclusão | `tech/18-conclusao.md` | Raramente; síntese do posicionamento técnico | — |
 
+## Skills sob demanda
+
+A `description` de cada skill fica sempre carregada; o corpo só entra ao invocar.
+
+| Domínio | Skill | Quando invocar | Arquivo |
+|---|---|---|---|
+| banco-drizzle | `ctx-banco-drizzle` | Use ao alterar schema, migrations ou queries Drizzle. | `docs/context/tech/07-banco-drizzle.md` |
+| supabase-auth | `ctx-supabase-auth` | Use ao mexer em login, sessão, Storage, Edge Functions ou Realtime. | `docs/context/tech/08-supabase.md` |
+| api-hono | `ctx-api-hono` | Use ao criar ou alterar endpoints /api/* e contratos Zod. | `docs/context/tech/06-hono-api.md` |
+| dashboard | `ctx-dashboard` | Use ao alterar a área autenticada /dashboard. | `docs/context/tech/11-dashboard.md` |
+| infra-deploy | `ctx-infra-deploy` | Use em tarefas de Docker, Portainer, VPS ou variáveis de ambiente. | `docs/context/infra-deploy.md` |
+
 ## Arquivo morto
 
 Ler só sob demanda explícita.
