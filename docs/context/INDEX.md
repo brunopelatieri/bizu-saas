@@ -10,6 +10,7 @@ Caminhos relativos a `docs/context/`. Nunca carregue tudo de uma vez.
 | Núcleo | `core.md` | Decisão de arquitetura; dúvida sobre regras; atualização de contexto | `src/server.ts`, `src/api/app.ts` |
 | Status | `status.md` | Saber o que está pronto e o que está pendente | — |
 | Onboarding | `onboarding.md` | Primeira execução; erro de setup local, Docker ou migrate | `drizzle.config.ts`, `docker-compose.yml` |
+| Infra e deploy | `infra-deploy.md` | Topologia, credenciais, riscos de VPS, Docker e Portainer | `Dockerfile`, `docker-compose.yml`, `.dockerignore` |
 
 ## Domínios técnicos
 
