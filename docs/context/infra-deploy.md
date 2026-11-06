@@ -55,7 +55,7 @@ Somente listados; nenhum foi resolvido aqui.
 
 - **Rate limit:** fica em memória de um processo; veja RISK-005 em `tech/16-bugs-riscos.md`.
 - **Dependências:** alertas moderados restantes; veja RISK-004 no mesmo arquivo.
-- **Autenticação:** ainda sem provedor; login e áreas autenticadas ficam bloqueados até a fase 2.
+- **Autenticação:** Better Auth com sessão em cookie. Em produção, `APP_URL` com HTTPS, `BETTER_AUTH_SECRET` gerado e `TRUSTED_PROXY_HOPS=1`; sem isso, os limites por IP contam o proxy.
 - **Migrations:** o runtime não inclui `drizzle-kit` nem `drizzle/`; o serviço `migrate`
   entra com `docker/compose.prod.yml` na fase 11.
 - **Stack Portainer:** ainda não existe stack com app, Postgres e reverse proxy.

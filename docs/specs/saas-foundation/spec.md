@@ -91,17 +91,32 @@ exata de arquivos está em `spec-plano.md`.
 - Mercado Pago é o próximo módulo depois de Stripe e Asaas.
 - Templates de e-mail só por código nesta entrega.
 
+### Desvios da SPEC na fase 2 (auth)
+
+Conferidos no código do Better Auth 1.7.18. Em cada caso seguiu a alternativa mais segura.
+
+| Previsto | Implementado | Motivo |
+|---|---|---|
+| Botão chama `authClient.verifyEmail`, guard em `/api/auth/verify-email` | `POST /api/auth/verify-email` próprio, que passa pelo guard e remonta um GET interno; GET externo responde 405 | O endpoint do Better Auth é GET e consumiria o token em qualquer visita, contra a regra de nenhum token em GET |
+| Guard apaga a linha "na mesma transação" do Better Auth | `DELETE ... RETURNING` antes de chamar o Better Auth | Não dá para compartilhar a transação com o handler. Se ele falhar depois, o link se perde e a pessoa pede outro |
+| `requireEmailVerification` já dá resposta anti-enumeração no cadastro | Rota própria devolve sempre `{ ok: true }` | O corpo do Better Auth traz id e datas e não é idêntico entre e-mail novo e existente |
+| Better Auth valida `Origin` | `sameOrigin` em todo `/api/auth/*` e `/api/auth-ext/*` | Ele só valida quando há cookie; cadastro e login aceitariam envio de outro site |
+| `afterEmailVerification` envia `change-email-done` ao antigo | Mantido, lendo o e-mail antigo das claims do token | Nesse hook o usuário já tem o e-mail novo |
+| Instância `auth` exportada | `getAuth()` | `src/server.ts` carrega `.env.local` depois dos imports |
+| `npx auth generate` e `@better-auth/cli` | Schema escrito a partir de `getAuthTables` | A CLI está na 1.4.21, atrás da 1.7, e traz Prisma e `better-sqlite3` |
+| `session.cookieCache` em tudo | Mantido em `/get-session`; `requireAuth` lê do banco | Sessão revogada precisa cair na hora |
+| `audit_log` em `afterEmailVerification` e `onPasswordReset` | Não grava | A tabela chega na fase 4 |
+| `consent_log` no cadastro | Aceite exigido, sem registro | A tabela chega na fase 10 |
+| Rate limit em Postgres nas rotas próprias | `rateLimit` em memória | `rate_limit_bucket` é da fase 9 |
+| `platform_support` só sem `delete`, `set-role` e `set-password` | Também sem `ban` e sem `session.revoke` | O plugin não compara o papel do alvo: o suporte baniria o proprietário. `spec-tenant-rbac.md` não dá essas ações ao suporte |
+| Cadastro pendente sem prazo | Expira em 24 h: sem link novo, e novo cadastro recria a conta | Conta pendente guarda a senha de quem cadastrou. A janela de 24 h é risco aceito pelo usuário, que manteve a confirmação em um clique (`tech/16-bugs-riscos.md`, RISK-006) |
+
 ## Não verificado (marcar antes de implementar)
 
-- Better Auth: formato do token de verificação (JWT HS256) e opção
-  `emailVerification.expiresIn` (padrão 3600 s) vieram de fontes secundárias e da
-  página de opções; conferir no código-fonte ao implementar.
-- Better Auth: se `beforeEmailVerification(user, request)` expõe o token na `request`.
-  A SPEC não depende disso: usa middleware Hono antes do handler.
-- Better Auth: nome exato do campo adicionado à sessão pelo admin plugin
-  (`impersonatedBy` em fontes de terceiros).
-- Better Auth: se `send-verification-email` responde igual para e-mail inexistente.
-  A SPEC embrulha o endpoint em rota própria com resposta uniforme.
+- Better Auth, conferido na 1.7.18: token de verificação é JWT HS256; `expiresIn` vale;
+  `beforeEmailVerification` não expõe o token, mas a `request` traz a URL com ele; o campo
+  da sessão se chama `impersonatedBy`; `send-verification-email` responde igual para e-mail
+  inexistente quando não há sessão.
 - Drizzle Kit: geração de `pgPolicy` com papel próprio e `FORCE ROW LEVEL SECURITY`
   (precisa migration customizada).
 - Stripe: Connect com contas conectadas brasileiras; `application_fee_amount`;

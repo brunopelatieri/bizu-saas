@@ -1,0 +1,129 @@
+import {
+  bigint,
+  boolean,
+  char,
+  index,
+  integer,
+  pgTable,
+  text,
+  timestamp,
+  uniqueIndex,
+  uuid,
+} from "drizzle-orm/pg-core";
+
+/**
+ * Tabelas do Better Auth (instância `auth`, equipe e plataforma). Nomes e tipos
+ * seguem `getAuthTables`, com `uuid` (`advanced.database.generateId: "uuid"`) e
+ * `timestamptz`. As chaves deste módulo são os nomes de modelo que o adapter procura.
+ * Os plugins `organization` (fase 4) e `twoFactor` (fase 9) acrescentam colunas e tabelas.
+ */
+
+const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
+
+const timestamps = {
+  createdAt: timestamptz("created_at").notNull().defaultNow(),
+  updatedAt: timestamptz("updated_at")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+};
+
+export const user = pgTable("user", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  // `user`, `platform_owner` ou `platform_support` (src/lib/auth/permissions.ts).
+  role: text("role").notNull().default("user"),
+  banned: boolean("banned").notNull().default(false),
+  banReason: text("ban_reason"),
+  banExpires: timestamptz("ban_expires"),
+  phone: text("phone"),
+  locale: text("locale"),
+  ...timestamps,
+});
+
+export const session = pgTable(
+  "session",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    token: text("token").notNull().unique(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    expiresAt: timestamptz("expires_at").notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    impersonatedBy: text("impersonated_by"),
+    ...timestamps,
+  },
+  (table) => [index("session_user_id_idx").on(table.userId)],
+);
+
+export const account = pgTable(
+  "account",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    // `credential` para senha; demais valores só com login social (fase futura).
+    providerId: text("provider_id").notNull(),
+    accountId: text("account_id").notNull(),
+    password: text("password"),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamptz("access_token_expires_at"),
+    refreshTokenExpiresAt: timestamptz("refresh_token_expires_at"),
+    scope: text("scope"),
+    ...timestamps,
+  },
+  (table) => [
+    index("account_user_id_idx").on(table.userId),
+    uniqueIndex("account_provider_account_idx").on(
+      table.providerId,
+      table.accountId,
+    ),
+  ],
+);
+
+/** Reset de senha, em hash (`verification.storeIdentifier: "hashed"`). */
+export const verification = pgTable(
+  "verification",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamptz("expires_at").notNull(),
+    ...timestamps,
+  },
+  (table) => [index("verification_identifier_idx").on(table.identifier)],
+);
+
+/** Contadores de `rateLimit.storage: "database"`. */
+export const rateLimit = pgTable("rate_limit", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  key: text("key").notNull().unique(),
+  count: integer("count").notNull(),
+  lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+});
+
+/**
+ * Emissão vigente do link de e-mail de cada usuário. O token do Better Auth é um
+ * JWT sem estado: guardar só o hash do último emitido dá uso único e invalida os
+ * anteriores (`src/api/verification-guard.ts`).
+ */
+export const emailVerificationIssue = pgTable("email_verification_issue", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  tokenHash: char("token_hash", { length: 64 }).notNull().unique(),
+  // `verify`: cadastro. `change`: etapas da troca de e-mail.
+  kind: text("kind", { enum: ["verify", "change"] }).notNull(),
+  issuedAt: timestamptz("issued_at").notNull().defaultNow(),
+});
+
+export type EmailVerificationKind =
+  (typeof emailVerificationIssue.$inferInsert)["kind"];

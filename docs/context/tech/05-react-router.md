@@ -34,6 +34,18 @@
 | `/blog` | `src/routes/blog.tsx` | title, description, OG |
 | `/blog/:slug` | `src/routes/blog-post.tsx` | title, description, OG dinamico |
 
+### Rotas de Autenticacao
+
+Standalone, com `noindex`, sem `loader` nem `action`:
+
+| Rota | Arquivo | Funcao |
+|------|---------|--------|
+| `/login` | `src/routes/auth/login.tsx` | Login, com `?next=` validado por `safeNextPath` |
+| `/cadastro` | `src/routes/auth/signup.tsx` | Cadastro de owner |
+| `/verificar-email` | `src/routes/auth/verify-email.tsx` | Renderiza; o botao consome `?token=` |
+| `/esqueci-senha` | `src/routes/auth/forgot-password.tsx` | Pede o link de reset |
+| `/redefinir-senha` | `src/routes/auth/reset-password.tsx` | Renderiza; o formulario consome `?token=` |
+
 ### Blog
 
 Estado anterior:

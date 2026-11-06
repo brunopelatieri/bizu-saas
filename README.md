@@ -8,8 +8,8 @@ com documentação viva e fluxo pensado para **AI Software Engineering**.
 > **Em construção.** O projeto está sendo transformado a partir do antigo Bizu
 > Starter seguindo a spec em [`docs/specs/saas-foundation/`](docs/specs/saas-foundation/spec.md).
 > O estado real de cada fase está em [`docs/context/status.md`](docs/context/status.md).
-> Hoje o site público e a infra local funcionam; login, tenants e cobrança entram
-> nas próximas fases.
+> Hoje o site público, a infra local e a autenticação da equipe funcionam; tenants e
+> cobrança entram nas próximas fases.
 
 ---
 
@@ -70,7 +70,7 @@ React Router v7 Framework Mode + SSR global
   |
   |-- /api/*              Hono API -> Drizzle -> Postgres (RLS por tenant)
   |-- /, /sobre, /blog    rotas públicas com SSR e SEO
-  |-- /login              autenticação (Better Auth, fase 2)
+  |-- /login, /cadastro   autenticação (Better Auth) com verificação de e-mail
   |-- /app/**             owner e equipe, client-side, sem loader sensível
   |-- /admin/**           proprietário (fase 5)
   `-- /portal/**          clientes e leads (fase 8)
@@ -165,8 +165,26 @@ usa o banco `portal`: rode `docker compose down -v` antes de subir de novo.
 
 ### Autenticação
 
-Login e áreas autenticadas ficam bloqueados até a fase 2 da spec (Better Auth). O
-site público funciona normalmente. Veja `docs/context/tech/08-auth.md`.
+Better Auth com sessão em cookie, sobre o mesmo Postgres. Antes do primeiro acesso, troque
+`BETTER_AUTH_SECRET` no `.env.local` (`openssl rand -base64 32`) e rode as migrations.
+
+**Primeiro acesso:**
+
+1. Com `npm run dev` no ar, cadastre-se em `http://localhost:5173/cadastro`.
+2. Abra o Mailpit em `http://localhost:8025` e clique no link recebido.
+3. Na página aberta, clique em **Confirmar meu e-mail**. Você entra em `/app`.
+
+O link vale por 1 hora e só pode ser usado uma vez; abrir a página não o consome. Sem
+confirmar, o login responde 403. Para testar a recuperação de senha, use `/esqueci-senha`;
+a troca de e-mail fica em `/app/configuracoes`.
+
+Ainda não há seed. Para virar proprietário da plataforma, promova sua conta:
+
+```sql
+update "user" set role = 'platform_owner' where email = 'voce@empresa.com';
+```
+
+Detalhes em `docs/context/tech/08-auth.md`.
 
 ### Testes
 

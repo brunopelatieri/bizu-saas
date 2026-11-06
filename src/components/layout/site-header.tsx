@@ -26,7 +26,7 @@ function SiteHeaderAuth({
   onNavigate,
   className,
 }: SiteHeaderAuthProps) {
-  const { user, available, signOut } = useAuth();
+  const { user, signOut } = useAuth();
 
   function handleSignOut() {
     onNavigate?.();
@@ -48,16 +48,14 @@ function SiteHeaderAuth({
             Dashboard
           </Button>
         </Link>
-        {available ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className={layout === "stack" ? "w-full" : undefined}
-            onClick={handleSignOut}
-          >
-            Sair
-          </Button>
-        ) : null}
+        <Button
+          variant="ghost"
+          size="sm"
+          className={layout === "stack" ? "w-full" : undefined}
+          onClick={handleSignOut}
+        >
+          Sair
+        </Button>
       </div>
     );
   }

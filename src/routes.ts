@@ -21,7 +21,12 @@ export default [
   // ---------------------------------------------------------------------------
   // Páginas de autenticação (standalone, sem header/footer)
   // ---------------------------------------------------------------------------
-  route("login", "routes/login.tsx"),
+  // Quem recebe token na URL só renderiza no GET; o botão faz a chamada.
+  route("login", "routes/auth/login.tsx"),
+  route("cadastro", "routes/auth/signup.tsx"),
+  route("verificar-email", "routes/auth/verify-email.tsx"),
+  route("esqueci-senha", "routes/auth/forgot-password.tsx"),
+  route("redefinir-senha", "routes/auth/reset-password.tsx"),
 
   // ---------------------------------------------------------------------------
   // Área do tenant (owner e equipe) — client-only (SEM loader de servidor).
@@ -37,9 +42,7 @@ export default [
       route("assinatura", "routes/app.coming-soon.tsx", {
         id: "app-assinatura",
       }),
-      route("configuracoes", "routes/app.coming-soon.tsx", {
-        id: "app-configuracoes",
-      }),
+      route("configuracoes", "routes/app.settings.tsx"),
     ]),
   ]),
 ] satisfies RouteConfig;

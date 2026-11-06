@@ -58,7 +58,7 @@ const quickActions = [
 export function DashboardPage() {
   const { user } = useAuth();
 
-  const firstName = user?.email?.split("@")[0] ?? "usuário";
+  const firstName = user?.name.split(" ")[0] ?? "usuário";
 
   return (
     <div className="space-y-8">

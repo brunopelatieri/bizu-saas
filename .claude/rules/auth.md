@@ -1,23 +1,35 @@
 ---
 paths:
   - "src/api/auth.ts"
+  - "src/api/auth-ext.ts"
+  - "src/api/verification-guard.ts"
   - "src/lib/auth/**"
   - "src/lib/schemas/auth.ts"
+  - "src/lib/email/templates/auth/**"
+  - "src/db/schema/auth.ts"
   - "src/providers/auth-provider.tsx"
   - "src/components/auth/**"
-  - "src/routes/login.tsx"
+  - "src/routes/auth/**"
   - "src/pages/login-page.tsx"
+  - "src/pages/signup-page.tsx"
+  - "src/pages/verify-email-page.tsx"
+  - "src/pages/forgot-password-page.tsx"
+  - "src/pages/reset-password-page.tsx"
 ---
 
-# Autenticação sem provedor, com ponto único de integração
+# Autenticação com Better Auth, sessão em cookie e falha fechada
 
-O projeto ainda não tem provedor de autenticação: login e as áreas autenticadas estão bloqueados até a fase 2 da spec (Better Auth).
-
-- Cliente: o provedor entra em `noProvider`, em `src/providers/auth-provider.tsx`.
-- Servidor: o provedor entra em `verifyToken`, em `src/api/auth.ts`.
-- Use `AuthUser` (`src/lib/auth/types.ts`), sem expor tipos do provedor na interface.
-- Nunca abra o gate para contornar a falta de provedor: a falha é fechada.
-- Permissões são validadas no servidor, com `requireAuth` + checks.
+- Instância `getAuth()` em `src/lib/auth/server.ts`; rotas em `src/api/auth-ext.ts`.
+- Rota privada usa `requireAuth` (sessão no banco, e-mail verificado); de plataforma, também `requirePlatform`.
+- Nenhum token é consumido em GET: a página renderiza e um botão faz a chamada. `/api/auth/verify-email` só aceita POST, atrás do `verificationGuard`.
+- Respostas de cadastro, reenvio, reset e troca de e-mail nunca revelam se um e-mail existe: mesmo status, corpo e cabeçalhos. Trabalho que depende da existência roda em `runInBackground`.
+- `/send-verification-email`, `/request-password-reset` e personificação ficam em `disabledPaths`; use `auth.api.*` no servidor.
+- Não confie em `X-Forwarded-For`: o IP vem de `clientKey` (`TRUSTED_PROXY_HOPS`) e chega ao Better Auth em `x-bizu-client-ip`.
+- Rota nova em `/api/auth/*` confere `Origin` e não passa `c.req.raw` a `new Request()`; teste também em `tests/db/auth-http.test.ts`.
+- Use `AuthUser` (`src/lib/auth/types.ts`), sem expor tipos do Better Auth na interface.
+- Links de e-mail são absolutos, montados com `appLink`, e todo template em `src/lib/email/templates/auth/` exporta `previewInput`.
+- Nunca abra o gate para contornar falha: 503, não acesso.
+- Permissões são validadas no servidor; o cliente só esconde botões.
 - Sessões e usuários ficam no Postgres, via Drizzle.
 
 Para entender este domínio, leia: docs/context/tech/08-auth.md

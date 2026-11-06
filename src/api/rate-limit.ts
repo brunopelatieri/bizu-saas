@@ -6,6 +6,8 @@ type RateLimitOptions = {
   limit: number;
   windowMs: number;
   maxKeys?: number;
+  /** Chave do contador. Padrão: o cliente (`clientKey`). */
+  key?: (c: Context) => string | Promise<string>;
 };
 
 type Bucket = { count: number; resetAt: number };
@@ -23,7 +25,7 @@ function socketAddress(c: Context) {
  * quantidade deles: cada um acrescenta um IP à direita de `X-Forwarded-For`, e o
  * que vem antes disso é controlado pelo cliente.
  */
-function clientKey(c: Context) {
+export function clientKey(c: Context) {
   const hops = Number(process.env.TRUSTED_PROXY_HOPS ?? 0);
 
   if (hops > 0) {
@@ -38,7 +40,12 @@ function clientKey(c: Context) {
  * Janela fixa em memória, suficiente para um processo Node único. Com mais de
  * uma instância, cada uma conta separadamente; aí use um store compartilhado.
  */
-export function rateLimit({ limit, windowMs, maxKeys = 10_000 }: RateLimitOptions) {
+export function rateLimit({
+  limit,
+  windowMs,
+  maxKeys = 10_000,
+  key: resolveKey = clientKey,
+}: RateLimitOptions) {
   // Ordem de inserção igual à de expiração: os primeiros são sempre os mais antigos.
   const buckets = new Map<string, Bucket>();
 
@@ -50,7 +57,7 @@ export function rateLimit({ limit, windowMs, maxKeys = 10_000 }: RateLimitOption
       buckets.delete(key);
     }
 
-    const key = clientKey(c);
+    const key = await resolveKey(c);
     let bucket = buckets.get(key);
 
     if (!bucket) {

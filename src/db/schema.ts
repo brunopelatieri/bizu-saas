@@ -1,14 +1,4 @@
-import { pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
-
-export const contactMessages = pgTable("contact_messages", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull(),
-  email: text("email").notNull(),
-  message: text("message").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
-    .notNull()
-    .defaultNow(),
-});
-
-export type ContactMessage = typeof contactMessages.$inferSelect;
-export type NewContactMessage = typeof contactMessages.$inferInsert;
+// Schema por domínio em src/db/schema/; drizzle.config.ts e o adapter do Better Auth
+// leem este arquivo, então todo domínio novo entra aqui.
+export * from "./schema/auth";
+export * from "./schema/contact";

@@ -51,7 +51,7 @@ fluxo em que o owner cobra seus clientes (reservado como módulo futuro).
 React Router v7 Framework Mode (SSR global)
   |
   |-- Rotas públicas com SSR: /, /sobre, /projetos, /contato, /blog, /blog/:slug
-  |-- Rotas de auth standalone: /login (+ /cadastro, /verificar-email, ... na fase 2)
+  |-- Rotas de auth standalone: /login, /cadastro, /verificar-email, /esqueci-senha, /redefinir-senha
   |-- /app/**     owner e equipe do tenant, client-only
   |-- /admin/**   proprietário da plataforma, client-only (fase 5)
   `-- /portal/**  clientes e leads do tenant, client-only (fase 8)

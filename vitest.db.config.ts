@@ -16,6 +16,13 @@ export default defineConfig({
   test: {
     environment: "node",
     include: ["tests/db/**/*.test.ts"],
+    // Fixos: os testes simulam um proxy e nunca enviam e-mail de verdade.
+    env: {
+      NODE_ENV: "test",
+      APP_URL: "http://localhost:5173",
+      EMAIL_PROVIDER: "memory",
+      TRUSTED_PROXY_HOPS: "1",
+    },
     // Testes compartilham um banco: nada de paralelismo entre arquivos.
     fileParallelism: false,
     testTimeout: 20_000,
