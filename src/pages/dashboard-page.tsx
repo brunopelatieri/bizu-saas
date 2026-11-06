@@ -13,12 +13,18 @@ import {
 import { useAuth } from "@/providers/auth-provider";
 
 export function DashboardPage() {
-  const { user, tenant } = useAuth();
+  const { user, tenant, billing } = useAuth();
   const can = useCan();
   const team = useTeam();
 
   const firstName = user?.name.split(" ")[0] ?? "usuário";
   const memberCount = team.data?.members.length;
+  const subscriptionHint =
+    billing?.state === "trialing"
+      ? `Teste: ${billing.trialDaysLeft ?? 0} dia(s) restante(s)`
+      : billing?.state === "read_only"
+        ? "Somente leitura"
+        : "Plano e faturas da sua conta";
 
   const stats = [
     {
@@ -39,10 +45,10 @@ export function DashboardPage() {
     },
     {
       label: "Assinatura",
-      value: "Trial",
+      value: billing?.plan?.name ?? "–",
       icon: CreditCard,
       href: "/app/assinatura",
-      description: "Plano e faturas da sua conta",
+      description: subscriptionHint,
       visible: can("billing", "read"),
     },
   ];

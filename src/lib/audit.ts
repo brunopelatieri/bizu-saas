@@ -17,7 +17,16 @@ export type AuditAction =
   | "member.removed"
   | "role.created"
   | "role.updated"
-  | "role.deleted";
+  | "role.deleted"
+  | "billing.trial_expired"
+  | "admin.tenant_suspended"
+  | "admin.tenant_unsuspended"
+  | "admin.tenant_plan_changed"
+  | "admin.plan_created"
+  | "admin.plan_updated"
+  | "admin.settings_updated"
+  | "admin.user_banned"
+  | "admin.user_unbanned";
 
 export type AuditEntry = {
   actor: { type?: AuditActorType; id: string | null };

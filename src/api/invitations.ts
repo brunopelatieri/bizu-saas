@@ -7,6 +7,7 @@ import { handleTenantError } from "@/api/tenant-errors";
 import { audit } from "@/lib/audit";
 import { roleLabel } from "@/lib/auth/permissions";
 import { getAuth } from "@/lib/auth/server";
+import { assertWithinLimit } from "@/lib/billing/limits";
 import { notFound, TenantRuleError } from "@/lib/tenant/errors";
 import { activateTenant, findMembership } from "@/lib/tenant/membership";
 import { findOpenInvitation } from "@/lib/tenant/team";
@@ -65,6 +66,11 @@ invitationRoutes.post(
         "Você já faz parte desta organização.",
       );
     }
+
+    // O assento do próprio convite já estava reservado; o plano pode ter encolhido.
+    await assertWithinLimit(invitation.tenantId, "members", {
+      ignoreInvitationId: invitationId,
+    });
 
     const { member } = await getAuth().api.acceptInvitation({
       headers: c.req.raw.headers,

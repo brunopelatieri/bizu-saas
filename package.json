@@ -19,6 +19,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "db:seed": "tsx --tsconfig tsconfig.app.json src/db/seed.ts",
     "test:db": "vitest run --config vitest.db.config.ts",
     "jobs:install": "tsx --tsconfig tsconfig.app.json src/jobs/install.ts",
     "email:preview": "tsx --tsconfig tsconfig.app.json src/lib/email/preview.ts"

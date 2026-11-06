@@ -17,6 +17,8 @@ import { clientKey, rateLimit } from "@/api/rate-limit";
 import { handleTenantError } from "@/api/tenant-errors";
 import { audit } from "@/lib/audit";
 import { getAuth } from "@/lib/auth/server";
+import { startTrial } from "@/lib/billing/subscription";
+import { logError } from "@/api/log";
 import {
   activeTenantSchema,
   createTenantSchema,
@@ -46,6 +48,11 @@ tenantRoutes.post(
     });
 
     await activateTenant(c.get("session").id, user.id, tenant.id);
+    // O tenant já existe: sem plano utilizável ou com falha aqui, ele segue sem limites
+    // em vez de perder o onboarding. O proprietário corrige em /admin/tenants/:id.
+    await startTrial(tenant.id).catch((error: unknown) =>
+      logError("Falha ao iniciar o trial do tenant", error),
+    );
     await audit("tenant.created", {
       actor: { id: user.id },
       tenantId: tenant.id,

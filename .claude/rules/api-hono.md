@@ -20,6 +20,8 @@ paths:
 - SDKs com segredo, como e-mail, ficam no servidor, nunca em componentes React.
 - E-mail sai sempre por `sendEmail` (`src/lib/email/send.ts`), que enfileira; nunca chame o provedor direto numa rota. Passe `tags: { template }`.
 - Webhook de provedor lê o corpo bruto e confere a assinatura antes do JSON (`src/api/webhooks-email.ts`); `/api/ready` testa banco e fila.
+- `/api/admin/*` usa `requireAuth` + `requirePlatform()` e, nas escritas, `requirePlatform(["platform_owner"])` antes da validação; tabela de tenant só dentro de `withPlatformScope` (`tech/22-admin.md`).
+- Limite do plano: `assertWithinLimit(tenantId, metric)` antes de criar (`tech/23-billing-planos.md`).
 - Teste rotas com `api.request()` em `src/api/*.test.ts`; com banco real, em `tests/db/`.
 - Leia variáveis por `getEnv()` (`src/lib/env.ts`), não por `process.env` espalhado.
 - CORS só volta em escopo controlado, se a API for exposta a outra origem.

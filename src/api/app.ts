@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
 import { zValidator } from "@hono/zod-validator";
+import { adminRoutes } from "@/api/admin";
 import { authRoutes } from "@/api/auth-ext";
 import { invitationRoutes } from "@/api/invitations";
 import { logError } from "@/api/log";
@@ -48,6 +49,7 @@ api.route("/", tenantRoutes);
 api.route("/", teamRoutes);
 api.route("/", rolesRoutes);
 api.route("/", invitationRoutes);
+api.route("/", adminRoutes);
 
 api.post(
   "/api/contact",

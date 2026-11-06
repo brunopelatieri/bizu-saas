@@ -146,6 +146,14 @@ Instale a fila de jobs (pg-boss, schema `pgboss`; roda com `DIRECT_URL` e é ide
 npm run jobs:install
 ```
 
+Crie os dados de exemplo (proprietário da plataforma, planos e o tenant `acme`). Defina antes
+`SEED_PASSWORD` no `.env.local` (mínimo de 10 caracteres). É idempotente e recusa produção
+sem `SEED_ALLOW_PRODUCTION=1`:
+
+```bash
+npm run db:seed
+```
+
 ```bash
 npm run dev
 ```
@@ -178,7 +186,22 @@ usa o banco `portal`: rode `docker compose down -v` antes de subir de novo.
 Better Auth com sessão em cookie, sobre o mesmo Postgres. Antes do primeiro acesso, troque
 `BETTER_AUTH_SECRET` no `.env.local` (`openssl rand -base64 32`) e rode as migrations.
 
-**Primeiro acesso:**
+**Primeiro acesso com o seed:**
+
+| Conta | Entra em | Papel |
+|---|---|---|
+| `owner@bizu.local` | `/admin` | proprietário da plataforma |
+| `suporte@bizu.local` | `/admin` | suporte (só leitura) |
+| `acme.owner@bizu.local` | `/app` | owner do tenant `acme`, em teste no plano Pro |
+| `acme.admin@bizu.local`, `acme.membro@bizu.local` | `/app` | admin e membro do `acme` |
+
+A senha é a de `SEED_PASSWORD`. Em `/admin` você vê organizações, usuários, planos e as
+configurações do período de teste (dias, plano padrão e carência). Uma organização nova
+(cadastro, confirmação do e-mail e onboarding) já nasce em teste no plano padrão, com o aviso
+no topo de `/app`; `/precos` lista os planos ativos. Os `provider_price_ref` dos preços
+ficam vazios até você ligar um provedor (fase 6).
+
+**Primeiro acesso sem o seed:**
 
 1. Com `npm run dev` no ar, cadastre-se em `http://localhost:5173/cadastro`.
 2. Abra o Mailpit em `http://localhost:8025` e clique no link recebido.
@@ -200,7 +223,7 @@ a troca de e-mail fica em `/app/configuracoes`.
 
 O convite vale 48 horas. Papéis personalizados ficam em `/app/configuracoes`.
 
-Ainda não há seed. Para virar proprietário da plataforma, promova sua conta:
+Sem o seed, promova sua conta a proprietário da plataforma:
 
 ```sql
 update "user" set role = 'platform_owner' where email = 'voce@empresa.com';
@@ -278,6 +301,7 @@ npm run db:generate  # gera migrations Drizzle
 npm run db:migrate   # aplica migrations
 npm run db:studio    # abre Drizzle Studio
 npm run jobs:install # tabelas e filas do pg-boss (rode após db:migrate)
+npm run db:seed      # dados de exemplo (SEED_PASSWORD); idempotente
 npm run email:preview # renderiza os e-mails em .tmp/emails/
 ```
 

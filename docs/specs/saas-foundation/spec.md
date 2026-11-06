@@ -137,6 +137,29 @@ Fora desta fase: perfil de cobrança e trial no onboarding, `checkLimit`, `POST 
 (dá para promover outro owner e se rebaixar), sair da organização, `/trocar-organizacao`,
 `/app/auditoria` e `DELETE /api/tenant`.
 
+### Desvios da SPEC na fase 5 (admin e planos)
+
+Em cada caso seguiu a alternativa mais segura ou a mais simples de remover depois.
+
+| Previsto | Implementado | Motivo |
+|---|---|---|
+| `plan.trial_days` | Fora; o trial vem só de `platform_setting.trial_days` | `spec-billing.md` já define a configuração vigente como única fonte; dois campos dariam dois "padrões" |
+| `trial_days = 0` com plano `is_free` = gratuito sem fim | Idem, e `trial_days = 0` com plano **pago** é recusado em `PATCH /api/admin/settings` (400 `TRIAL_PLAN_NOT_FREE`); se mesmo assim vier, `startTrial` cai no plano gratuito ativo | Sem isso, o tenant nasceria com plano pago sem pagar |
+| `trialing` → `expired` + `read_only` "após `trial_ends_at + grace_days`" | Igual, mais um aviso `t0` (`trial-ending`, "termina hoje") quando o trial acaba e a carência começa; `trial-expired` sai só na passagem a `read_only` | O template `trial-expired` diz que a conta já está em somente leitura; o texto só é verdadeiro depois da carência |
+| Seed com `auth.api.signUpEmail`, planos `free`/`pro`/`business`, tenant `beta`, clientes, `audit_log` de exemplo | Contas por `INSERT` com o hash do Better Auth (`$context.password.hash`); planos `free`/`basic`/`pro`; só o tenant `acme`; sem clientes e sem auditoria de exemplo | `signUpEmail` dispara e-mail de verificação pela fila; `customer` e portal são da fase 8, `business` e `beta` só serviam à demonstração delas |
+| Seed com `bizu_owner` (`DIRECT_URL`) | Usa `DATABASE_URL` (`bizu_app`) | O `bizu_app` já escreve em todas as tabelas e o RLS é atendido por `withTenant`; evita um segundo pool |
+| `subscription` e `subscription_event` na fase 6 | Criadas agora, com todas as colunas da spec | O plano do tenant, o trial e o histórico precisam de um lugar; a fase 6 só acrescenta lógica |
+| `billing.usage`, `usage_counter`, `tenant_feature_override`, `hasFeature` | Não entram | `checkLimit` conta ao vivo; não há feature cobrada ainda |
+| `checkLimit` em `beforeAddMember`/`beforeCreateInvitation` (hooks do plugin) | `assertWithinLimit` nas rotas `POST /api/team/invitations` e `POST /api/invitations/:id/accept` | O plugin não é exposto por HTTP (fase 4); as rotas próprias são o único caminho |
+| Limites `customers`, `storage_mb`, `custom_roles` aplicados | Só `members` é aplicado; os demais contam 0 ou seguem o teto fixo do plugin | `customer` é da fase 8 e arquivos da fase 10; `maximumRolesPerOrganization` e `organizationLimit` são lidos na criação do plugin |
+| `max_tenants_per_user` em `platform_setting` | Segue constante em `src/lib/auth/constants.ts` | Mesmo motivo do teto do plugin |
+| Perfil de cobrança (`billing_profile`) no onboarding | Fora | Só é necessário no checkout (fase 6) |
+| `/api/admin/tenants/:id/plan` (não listada na spec) | `PUT`, só `platform_owner` | A fase pede "trocar plano" no detalhe do tenant |
+| Overview com MRR, webhooks falhos e jobs mortos; `/admin/assinaturas`, `/webhooks`, `/jobs`, `/auditoria`, `/usuarios/:id`, personificar, revogar sessões, forçar reconciliação | Só contadores de tenants, usuários e planos | Dependem das fases 6, 9 e 10 |
+| Banir via "admin plugin + Zod" | `auth.api.banUser`/`unbanUser` atrás de `assertBannable`: só quem tem papel `user`, e nunca a si mesmo | O plugin não compara o papel do alvo; um proprietário baniria outro |
+| Exclusão de plano e de preço | Não existe; `active = false` | Assinatura aponta para o plano (`ON DELETE RESTRICT`) e o histórico precisa dele |
+| Migration única `0008` | `0008_billing_planos` (Drizzle Kit) + `0009_rls_billing` (`FORCE ROW LEVEL SECURITY` e `GRANT`, como na `0007`) | O Drizzle Kit não gera `FORCE` |
+
 ## Não verificado (marcar antes de implementar)
 
 - Better Auth, conferido na 1.7.18: token de verificação é JWT HS256; `expiresIn` vale;

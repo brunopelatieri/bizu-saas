@@ -1,8 +1,10 @@
 import { Link } from "react-router";
 import { SiteLogo } from "@/components/layout/site-logo";
+import type { ReactNode } from "react";
 import { AppNav } from "@/components/app/app-nav";
 import { AppUserMenu } from "@/components/app/app-user-menu";
 import { TenantSwitcher } from "@/components/app/tenant-switcher";
+import type { AppNavItem } from "@/lib/constants/app-nav";
 import { siteConfig } from "@/lib/constants/navigation";
 import { useAuth } from "@/providers/auth-provider";
 import { cn } from "@/lib/utils";
@@ -10,9 +12,18 @@ import { cn } from "@/lib/utils";
 type SidebarProps = {
   collapsed?: boolean;
   className?: string;
+  /** Menu da área. Padrão: o de `/app`. */
+  nav?: { main: AppNavItem[]; bottom: AppNavItem[] };
+  /** Bloco abaixo do logo. Padrão: seletor de tenant. */
+  header?: ReactNode;
 };
 
-export function AppSidebar({ collapsed = false, className }: SidebarProps) {
+export function AppSidebar({
+  collapsed = false,
+  className,
+  nav,
+  header,
+}: SidebarProps) {
   const { user, signOut } = useAuth();
 
   return (
@@ -36,10 +47,10 @@ export function AppSidebar({ collapsed = false, className }: SidebarProps) {
       </div>
 
       <div className="border-b border-border p-3">
-        <TenantSwitcher collapsed={collapsed} />
+        {header ?? <TenantSwitcher collapsed={collapsed} />}
       </div>
 
-      <AppNav collapsed={collapsed} />
+      <AppNav main={nav?.main} bottom={nav?.bottom} collapsed={collapsed} />
 
       <div className="border-t border-border p-3">
         <AppUserMenu

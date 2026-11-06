@@ -2,12 +2,12 @@
 
 - **Escopo:** Schema, papéis do Postgres, variáveis e uso do Drizzle em qualquer Postgres.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-dados.md`, `spec-tenant-rbac.md`
-- **Paths do código:** `src/db/index.ts`, `src/db/rls.ts`, `src/db/tenant-policy.ts`, `src/db/schema.ts`, `src/db/schema/`, `drizzle.config.ts`, `docker/postgres/init.sql`, `tests/db/`
+- **Paths do código:** `src/db/index.ts`, `src/db/rls.ts`, `src/db/tenant-policy.ts`, `src/db/schema.ts`, `src/db/schema/`, `src/db/seed.ts`, `drizzle.config.ts`, `docker/postgres/init.sql`, `tests/db/`
 
 ## Arquivos
 
 - `src/db/schema/<domínio>.ts`: um arquivo por domínio (`auth.ts`, `tenant.ts`, `audit.ts`,
-  `contact.ts`, `email.ts`).
+  `contact.ts`, `email.ts`, `billing.ts`).
 - `src/db/rls.ts`: `withTenant` e `withPlatformScope`.
 - `src/db/tenant-policy.ts`: `tenantPolicy()`, fora de `rls.ts` porque o Drizzle Kit carrega o
   schema sem o alias `@/` nem as variáveis de ambiente.
@@ -34,6 +34,11 @@ member                    unique (organization_id, user_id); role com papéis se
 invitation                email, role, status, expires_at, inviter_id
 organization_role         papéis personalizados; permission em texto, como o plugin grava
 audit_log                 tenant_id nulo = fora de tenant; ip_hash; RLS forçado
+plan                      slug unique, limits jsonb, features text[], is_free, active (sem RLS)
+plan_price                unique (plan_id, provider, interval); amount_cents; provider_price_ref (sem RLS)
+platform_setting          key pk, value jsonb: trial_plan_id, trial_days, grace_days (sem RLS)
+subscription              unique tenant_id; plan_id, status, trial_ends_at, metadata; RLS forçado
+subscription_event        histórico de status por assinatura; RLS forçado
 
 contact_messages
   id uuid primary key defaultRandom
@@ -73,7 +78,7 @@ Drizzle Kit não conhece essas tabelas e não deve gerar migration para elas. De
 Toda tabela com `tenant_id` tem `.enableRLS()`, `tenantPolicy()` no schema e
 `ALTER TABLE ... FORCE ROW LEVEL SECURITY` em migration customizada
 (`npx drizzle-kit generate --custom --name <nome>`; ver `0007_rls_roles.sql`). Sem o `FORCE`, o
-dono da tabela ignoraria o RLS. Hoje só `audit_log` entra nessa regra.
+dono da tabela ignoraria o RLS. Entram nessa regra `audit_log`, `subscription` e `subscription_event` (migration `0009_rls_billing`).
 
 ```ts
 await withTenant(tenantId, (tx) => tx.select().from(auditLog));
@@ -91,7 +96,7 @@ await withPlatformScope("motivo", (tx) => tx.select().from(auditLog));
 
 | Papel | URL | Uso | Permissão |
 |---|---|---|---|
-| `bizu_owner` | `DIRECT_URL` | migrations, seed, instalação da fila | dono do banco `bizu` e das tabelas |
+| `bizu_owner` | `DIRECT_URL` | migrations e instalação da fila | dono do banco `bizu` e das tabelas |
 | `bizu_app` | `DATABASE_URL` | aplicação em runtime | `NOBYPASSRLS`, sem `CREATE` em `public` |
 
 - `init.sql` define `ALTER DEFAULT PRIVILEGES FOR ROLE bizu_owner`: toda tabela e
@@ -112,7 +117,15 @@ não cria tabelas e que herda acesso às tabelas de `bizu_owner`. `auth.test.ts`
 fluxos de autenticação com `api.request()` e `auth-http.test.ts` repete o principal sobre
 o servidor Node. `rls.test.ts` prova o isolamento e faz o inventário de tabelas; `rbac.test.ts` é
 a matriz papel × endpoint gerada do catálogo; `team.test.ts` e `tenant-http.test.ts` cobrem
-convite, escalada, último owner e ids cruzados, este último sobre HTTP de verdade.
+convite, escalada, último owner e ids cruzados, este último sobre HTTP de verdade. `admin.test.ts`
+e `billing.test.ts` cobrem `/api/admin/*`, trial, `read_only`/`locked`, limite de assentos, o job
+`billing.trial` e o seed; eles guardam e devolvem `platform_setting` e apagam os planos `test-*`.
+
+## Seed
+
+`npm run db:seed` (`src/db/seed.ts`) é idempotente e recusa produção sem `SEED_ALLOW_PRODUCTION=1`;
+usa `SEED_PASSWORD`. Conteúdo e regras em `tech/23-billing-planos.md`. Roda com `DATABASE_URL`
+(`bizu_app`), que já escreve em todas as tabelas; o RLS vale via `withTenant`.
 
 ## Regras
 

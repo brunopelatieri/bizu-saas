@@ -1,5 +1,6 @@
 import type { PgBoss } from "pg-boss";
 import { startBoss, stopBoss } from "@/jobs/boss";
+import { handleBillingTrial } from "@/jobs/billing";
 import { handleEmailSend } from "@/jobs/email";
 import { handleMaintenancePrune } from "@/jobs/maintenance";
 import {
@@ -33,12 +34,14 @@ export async function registerWorkers(
   // `offWork` antes: recarga de módulo em dev não duplica workers.
   await boss.offWork(QUEUE.emailSend);
   await boss.offWork(QUEUE.maintenancePrune);
+  await boss.offWork(QUEUE.billingTrial);
   await boss.work(
     QUEUE.emailSend,
     { includeMetadata: true, batchSize: 1, localConcurrency: 4, ...options },
     handleEmailSend,
   );
   await boss.work(QUEUE.maintenancePrune, options, handleMaintenancePrune);
+  await boss.work(QUEUE.billingTrial, options, handleBillingTrial);
 }
 
 /**

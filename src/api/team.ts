@@ -20,6 +20,7 @@ import { handleTenantError } from "@/api/tenant-errors";
 import { audit } from "@/lib/audit";
 import { roleLabel } from "@/lib/auth/permissions";
 import { getAuth } from "@/lib/auth/server";
+import { assertWithinLimit } from "@/lib/billing/limits";
 import { changeRoleSchema, inviteSchema } from "@/lib/schemas/team";
 import {
   assertCanGrant,
@@ -73,6 +74,10 @@ teamRoutes.post(
     assertKnownRole(actor.catalog, role);
     assertCanGrant(actor, role);
     await assertCanReplaceInvitation(organizationId, email, actor);
+    // O convite reserva um assento: reconvidar o mesmo e-mail não reserva outro.
+    await assertWithinLimit(organizationId, "members", {
+      ignoreInvitationEmail: email,
+    });
 
     const invitation = await getAuth().api.createInvitation({
       headers: c.req.raw.headers,

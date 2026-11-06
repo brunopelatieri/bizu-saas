@@ -16,6 +16,8 @@ estão nas rules e no cabeçalho de cada arquivo.
 | Schema, migration, query | `tech/07-banco-drizzle.md` |
 | Login, sessão, provedor de autenticação | `tech/08-auth.md` |
 | Tenant, equipe, convite, papéis, permissões, auditoria | `tech/21-tenant-rbac.md` |
+| Admin da plataforma: `/admin`, `/api/admin/*`, suspender, banir, planos na tela | `tech/22-admin.md` |
+| Planos, preços, trial, limites, features, estado `read_only`, `checkLimit`, seed | `tech/23-billing-planos.md` |
 | Tokens de design, Tailwind, dark mode | `tech/09-tema-css.md` |
 | Landing, header, páginas públicas | `tech/10-site-publico.md` |
 | Áreas `/app/**`, `/admin/**`, `/portal/**` | `tech/11-dashboard.md` |

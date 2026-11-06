@@ -1,0 +1,304 @@
+import { and, count, desc, eq, ilike, or, type SQL, sql } from "drizzle-orm";
+import { withPlatformScope } from "@/db/rls";
+import {
+  auditLog,
+  member,
+  organization,
+  plan,
+  subscription,
+  subscriptionEvent,
+  user,
+} from "@/db/schema";
+import { listTenantOwners } from "@/lib/billing/notify";
+import type { BillingState } from "@/lib/billing/state";
+import { appLink } from "@/lib/auth/links";
+import { sendEmail } from "@/lib/email/send";
+import { tenantSuspendedTemplate } from "@/lib/email/templates/tenant-suspended";
+import { PAGE_SIZE } from "@/lib/schemas/admin";
+import { notFound, TenantRuleError } from "@/lib/tenant/errors";
+
+/** Mesma regra de `billingState()`, para filtrar e contar no banco. */
+const stateSql = sql<BillingState>`case
+  when ${organization.status} <> 'active' or ${organization.accessMode} = 'locked' then 'locked'
+  when ${organization.accessMode} = 'read_only' then 'read_only'
+  when ${subscription.status} = 'trialing' then 'trialing'
+  else 'active' end`;
+
+const escapeLike = (value: string) => value.replace(/[\\%_]/g, "\\$&");
+
+export type AdminTenantRow = {
+  id: string;
+  name: string;
+  slug: string;
+  state: BillingState;
+  status: string;
+  planName: string | null;
+  trialEndsAt: Date | null;
+  members: number;
+  createdAt: Date;
+};
+
+export async function listTenants(input: {
+  q?: string;
+  status?: BillingState;
+  page: number;
+}) {
+  const term = input.q ? `%${escapeLike(input.q)}%` : null;
+  const filters: SQL[] = [];
+
+  if (term) {
+    filters.push(
+      or(ilike(organization.name, term), ilike(organization.slug, term)) as SQL,
+    );
+  }
+  if (input.status) filters.push(sql`${stateSql} = ${input.status}`);
+
+  const where = filters.length ? and(...filters) : undefined;
+
+  return withPlatformScope("admin: lista tenants", async (tx) => {
+    const base = tx
+      .select({
+        id: organization.id,
+        name: organization.name,
+        slug: organization.slug,
+        state: stateSql,
+        status: organization.status,
+        planName: plan.name,
+        trialEndsAt: subscription.trialEndsAt,
+        members: sql<number>`(select count(*)::int from ${member} where ${member.organizationId} = ${organization.id})`,
+        createdAt: organization.createdAt,
+      })
+      .from(organization)
+      .leftJoin(subscription, eq(subscription.tenantId, organization.id))
+      .leftJoin(plan, eq(subscription.planId, plan.id))
+      .where(where);
+
+    const [totalRow] = await tx
+      .select({ total: count() })
+      .from(organization)
+      .leftJoin(subscription, eq(subscription.tenantId, organization.id))
+      .where(where);
+
+    const items: AdminTenantRow[] = await base
+      .orderBy(desc(organization.createdAt))
+      .limit(PAGE_SIZE)
+      .offset((input.page - 1) * PAGE_SIZE);
+
+    return { items, total: totalRow?.total ?? 0, pageSize: PAGE_SIZE };
+  });
+}
+
+export async function getTenantDetail(tenantId: string) {
+  return withPlatformScope("admin: detalhe do tenant", async (tx) => {
+    const [row] = await tx
+      .select({
+        id: organization.id,
+        name: organization.name,
+        slug: organization.slug,
+        status: organization.status,
+        accessMode: organization.accessMode,
+        state: stateSql,
+        createdAt: organization.createdAt,
+        subscription,
+        plan,
+      })
+      .from(organization)
+      .leftJoin(subscription, eq(subscription.tenantId, organization.id))
+      .leftJoin(plan, eq(subscription.planId, plan.id))
+      .where(eq(organization.id, tenantId));
+
+    if (!row) throw notFound("Organização não encontrada.");
+
+    const members = await tx
+      .select({
+        id: member.id,
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        role: member.role,
+        banned: user.banned,
+        createdAt: member.createdAt,
+      })
+      .from(member)
+      .innerJoin(user, eq(member.userId, user.id))
+      .where(eq(member.organizationId, tenantId))
+      .orderBy(member.createdAt);
+
+    const events = await tx
+      .select({
+        id: subscriptionEvent.id,
+        from: subscriptionEvent.fromStatus,
+        to: subscriptionEvent.toStatus,
+        reason: subscriptionEvent.reason,
+        source: subscriptionEvent.source,
+        createdAt: subscriptionEvent.createdAt,
+      })
+      .from(subscriptionEvent)
+      .where(eq(subscriptionEvent.tenantId, tenantId))
+      .orderBy(desc(subscriptionEvent.createdAt))
+      .limit(10);
+
+    const audit = await tx
+      .select({
+        id: auditLog.id,
+        action: auditLog.action,
+        actorType: auditLog.actorType,
+        createdAt: auditLog.createdAt,
+      })
+      .from(auditLog)
+      .where(eq(auditLog.tenantId, tenantId))
+      .orderBy(desc(auditLog.createdAt))
+      .limit(10);
+
+    const { subscription: sub, plan: currentPlan, ...tenant } = row;
+
+    return {
+      tenant,
+      subscription: sub && {
+        status: sub.status,
+        trialEndsAt: sub.trialEndsAt,
+        planId: sub.planId,
+      },
+      plan: currentPlan && {
+        id: currentPlan.id,
+        name: currentPlan.name,
+        isFree: currentPlan.isFree,
+      },
+      members,
+      events,
+      audit,
+    };
+  });
+}
+
+/**
+ * Suspende (`suspended` + `locked`): `requireTenant` passa a responder 403 a todos. Já
+ * suspenso é 409. Avisa os proprietários por e-mail; a falha do aviso não desfaz a
+ * suspensão.
+ */
+export async function suspendTenant(tenantId: string, reason?: string) {
+  const updated = await withPlatformScope("admin: suspende tenant", (tx) =>
+    tx
+      .update(organization)
+      .set({ status: "suspended", accessMode: "locked" })
+      .where(and(eq(organization.id, tenantId), eq(organization.status, "active")))
+      .returning({ id: organization.id, name: organization.name }),
+  );
+
+  const [tenant] = updated;
+  if (!tenant) return failUpdate(tenantId, "ALREADY_SUSPENDED");
+
+  for (const owner of await listTenantOwners(tenantId)) {
+    await sendEmail({
+      to: owner.email,
+      ...tenantSuspendedTemplate({
+        name: owner.name,
+        tenantName: tenant.name,
+        reason,
+        url: appLink("/app"),
+      }),
+      tags: { template: "tenant-suspended" },
+    });
+  }
+
+  return tenant;
+}
+
+/** Reativa. Trial vencido volta como `read_only`, não como acesso total. */
+export async function unsuspendTenant(tenantId: string) {
+  const [tenant] = await withPlatformScope("admin: reativa tenant", async (tx) => {
+    const [sub] = await tx
+      .select({ status: subscription.status })
+      .from(subscription)
+      .where(eq(subscription.tenantId, tenantId));
+
+    return tx
+      .update(organization)
+      .set({
+        status: "active",
+        accessMode: sub && ["expired", "unpaid", "canceled"].includes(sub.status)
+          ? "read_only"
+          : "full",
+      })
+      .where(
+        and(eq(organization.id, tenantId), eq(organization.status, "suspended")),
+      )
+      .returning({ id: organization.id });
+  });
+
+  if (!tenant) return failUpdate(tenantId, "NOT_SUSPENDED");
+
+  return tenant;
+}
+
+/** O `update` não achou linha: ou o tenant não existe (404) ou não estava no estado certo (409). */
+async function failUpdate(tenantId: string, conflictCode: string): Promise<never> {
+  const [row] = await withPlatformScope("admin: confere tenant", (tx) =>
+    tx
+      .select({ id: organization.id })
+      .from(organization)
+      .where(eq(organization.id, tenantId)),
+  );
+
+  if (!row) throw notFound("Organização não encontrada.");
+
+  throw new TenantRuleError(
+    409,
+    conflictCode,
+    conflictCode === "ALREADY_SUSPENDED"
+      ? "Esta organização não está ativa."
+      : "Esta organização não está suspensa.",
+  );
+}
+
+export async function getOverview(now = new Date()) {
+  const soon = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+  return withPlatformScope("admin: visão geral", async (tx) => {
+    const byState = await tx
+      .select({ state: stateSql, total: count() })
+      .from(organization)
+      .leftJoin(subscription, eq(subscription.tenantId, organization.id))
+      .groupBy(stateSql);
+
+    const [users] = await tx
+      .select({
+        total: count(),
+        banned: sql<number>`count(*) filter (where ${user.banned})::int`,
+      })
+      .from(user);
+
+    const [expiring] = await tx
+      .select({ total: count() })
+      .from(subscription)
+      .innerJoin(organization, eq(subscription.tenantId, organization.id))
+      .where(
+        and(
+          eq(subscription.status, "trialing"),
+          eq(organization.status, "active"),
+          sql`${subscription.trialEndsAt} <= ${soon.toISOString()}::timestamptz`,
+        ),
+      );
+
+    const [plans] = await tx
+      .select({ total: count() })
+      .from(plan)
+      .where(eq(plan.active, true));
+
+    const tenants: Record<BillingState, number> = {
+      trialing: 0,
+      active: 0,
+      read_only: 0,
+      locked: 0,
+    };
+    for (const { state, total } of byState) tenants[state] = total;
+
+    return {
+      tenants,
+      tenantsTotal: Object.values(tenants).reduce((sum, value) => sum + value, 0),
+      users: { total: users?.total ?? 0, banned: users?.banned ?? 0 },
+      trialsExpiringSoon: expiring?.total ?? 0,
+      activePlans: plans?.total ?? 0,
+    };
+  });
+}

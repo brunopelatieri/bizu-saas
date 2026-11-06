@@ -1,8 +1,8 @@
-# Área do tenant (/app)
+# Áreas autenticadas (/app e /admin)
 
-- **Escopo:** Layout, rotas e estado atual da área autenticada do owner e da equipe.
+- **Escopo:** Layout, rotas e estado atual da área autenticada do owner e da equipe (`/app`). A área da plataforma (`/admin`) está em `tech/22-admin.md`.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`, `spec-tenant-rbac.md`
-- **Paths do código:** `src/components/app/`, `src/components/auth/can.tsx`, `src/lib/constants/app-nav.ts`, `src/lib/constants/permission-labels.ts`, `src/providers/auth-provider.tsx`, `src/pages/dashboard-page.tsx`, `src/pages/onboarding-page.tsx`, `src/pages/team-page.tsx`, `src/routes/app.tsx`, `src/routes/app.onboarding.tsx`, `src/routes/app.team.tsx`, `src/routes/app.settings.tsx`, `src/routes/app.coming-soon.tsx`
+- **Paths do código:** `src/components/app/`, `src/components/admin/`, `src/components/auth/can.tsx`, `src/lib/constants/app-nav.ts`, `src/lib/constants/admin-nav.ts`, `src/lib/constants/permission-labels.ts`, `src/providers/auth-provider.tsx`, `src/pages/dashboard-page.tsx`, `src/pages/onboarding-page.tsx`, `src/pages/team-page.tsx`, `src/routes/app.tsx`, `src/routes/app.onboarding.tsx`, `src/routes/app.team.tsx`, `src/routes/app.settings.tsx`, `src/routes/app.coming-soon.tsx`
 
 ## Rotas
 
@@ -15,8 +15,8 @@
 | `/app/assinatura` | em breve (fase 6) |
 | `/app/configuracoes` | organização, papéis personalizados (só owner) e troca de e-mail |
 
-`/admin/**` (fase 5) e `/portal/**` (fase 8) seguem o mesmo modelo, com navegação
-própria.
+`/admin/**` (proprietário e suporte da plataforma, `tech/22-admin.md`) reaproveita o mesmo
+shell com outro menu; `/portal/**` (fase 8) seguirá o mesmo modelo.
 
 ## Estado atual
 
@@ -26,7 +26,12 @@ própria.
   sidebar e no menu mobile.
 - `AppLayout` espera `/api/me`: sem tenant, manda a `/app/onboarding`. É só o caminho da
   interface; quem barra os dados é `requireTenant`.
-- `useAuth()` expõe `tenant`, `tenants`, `permissions`, `reloadAccount` e `switchTenant`.
+- `useAuth()` expõe `tenant`, `tenants`, `permissions`, `billing`, `features`, `limits`,
+  `reloadAccount` e `switchTenant`.
+- `BillingBanner` (topo de `/app`) avisa do fim do trial e do modo somente leitura; só informa,
+  a API é quem bloqueia. O cartão "Assinatura" da visão geral mostra o plano e os dias restantes.
+- `AppSidebar`, `AppNav` e `AppTopbar` recebem o menu por props (`nav`, `header`, `subtitle`); o
+  `AdminLayout` passa o de `admin-nav.ts`.
 - `<Can resource action>` e `useCan()` escondem ações; item de menu usa `permission` em
   `app-nav.ts`. A regra vale na API.
 - Sem `loader` de servidor; dados buscados no cliente via TanStack Query.

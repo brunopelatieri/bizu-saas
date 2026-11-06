@@ -4,6 +4,7 @@ import { requireAuth } from "@/api/auth";
 import { authRateLimit } from "@/api/guards";
 import { handleTenantError } from "@/api/tenant-errors";
 import { permissionsOf } from "@/lib/auth/permissions";
+import { loadTenantBilling } from "@/lib/billing/summary";
 import type { AuthUser, MeResponse } from "@/lib/auth/types";
 import {
   activateTenant,
@@ -48,7 +49,6 @@ export const meRoutes = new Hono<AuthEnv>();
 
 meRoutes.onError(handleTenantError);
 
-// `features` e `limits` são preenchidos a partir da fase 5.
 meRoutes.get("/api/me", authRateLimit, requireAuth, async (c) => {
   const user = c.get("user");
   const memberships = await listMemberships(user.id);
@@ -59,6 +59,7 @@ meRoutes.get("/api/me", authRateLimit, requireAuth, async (c) => {
     memberships,
   );
   const permissions = await activePermissions(tenant);
+  const billing = tenant ? await loadTenantBilling(tenant) : null;
 
   return c.json<MeResponse>({
     user: {
@@ -78,8 +79,9 @@ meRoutes.get("/api/me", authRateLimit, requireAuth, async (c) => {
       status,
     })),
     permissions,
-    features: [],
-    limits: {},
+    billing: billing?.billing ?? null,
+    features: billing?.features ?? [],
+    limits: billing?.limits ?? {},
   });
 });
 

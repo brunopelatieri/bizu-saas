@@ -109,7 +109,9 @@ quando `afterEmailVerification` roda o usuário já tem o novo.
 
 ## Primeiro proprietário
 
-Não há seed até a fase 11. Cadastre-se em `/cadastro`, confirme e promova pelo banco:
+`npm run db:seed` cria `owner@bizu.local` (`platform_owner`) e `suporte@bizu.local`
+(`platform_support`), com a senha de `SEED_PASSWORD`. Sem o seed (ou em produção), cadastre-se em
+`/cadastro`, confirme e promova pelo banco:
 
 ```sql
 update "user" set role = 'platform_owner' where email = 'voce@empresa.com';

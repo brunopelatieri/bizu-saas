@@ -11,6 +11,8 @@ type TopbarProps = {
   onToggleSidebar: () => void;
   onOpenMobileNav?: () => void;
   title?: string;
+  /** Linha abaixo do título. Padrão: nome do tenant ativo. */
+  subtitle?: string;
   className?: string;
 };
 
@@ -19,6 +21,7 @@ export function AppTopbar({
   onToggleSidebar,
   onOpenMobileNav,
   title = "Dashboard",
+  subtitle,
   className,
 }: TopbarProps) {
   const { user, tenant, signOut } = useAuth();
@@ -58,7 +61,7 @@ export function AppTopbar({
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-foreground">{title}</p>
           <p className="hidden text-xs text-muted-foreground sm:block">
-            {tenant?.name}
+            {subtitle ?? tenant?.name}
           </p>
         </div>
       </div>
