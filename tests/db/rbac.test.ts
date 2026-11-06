@@ -133,8 +133,9 @@ describe("RBAC", () => {
     expect(body.user.activeTenant.id).toBe(tenantId);
     expect(body.user.activeTenant.permissions).toEqual(body.permissions);
     expect(body.tenants.map(({ id }: { id: string }) => id)).toEqual([tenantId]);
-    expect(body.features).toEqual([]);
-    expect(body.limits).toEqual({});
+    // Features e limites vêm do plano padrão vigente (`tests/db/billing.test.ts`).
+    expect(Array.isArray(body.features)).toBe(true);
+    expect(typeof body.limits).toBe("object");
   });
 
   it.each(roles)(

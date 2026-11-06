@@ -1,3 +1,5 @@
+import type { BillingSummary } from "@/lib/billing/summary";
+
 export const PLATFORM_ROLES = [
   "user",
   "platform_owner",
@@ -15,12 +17,15 @@ export type TenantSummary = {
   status: string;
 };
 
-/** Resposta de `GET /api/me`. `features` e `limits` chegam com a fase 5. */
+/** Resposta de `GET /api/me`. `billing`, `features` e `limits` são do tenant ativo. */
 export type MeResponse = {
   user: AuthUser;
   tenants: TenantSummary[];
   permissions: string[];
+  /** `null` sem tenant ativo. */
+  billing: BillingSummary | null;
   features: string[];
+  /** Só os limites definidos pelo plano; chave ausente = ilimitado. */
   limits: Record<string, number>;
 };
 

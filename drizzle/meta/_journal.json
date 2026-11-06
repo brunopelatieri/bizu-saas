@@ -57,6 +57,20 @@
       "when": 1793940349089,
       "tag": "0007_rls_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1793943196502,
+      "tag": "0008_billing_planos",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793943198232,
+      "tag": "0009_rls_billing",
+      "breakpoints": true
     }
   ]
 }

@@ -5,3 +5,4 @@ export * from "./schema/tenant";
 export * from "./schema/audit";
 export * from "./schema/contact";
 export * from "./schema/email";
+export * from "./schema/billing";
