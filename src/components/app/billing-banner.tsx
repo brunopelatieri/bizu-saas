@@ -60,7 +60,7 @@ export function BillingBanner() {
 
   const days = billing.trialDaysLeft ?? 0;
   const left =
-    days <= 0 ? "termina hoje" : days === 1 ? "termina amanhã" : `termina em ${days} dias`;
+    days <= 0 ? "terminou" : days === 1 ? "termina amanhã" : `termina em ${days} dias`;
 
   return (
     <div

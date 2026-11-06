@@ -29,7 +29,12 @@ import {
   transition,
 } from "@/lib/billing/state-machine";
 import { loadTenantPlan } from "@/lib/billing/subscription";
-import { getProvider, getProviders, platformContext } from "@/lib/payments/registry";
+import {
+  getProvider,
+  getProviders,
+  isPriceUsable,
+  platformContext,
+} from "@/lib/payments/registry";
 import type {
   Capabilities,
   PaymentProvider,
@@ -95,14 +100,6 @@ export async function listBillingPlans() {
     .from(planPrice)
     .where(eq(planPrice.active, true));
 
-  const usable = (price: (typeof prices)[number]) => {
-    const provider = providers.find(({ id }) => id === price.provider);
-    return (
-      provider !== undefined &&
-      (!provider.requiresPriceRef || price.providerPriceRef !== null)
-    );
-  };
-
   return {
     plans: plans.map((row) => ({
       id: row.id,
@@ -115,7 +112,7 @@ export async function listBillingPlans() {
       prices: row.isFree
         ? []
         : prices
-            .filter((price) => price.planId === row.id && usable(price))
+            .filter((price) => price.planId === row.id && isPriceUsable(price))
             .map((price) => ({
               id: price.id,
               provider: price.provider,

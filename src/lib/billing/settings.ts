@@ -1,4 +1,4 @@
-import { inArray } from "drizzle-orm";
+import { inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { platformSetting } from "@/db/schema";
 
@@ -53,6 +53,9 @@ export async function loadSettings(): Promise<PlatformSettings> {
   return parseSettings(rows);
 }
 
+/** O Drizzle manda `null` como SQL NULL; a coluna é `NOT NULL` e guarda o `null` do JSON. */
+const toJsonb = (value: unknown) => (value === null ? sql`'null'::jsonb` : value);
+
 export async function saveSettings(
   patch: Partial<PlatformSettings>,
   updatedBy: string | null,
@@ -62,7 +65,7 @@ export async function saveSettings(
   ).flatMap((field) =>
     patch[field] === undefined
       ? []
-      : [{ key: SETTING_KEYS[field], value: patch[field], updatedBy }],
+      : [{ key: SETTING_KEYS[field], value: toJsonb(patch[field]), updatedBy }],
   );
 
   if (entries.length === 0) return;

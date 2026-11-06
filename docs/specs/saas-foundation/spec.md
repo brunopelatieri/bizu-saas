@@ -151,7 +151,7 @@ Em cada caso seguiu a alternativa mais segura ou a mais simples de remover depoi
 | `subscription` e `subscription_event` na fase 6 | Criadas agora, com todas as colunas da spec | O plano do tenant, o trial e o histórico precisam de um lugar; a fase 6 só acrescenta lógica |
 | `billing.usage`, `usage_counter`, `tenant_feature_override`, `hasFeature` | Não entram | `checkLimit` conta ao vivo; não há feature cobrada ainda |
 | `checkLimit` em `beforeAddMember`/`beforeCreateInvitation` (hooks do plugin) | `assertWithinLimit` nas rotas `POST /api/team/invitations` e `POST /api/invitations/:id/accept` | O plugin não é exposto por HTTP (fase 4); as rotas próprias são o único caminho |
-| Limites `customers`, `storage_mb`, `custom_roles` aplicados | Só `members` é aplicado; os demais contam 0 ou seguem o teto fixo do plugin | `customer` é da fase 8 e arquivos da fase 10; `maximumRolesPerOrganization` e `organizationLimit` são lidos na criação do plugin |
+| Limites `customers`, `storage_mb` aplicados | Só `members` e `custom_roles` são aplicados; os demais contam 0 | `customer` é da fase 8 e arquivos da fase 10. `custom_roles` vale em `POST /api/roles`, abaixo do teto fixo do plugin (`maximumRolesPerOrganization` é lido na criação dele) |
 | `max_tenants_per_user` em `platform_setting` | Segue constante em `src/lib/auth/constants.ts` | Mesmo motivo do teto do plugin |
 | Perfil de cobrança (`billing_profile`) no onboarding | Fora | Só é necessário no checkout (fase 6) |
 | `/api/admin/tenants/:id/plan` (não listada na spec) | `PUT`, só `platform_owner` | A fase pede "trocar plano" no detalhe do tenant |
