@@ -9,7 +9,7 @@ import { getEnv } from "@/lib/env";
 export const MINUTE = 60 * 1000;
 
 /** Vem antes de `requireAuth`: cada sessão validada consulta o banco. */
-export const authRateLimit = rateLimit({ limit: 60, windowMs: MINUTE });
+export const authRateLimit = rateLimit({ name: "auth", limit: 60, windowMs: MINUTE });
 
 export const jsonBodyLimit = bodyLimit({
   maxSize: 16 * 1024,

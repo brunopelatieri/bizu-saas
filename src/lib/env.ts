@@ -10,6 +10,8 @@ import { z } from "zod";
  */
 
 const PLACEHOLDER_PREFIX = "change-me";
+/** A chave de exemplo é base64 válido de um texto que começa com `change-me`. */
+const PLACEHOLDER_KEY_PREFIX = Buffer.from(PLACEHOLDER_PREFIX).toString("base64");
 
 const emptyToUndefined = (value: unknown) =>
   typeof value === "string" && value.trim() === "" ? undefined : value;
@@ -46,6 +48,11 @@ const csvList = z.preprocess(
 
 const secret = z.string().min(16, "mínimo de 16 caracteres");
 
+/** `openssl rand -base64 32`: AES-256 precisa de exatamente 32 bytes. */
+const encryptionKey = z
+  .string()
+  .regex(/^[A-Za-z0-9+/]{43}=$/, "use 32 bytes em base64 (openssl rand -base64 32)");
+
 export const envSchema = z
   .object({
     NODE_ENV: z
@@ -59,7 +66,16 @@ export const envSchema = z
     DIRECT_URL: z.url({ protocol: /^postgres(ql)?$/ }),
 
     BETTER_AUTH_SECRET: secret,
-    CREDENTIALS_ENCRYPTION_KEY: secret,
+    CREDENTIALS_ENCRYPTION_KEY: encryptionKey,
+    // Na rotação: a chave da versão anterior e o número da atual (`tech/26-seguranca.md`).
+    CREDENTIALS_ENCRYPTION_KEY_PREVIOUS: z.preprocess(
+      emptyToUndefined,
+      encryptionKey.optional(),
+    ),
+    CREDENTIALS_KEY_VERSION: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().positive().default(1),
+    ),
     AUDIT_SALT: secret,
 
     EMAIL_PROVIDER: z.enum(["smtp", "resend", "memory"]).default("smtp"),
@@ -151,13 +167,25 @@ export const envSchema = z
         "CREDENTIALS_ENCRYPTION_KEY",
         "AUDIT_SALT",
       ] as const) {
-        if (env[key].startsWith(PLACEHOLDER_PREFIX)) {
+        if (
+          env[key].startsWith(PLACEHOLDER_PREFIX) ||
+          env[key].startsWith(PLACEHOLDER_KEY_PREFIX)
+        ) {
           ctx.addIssue({
             code: "custom",
             path: [key],
             message: "use um valor gerado, não o exemplo do .env.example",
           });
         }
+      }
+      // Com memória, cada réplica contaria sozinha e o limite cairia em silêncio no
+      // primeiro `scale`. Recusar na subida é mais barato que descobrir no incidente.
+      if (env.RATE_LIMIT_STORE === "memory") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["RATE_LIMIT_STORE"],
+          message: "use postgres em produção",
+        });
       }
       if (env.EMAIL_PROVIDER === "memory") {
         ctx.addIssue({

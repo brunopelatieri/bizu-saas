@@ -46,7 +46,11 @@ teamRoutes.use(
 );
 
 /** Convite dispara e-mail: o limite segura quem tentaria usar o app para enviar spam. */
-const inviteRateLimit = rateLimit({ limit: 20, windowMs: 10 * MINUTE });
+const inviteRateLimit = rateLimit({
+  name: "team-invite",
+  limit: 20,
+  windowMs: 10 * MINUTE,
+});
 
 teamRoutes.get("/api/team", async (c) => {
   const { id } = c.get("tenant");

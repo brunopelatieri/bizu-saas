@@ -56,7 +56,11 @@ const canRead = requirePermission("billing", "read");
 const canManage = requirePermission("billing", "manage");
 
 /** Cada chamada dispara uma requisição paga em tempo no provedor. */
-const providerRateLimit = rateLimit({ limit: 10, windowMs: MINUTE });
+const providerRateLimit = rateLimit({
+  name: "billing-provider",
+  limit: 10,
+  windowMs: MINUTE,
+});
 
 const actorOf = (c: Context<TenantEnv>) => ({
   userId: c.get("user").id,

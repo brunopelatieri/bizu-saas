@@ -35,7 +35,7 @@ tenantRoutes.use("/api/tenant/*", sameOrigin, jsonBodyLimit, authRateLimit);
 
 tenantRoutes.post(
   "/api/tenant",
-  rateLimit({ limit: 10, windowMs: 60 * MINUTE }),
+  rateLimit({ name: "tenant-create", limit: 10, windowMs: 60 * MINUTE }),
   requireAuth,
   zValidator("json", createTenantSchema, validationError),
   async (c) => {

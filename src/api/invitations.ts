@@ -25,7 +25,7 @@ invitationRoutes.use("/api/invitations/*", sameOrigin, jsonBodyLimit);
 
 invitationRoutes.get(
   "/api/invitations/:id",
-  rateLimit({ limit: 30, windowMs: MINUTE }),
+  rateLimit({ name: "invitation-read", limit: 30, windowMs: MINUTE }),
   validId,
   async (c) => {
     const invitation = await findOpenInvitation(c.req.valid("param").id);
@@ -48,7 +48,7 @@ invitationRoutes.get(
 
 invitationRoutes.post(
   "/api/invitations/:id/accept",
-  rateLimit({ limit: 10, windowMs: MINUTE }),
+  rateLimit({ name: "invitation-accept", limit: 10, windowMs: MINUTE }),
   requireAuth,
   validId,
   async (c) => {

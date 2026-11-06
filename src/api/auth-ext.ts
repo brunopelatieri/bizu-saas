@@ -47,6 +47,7 @@ const validEmail = zValidator("json", emailOnlySchema, validationError);
 
 /** Conta por e-mail, exista ele ou não: o 429 não revela nada. */
 export const createRateLimitByEmail = () => rateLimit({
+  name: "resend-by-email",
   limit: 3,
   windowMs: 60 * MINUTE,
   key: async (c) => {
@@ -103,7 +104,7 @@ authRoutes.get("/api/auth/verify-email", (c) =>
 
 authRoutes.post(
   "/api/auth/verify-email",
-  rateLimit({ limit: 10, windowMs: MINUTE }),
+  rateLimit({ name: "verify-email", limit: 10, windowMs: MINUTE }),
   zValidator("json", verifyEmailSchema, validationError),
   verificationGuard,
   async (c) => {
@@ -146,7 +147,7 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
 
 authRoutes.post(
   "/api/auth-ext/resend-verification",
-  rateLimit({ limit: 3, windowMs: 15 * MINUTE }),
+  rateLimit({ name: "resend-verification", limit: 3, windowMs: 15 * MINUTE }),
   validEmail,
   rateLimitByEmail,
   (c) => {
@@ -162,7 +163,7 @@ authRoutes.post(
 
 authRoutes.post(
   "/api/auth-ext/forgot-password",
-  rateLimit({ limit: 3, windowMs: 15 * MINUTE }),
+  rateLimit({ name: "forgot-password", limit: 3, windowMs: 15 * MINUTE }),
   validEmail,
   (c) => {
     const { email } = c.req.valid("json");

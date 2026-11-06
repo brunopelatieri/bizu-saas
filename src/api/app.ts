@@ -65,7 +65,7 @@ api.route("/", adminRoutes);
 
 api.post(
   "/api/contact",
-  rateLimit({ limit: 5, windowMs: 10 * 60 * 1000 }),
+  rateLimit({ name: "contact", limit: 5, windowMs: 10 * 60 * 1000 }),
   bodyLimit({
     maxSize: 16 * 1024,
     onError: (c) => c.json({ error: "Mensagem muito grande." }, 413),
