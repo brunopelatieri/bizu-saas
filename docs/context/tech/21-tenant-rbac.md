@@ -105,14 +105,16 @@ Eventos: `auth.email_verified`, `auth.password_reset`, `tenant.created`, `tenant
 
 Evento sem tenant só aparece com `withPlatformScope`. Ainda não há tela de leitura.
 
-## Limites provisórios
+## Limites
 
-`src/lib/auth/constants.ts`: 3 tenants por usuário, 20 papéis por tenant e convite de 48 h.
-Os dois primeiros passam a `platform_setting` e `plan.limits` na fase 5.
+`src/lib/auth/constants.ts`: 3 tenants por usuário, 20 papéis por tenant e convite de 48 h, tetos
+fixos do plugin. O limite de **assentos** vem do plano: convidar e aceitar passam por
+`assertWithinLimit(tenantId, "members")` e respondem 403 `PLAN_LIMIT_REACHED`
+(`tech/23-billing-planos.md`).
 
 ## Fora desta fase
 
-`requireTenant` já trata `status` e `access_mode`, mas nada os altera até `/admin` (fase 5).
-Ainda não existem: perfil de cobrança e trial no onboarding (fase 5), `checkLimit`,
-`/app/auditoria`, `POST /api/team/transfer`, sair da organização por conta própria,
+`requireTenant` trata `status` e `access_mode`; quem os altera é `/admin` (suspender) e o job
+`billing.trial` (`read_only`). O trial começa no onboarding (`tech/23-billing-planos.md`).
+Ainda não existem: perfil de cobrança, `/app/auditoria`, `POST /api/team/transfer`, sair da organização por conta própria,
 `/trocar-organizacao` e `DELETE /api/tenant` (fase 10).

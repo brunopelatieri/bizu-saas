@@ -2,7 +2,7 @@
 
 - **Escopo:** Rotas `/api/*`, validação Zod e montagem no servidor único.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`
-- **Paths do código:** `src/api/auth.ts`, `src/api/auth-ext.ts`, `src/api/guards.ts`, `src/api/permissions.ts`, `src/api/tenant-errors.ts`, `src/api/me.ts`, `src/api/tenant.ts`, `src/api/team.ts`, `src/api/roles.ts`, `src/api/invitations.ts`, `src/api/verification-guard.ts`, `src/api/rate-limit.ts`, `src/api/request-logger.ts`, `src/api/log.ts`, `src/api/app.ts`, `src/api/ready.ts`, `src/api/webhooks-email.ts`, `src/components/contact/contact-form.tsx`, `src/lib/schemas/contact.ts`, `src/server.ts`
+- **Paths do código:** `src/api/auth.ts`, `src/api/auth-ext.ts`, `src/api/guards.ts`, `src/api/permissions.ts`, `src/api/tenant-errors.ts`, `src/api/me.ts`, `src/api/tenant.ts`, `src/api/team.ts`, `src/api/roles.ts`, `src/api/invitations.ts`, `src/api/verification-guard.ts`, `src/api/rate-limit.ts`, `src/api/request-logger.ts`, `src/api/log.ts`, `src/api/app.ts`, `src/api/ready.ts`, `src/api/webhooks-email.ts`, `src/api/admin.ts`, `src/components/contact/contact-form.tsx`, `src/lib/schemas/contact.ts`, `src/server.ts`
 
 
 ## 6. Hono API
@@ -16,9 +16,10 @@ Rotas atuais:
 | GET | `/api/health` | Liveness simples |
 | GET | `/api/ready` | Prontidão: `{ db, jobs }` (`SELECT 1` e fila `email.send`, timeout 2 s cada); 503 se algum falhar (`src/api/ready.ts`) |
 | POST | `/api/webhooks/email/:provider` | Eventos de entrega, bounce e reclamação do provedor de e-mail (`src/api/webhooks-email.ts`): corpo bruto, assinatura conferida antes do JSON (400 se inválida), 404 se `:provider` não for o configurado; hard bounce e reclamação criam `email_suppression` |
-| GET | `/api/me` | Rota privada: `{ user, tenants, permissions, features, limits }` |
+| GET | `/api/me` | Rota privada: `{ user, tenants, permissions, billing, features, limits }`; `billing` traz estado, plano e fim do trial do tenant ativo |
 | GET | `/api/me/invitations` | Convites abertos para o e-mail da sessão |
-| GET, POST, PATCH | `/api/tenant`, `/api/tenant/active` | Criar, ler, editar e trocar o tenant ativo |
+| GET, POST, PATCH | `/api/tenant`, `/api/tenant/active` | Criar (aplica plano padrão e trial), ler, editar e trocar o tenant ativo |
+| GET, POST, PUT, PATCH | `/api/admin/*` | Plataforma: visão geral, tenants (suspender, trocar plano), planos e preços, configurações, usuários (banir). Só `requirePlatform`; escrita só `platform_owner` (`tech/22-admin.md`) |
 | GET, POST, PATCH, DELETE | `/api/team/*` | Equipe e convites |
 | GET, POST, PATCH, DELETE | `/api/roles/*` | Papéis personalizados |
 | GET, POST | `/api/invitations/:id`, `/:id/accept` | Lado de quem recebe o convite |
@@ -35,16 +36,17 @@ Autenticacao:
   sessao no banco e coloca `user`, `session` e `activeOrganizationId` no contexto.
 - Sem cookie ou com sessao invalida: 401. E-mail nao verificado: 403
   `EMAIL_NOT_VERIFIED`. Auth indisponivel: 503.
-- `requirePlatform()` vem depois de `requireAuth` e recusa com 403 quem nao e da plataforma.
+- `requirePlatform()` vem depois de `requireAuth` e recusa com 403 `PLATFORM_FORBIDDEN` quem nao e da plataforma; `requirePlatform(["platform_owner"])` restringe as escritas de `/api/admin/*`.
 - Rota de tenant: `requireAuth` + `requireTenant` + `requirePermission(recurso, acao)`
   (`src/api/permissions.ts`). Regras e tabela de rotas em `tech/21-tenant-rbac.md`.
 - Essas rotas nao importam `@/db`: o Biome recusa (`biome.json`), e os dados passam por
   `src/lib/tenant/`. Erros saem por `handleTenantError`.
+- Limite do plano recusado: 403 `PLAN_LIMIT_REACHED` (`assertWithinLimit`, `tech/23-billing-planos.md`). `requireTenant` responde 403 `TENANT_SUSPENDED` (suspenso ou `locked`) e 403 `TENANT_READ_ONLY` (mutação com `read_only`, exceto `/api/billing/*`).
 - Id de rota usa `validId`: malformado responde 404 sem chegar ao banco.
 - Toda rota privada usa `authRateLimit` (60 por minuto) antes de `requireAuth`, porque
   cada sessao validada consulta o banco. O `ProtectedRoute` nao protege dados.
 - No cliente, use `apiFetch` (`src/lib/api/client.ts`): envia cookies, padroniza erros em
-  `ApiError` (com `code`) e, com 401 em `/app`, encerra a sessao e vai ao login.
+  `ApiError` (com `code`) e, com 401 em `/app` ou `/admin`, encerra a sessao e vai ao login.
 - Detalhes do fluxo: `docs/context/tech/08-auth.md`.
 
 Protecoes:

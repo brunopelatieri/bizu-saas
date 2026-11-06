@@ -8,6 +8,7 @@ import {
 } from "react";
 import { apiFetch } from "@/lib/api/client";
 import { authClient, toAuthActionError } from "@/lib/auth/client";
+import type { BillingSummary } from "@/lib/billing/summary";
 import {
   type AuthUser,
   type MeResponse,
@@ -18,6 +19,8 @@ import type { LoginInput, SignupInput } from "@/lib/schemas/auth";
 
 const NO_TENANTS: TenantSummary[] = [];
 const NO_PERMISSIONS: string[] = [];
+const NO_FEATURES: string[] = [];
+const NO_LIMITS: Record<string, number> = {};
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -27,6 +30,12 @@ type AuthContextValue = {
   tenants: TenantSummary[];
   /** Lista `recurso:ação`. Esconde botões; quem decide é o servidor. */
   permissions: string[];
+  /** Cobrança do tenant ativo: estado, plano e fim do trial. */
+  billing: BillingSummary | null;
+  /** Features do plano do tenant ativo. */
+  features: string[];
+  /** Limites do plano; chave ausente = ilimitado. */
+  limits: Record<string, number>;
   /** `GET /api/me` ainda não respondeu. */
   accountLoading: boolean;
   accountError: Error | null;
@@ -112,6 +121,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tenant: me?.tenants.find(({ id }) => id === activeId) ?? null,
       tenants: me?.tenants ?? NO_TENANTS,
       permissions: me?.permissions ?? NO_PERMISSIONS,
+      billing: me?.billing ?? null,
+      features: me?.features ?? NO_FEATURES,
+      limits: me?.limits ?? NO_LIMITS,
       accountLoading: Boolean(data) && account.isPending,
       // Com dados em mãos, uma releitura que falha não derruba a tela.
       accountError: me ? null : account.error,

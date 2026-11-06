@@ -1,0 +1,61 @@
+# Admin da plataforma (/admin)
+
+- **Escopo:** Área do proprietário da plataforma: rotas `/admin/**`, API `/api/admin/*`, papéis, suspensão, usuários, planos e configurações.
+- **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`, `spec-tenant-rbac.md`, `spec-billing.md`
+- **Paths do código:** `src/api/admin.ts`, `src/lib/admin/` (`tenants.ts`, `users.ts`, `plans.ts`), `src/lib/schemas/admin.ts`, `src/lib/constants/admin-nav.ts`, `src/components/admin/`, `src/pages/admin/`, `src/routes/admin/`, `tests/db/admin.test.ts`
+
+## Acesso
+
+| Papel (`user.role`) | Lê | Escreve |
+|---|---|---|
+| `platform_owner` | tudo | planos, preços, configurações, suspender/reativar, trocar plano, banir |
+| `platform_support` | tudo | nada (403) |
+| `user` | nada | nada (403 `PLATFORM_FORBIDDEN`) |
+
+`adminRoutes` aplica, em `/api/admin/*`: `sameOrigin` → `jsonBodyLimit` → `authRateLimit` →
+`requireAuth` → `requirePlatform()`; cada escrita soma `requirePlatform(["platform_owner"])`
+**antes** da validação. O `AdminLayout` manda quem não é da plataforma de volta a `/app`, mas é
+só o caminho da interface. Sem `loader` de servidor. O 2FA obrigatório da plataforma é da fase 9.
+
+## API
+
+| Rota | Quem | Observação |
+|---|---|---|
+| `GET /api/admin/overview` | plataforma | tenants por estado, usuários, testes acabando em 7 dias, planos ativos |
+| `GET /api/admin/tenants?q&status&page` | plataforma | `status` é o estado de cobrança; 20 por página |
+| `GET /api/admin/tenants/:id` | plataforma | membros, assinatura, últimos eventos e auditoria |
+| `POST /api/admin/tenants/:id/suspend` `{ reason? }` | owner | `suspended` + `locked`; e-mail `tenant-suspended` aos proprietários; 409 `ALREADY_SUSPENDED` |
+| `POST /api/admin/tenants/:id/unsuspend` | owner | volta `full`, ou `read_only` se a assinatura expirou; 409 `NOT_SUSPENDED` |
+| `PUT /api/admin/tenants/:id/plan` `{ planId }` | owner | plano gratuito encerra o trial e destrava o `read_only`; plano pago mantém o estado |
+| `GET`, `POST /api/admin/plans` | leitura plataforma; escrita owner | 409 `SLUG_TAKEN` |
+| `PATCH /api/admin/plans/:id` | owner | parcial, o `slug` não muda; 409 `PLAN_HAS_PRICES` ao marcar gratuito com preço |
+| `POST /api/admin/plans/:id/prices`, `PATCH .../prices/:priceId` | owner | 409 `PRICE_EXISTS`, 409 `FREE_PLAN_NO_PRICE`; sem exclusão, só `active` |
+| `GET`, `PATCH /api/admin/settings` | leitura plataforma; escrita owner | 400 `PLAN_NOT_FOUND`, `TRIAL_PLAN_NOT_FREE` |
+| `GET /api/admin/users?q&page` | plataforma | |
+| `POST /api/admin/users/:id/ban` `{ reason? }`, `.../unban` | owner | via `auth.api.banUser`, que encerra as sessões; 409 `SELF_BAN`, 403 `PLATFORM_USER_PROTECTED` |
+
+O plugin `admin` não compara o papel do alvo; por isso `assertBannable` só deixa banir quem tem
+papel `user`. Toda escrita grava `audit_log` com `actor_type = platform` (`admin.*`); as de um
+tenant levam o `tenant_id`. Tabelas de tenant são lidas com `withPlatformScope(motivo, ...)`.
+
+## Telas
+
+| Rota | Arquivo |
+|---|---|
+| `/admin` | `pages/admin/overview-page.tsx` |
+| `/admin/tenants`, `/admin/tenants/:id` | `tenants-page.tsx`, `tenant-detail-page.tsx` |
+| `/admin/usuarios` | `users-page.tsx` |
+| `/admin/planos`, `/admin/planos/:id` | `plans-page.tsx`, `plan-detail-page.tsx` |
+| `/admin/configuracoes` | `settings-page.tsx` |
+
+Reaproveitam o shell de `/app`: `AppSidebar`, `AppNav` e `AppTopbar` recebem o menu
+(`admin-nav.ts`) por props. Dados por `useAdminQuery`/`useAdminMutation` (`admin-api.ts`);
+escrita só aparece para `platform_owner` (`useIsPlatformOwner`). O menu do usuário mostra
+"Administração" para quem tem papel de plataforma. Formulários validam com os schemas de
+`src/lib/schemas/admin.ts`; `limits` vazio vira `null` (ilimitado).
+
+## Ainda não existe
+
+Overview sem MRR, webhooks falhos e jobs mortos (fases 6 e 10); `/admin/assinaturas`,
+`/admin/webhooks`, `/admin/jobs`, `/admin/auditoria`; personificação (fase 9); detalhe de
+usuário; revogar sessões.

@@ -33,6 +33,7 @@
 | `/contato` | `src/routes/contact.tsx` | title, description |
 | `/blog` | `src/routes/blog.tsx` | title, description, OG |
 | `/blog/:slug` | `src/routes/blog-post.tsx` | title, description, OG dinamico |
+| `/precos` | `src/routes/pricing.tsx` | title, description, OG; `loader` com os planos ativos |
 
 ### Rotas de Autenticacao
 

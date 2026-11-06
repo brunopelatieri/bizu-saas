@@ -7,6 +7,7 @@ import {
 } from "@/components/app/app-sidebar";
 import { AppNav } from "@/components/app/app-nav";
 import { AppTopbar } from "@/components/app/app-topbar";
+import { BillingBanner } from "@/components/app/billing-banner";
 import { TenantSwitcher } from "@/components/app/tenant-switcher";
 import {
   Sheet,
@@ -86,6 +87,7 @@ export function AppLayout() {
           onOpenMobileNav={() => setMobileNavOpen(true)}
           title={title}
         />
+        <BillingBanner />
         <main className="flex-1 overflow-y-auto p-4 sm:p-6">
           <Outlet />
         </main>

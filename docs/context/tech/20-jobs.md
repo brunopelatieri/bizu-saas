@@ -2,7 +2,7 @@
 
 - **Escopo:** Fila no Postgres com pg-boss 12: instalação, modos de execução, filas, retry, dead letter, manutenção e prontidão.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-email-jobs.md`
-- **Paths do código:** `src/jobs/` (`boss.ts`, `queues.ts`, `index.ts`, `email.ts`, `maintenance.ts`, `install.ts`), `src/server.ts`, `src/api/ready.ts`, `drizzle/0005_email_jobs.sql`
+- **Paths do código:** `src/jobs/` (`boss.ts`, `queues.ts`, `index.ts`, `email.ts`, `billing.ts`, `maintenance.ts`, `install.ts`), `src/server.ts`, `src/api/ready.ts`, `drizzle/0005_email_jobs.sql`
 
 ## Instalação
 
@@ -42,8 +42,9 @@ Sem o passo 2, `sendEmail` falha (fila inexistente), o `email_message` fica `fai
 |---|---|---|---|
 | `email.send` | `sendEmail` | 5x, backoff exponencial (30 s a 1 h) | `singletonKey = email_message.id`; dead letter `email.send.dead` (7 dias) |
 | `maintenance.prune` | cron dom 04:00 UTC | 1x | apaga `email_message` > 180 dias (`pruneOldData`) |
+| `billing.trial` | cron diário 03:00 UTC | 3x, 5 min com backoff | avisos T-3, T-1 e T0, expira o trial vencido para `read_only` após a carência; idempotente (`runBillingTrial`, `tech/23-billing-planos.md`); dead letter `billing.trial.dead` (14 dias) |
 
-Filas de billing e LGPD entram nas fases 6 e 10: acrescente em `queueDefinitions` (a
+O restante das filas de billing e as de LGPD entram nas fases 6 e 10: acrescente em `queueDefinitions` (a
 dead letter `<fila>.dead` antes da fila), em `scheduleDefinitions` se tiver cron, e o
 handler em `registerWorkers` (`index.ts`); depois `npm run jobs:install`.
 
@@ -68,5 +69,6 @@ pg-boss conecta e a fila `email.send` existe. `/api/health` continua liveness si
 
 `tests/db/email-queue.test.ts` (`npm run test:db`, exige `db:migrate` + `jobs:install`):
 enfileirar → worker → `sent`, supressão, retries esgotados → `failed` + `email.send.dead`,
-`maintenance.prune` e `checkReady`. Unitários sem banco: `src/jobs/email.test.ts`,
+`maintenance.prune` e `checkReady`. `tests/db/billing.test.ts` chama `runBillingTrial(now, { tenantIds })`
+diretamente, com relógio e tenants controlados. Unitários sem banco: `src/jobs/email.test.ts`,
 `src/api/ready.test.ts`.

@@ -2,7 +2,7 @@
 
 - **Escopo:** Seções da home e layout público responsivo.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`
-- **Paths do código:** `src/components/landing/`, `src/components/layout/root-layout.tsx`, `src/components/layout/site-header.tsx`, `src/components/layout/site-nav-links.tsx`, `src/pages/home-page.tsx`, `src/pages/projects-page.tsx`, `src/lib/constants/navigation.ts`
+- **Paths do código:** `src/components/landing/`, `src/components/layout/root-layout.tsx`, `src/components/layout/site-header.tsx`, `src/components/layout/site-nav-links.tsx`, `src/pages/home-page.tsx`, `src/pages/projects-page.tsx`, `src/pages/pricing-page.tsx`, `src/routes/pricing.tsx`, `src/lib/billing/public-plans.server.ts`, `src/lib/constants/navigation.ts`
 
 ## Home
 
@@ -17,11 +17,19 @@
   `CtaSection`.
 
 Objetivo: posicionar o Bizu SaaS como ponto de partida para SaaS e servir de base para
-a landing de projetos derivados. A página `/precos` com `loader` de planos entra na
-fase 5; `/legal/termos` e `/legal/privacidade` na fase 10.
+a landing de projetos derivados. `/legal/termos` e `/legal/privacidade` entram na fase 10.
 
 `siteConfig` em `src/lib/constants/navigation.ts` concentra nome, descrição, links e
 autor; personalize ali primeiro (`docs/context/receitas.md`).
+
+## Preços (`/precos`)
+
+`src/routes/pricing.tsx` tem `loader` server-side que lê os planos ativos e seus preços ativos
+pelo Drizzle (`listPublicPlans`, `public-plans.server.ts`), sem volta HTTP: são dados públicos,
+sem RLS e sem dado pessoal. Devolve só o que a página mostra (nada de `provider_price_ref` nem
+contagem de uso). Mostra o menor preço ativo por intervalo, alternância mensal/anual quando há
+preço anual, limites e features; o CTA leva a `/cadastro`. `meta` via `buildMeta`; está em
+`navItems` e em `public/sitemap.xml`. O que mudar em `/admin/planos` aparece na hora.
 
 ## Layout público
 

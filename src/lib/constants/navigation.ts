@@ -33,6 +33,7 @@ export const navItems = [
   { href: "/", label: "Início" },
   { href: "/sobre", label: "Sobre" },
   { href: "/projetos", label: "Projetos" },
+  { href: "/precos", label: "Preços" },
   { href: "/blog", label: "Blog" },
   { href: "/contato", label: "Contato" },
 ] as const;

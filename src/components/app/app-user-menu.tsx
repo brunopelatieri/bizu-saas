@@ -1,5 +1,5 @@
 import { Link } from "react-router";
-import { ExternalLink, LogOut, Settings } from "lucide-react";
+import { ExternalLink, LogOut, Settings, ShieldCheck } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -82,6 +82,12 @@ export function AppUserMenu({
           <Settings />
           Configurações
         </DropdownMenuItem>
+        {user?.platformRole && user.platformRole !== "user" ? (
+          <DropdownMenuItem render={<Link to="/admin" />}>
+            <ShieldCheck />
+            Administração
+          </DropdownMenuItem>
+        ) : null}
         <DropdownMenuItem render={<Link to="/" />}>
           <ExternalLink />
           Site público

@@ -33,5 +33,8 @@ npm run dev
   troque `DATABASE_URL` e `DIRECT_URL`.
 - Testes: `npm test` roda sem banco; `npm run test:db` exige o Postgres do Docker com as
   migrations aplicadas.
+- Dados de exemplo: defina `SEED_PASSWORD` em `.env.local` (mínimo de 10 caracteres) e rode
+  `npm run db:seed`. Entre com `owner@bizu.local` (vai a `/admin`) ou `acme.owner@bizu.local`
+  (vai a `/app`). Pode rodar de novo sem duplicar nada.
 - Para testar login: cadastre-se em `/cadastro`, abra o Mailpit em `http://localhost:8025` e
-  confirme pelo link. Primeiro proprietário e demais detalhes em `tech/08-auth.md`.
+  confirme pelo link. Sem o seed, o primeiro proprietário é promovido por SQL (`tech/08-auth.md`).

@@ -13,7 +13,7 @@
 | 2 | Auth núcleo: Better Auth, cadastro, verificação de uso único, reset, troca de e-mail, `requireAuth` por sessão, papéis de plataforma | concluída |
 | 3 | E-mail transacional completo (fila, Resend, supressão, templates) e jobs (pg-boss) | concluída |
 | 4 | Tenant, equipe, RBAC, RLS e `audit_log` | concluída |
-| 5 | Admin e planos | pendente |
+| 5 | Admin e planos: `/admin`, planos, trial, limites, `read_only`, job `billing.trial`, `/precos`, seed | concluída |
 | 6 | Billing núcleo + Stripe | pendente |
 | 7 | Módulo Asaas | pendente |
 | 8 | Portal do cliente | pendente |
@@ -34,7 +34,12 @@
   `<Can>` e `audit_log` (`tech/21-tenant-rbac.md`).
 - RLS forçado com `withTenant` e `withPlatformScope` (`tech/07-banco-drizzle.md`).
 - `/app/**` com shell client-side: visão geral, equipe e configurações funcionam; clientes
-  e assinatura seguem como "em breve".
+  e assinatura seguem como "em breve". Banner de trial e de somente leitura.
+- `/admin/**` (proprietário e suporte da plataforma): visão geral, organizações, usuários, planos e
+  configurações, com `requirePlatform` na API (`tech/22-admin.md`).
+- Planos, preços, trial no onboarding, limites por plano (assentos), estado `read_only`/`locked` e job
+  `billing.trial` (`tech/23-billing-planos.md`). `/precos` público com loader.
+- `npm run db:seed`: proprietário, suporte, planos e o tenant `acme`.
 - `/api/health`, `/api/me`, `/api/tenant`, `/api/team`, `/api/roles`, `/api/invitations`,
   `/api/auth/*`, `/api/auth-ext/*` e `/api/contact` com rate limit, limite de corpo e headers
   de segurança.
@@ -51,12 +56,12 @@
 
 ## Pendências Técnicas Conhecidas
 
-- Fases 5 a 11 da spec.
-- Sem seed: o primeiro `platform_owner` é promovido por SQL (`tech/08-auth.md`).
+- Fases 6 a 11 da spec.
 - `consent_log` (fase 10) ainda não existe: o aceite de termos é exigido, mas não registrado.
 - `audit_log` grava, mas sem tela de leitura (`/app/auditoria`, `/admin/auditoria`).
-- Limites de tenant e de papéis são constantes até `platform_setting` e `plan` (fase 5).
-- `requirePlatform` existe, mas nenhuma rota usa até `/admin` (fase 5).
+- Teto de tenants por usuário (3) e de papéis personalizados (20) seguem constantes do plugin; só `members` usa o limite do plano (`tech/23-billing-planos.md`).
+- `/app/assinatura` segue "em breve": checkout e provedores são da fase 6. O trial vencido vira `read_only` sem caminho de pagamento até lá.
+- Overview do admin sem MRR, webhooks e jobs; sem `/admin/auditoria`, `/admin/assinaturas`, `/admin/webhooks`, `/admin/jobs`.
 - Rate limit das rotas próprias em memória até a fase 9.
 - Evoluir blog estático para tabela Drizzle quando virar feature real.
 - Migrar para React Router 8 e `react-router-hono-server` 4 para zerar os alertas

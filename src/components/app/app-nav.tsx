@@ -8,6 +8,9 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
 
 type AppNavProps = {
+  /** Itens do menu. Padrão: navegação de `/app`. `/admin` passa a sua. */
+  main?: AppNavItem[];
+  bottom?: AppNavItem[];
   collapsed?: boolean;
   onNavigate?: () => void;
   className?: string;
@@ -45,6 +48,8 @@ function NavItem({
 }
 
 export function AppNav({
+  main = appMainNav,
+  bottom = appBottomNav,
   collapsed = false,
   onNavigate,
   className,
@@ -56,7 +61,7 @@ export function AppNav({
   return (
     <div className={cn("flex flex-1 flex-col", className)}>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {appMainNav.filter(allowed).map((item) => (
+        {main.filter(allowed).map((item) => (
           <NavItem
             key={item.href}
             item={item}
@@ -67,7 +72,7 @@ export function AppNav({
       </nav>
 
       <div className="space-y-1 border-t border-border p-3">
-        {appBottomNav.filter(allowed).map((item) => (
+        {bottom.filter(allowed).map((item) => (
           <NavItem
             key={item.href}
             item={item}

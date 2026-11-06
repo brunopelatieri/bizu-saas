@@ -10,14 +10,14 @@ export class ApiError extends Error {
 }
 
 /**
- * Sessão recusada dentro de `/app`: limpa os cookies antes de ir ao login. Sem isso,
+ * Sessão recusada dentro de `/app` ou `/admin`: limpa os cookies antes de ir ao login. Sem isso,
  * o cache da sessão no cookie mandaria de volta para `/app`, em ciclo.
  */
 async function leaveExpiredSession() {
   if (typeof window === "undefined") return;
 
   const { pathname, search } = window.location;
-  if (!pathname.startsWith("/app")) return;
+  if (!pathname.startsWith("/app") && !pathname.startsWith("/admin")) return;
 
   await fetch("/api/auth/sign-out", {
     method: "POST",
