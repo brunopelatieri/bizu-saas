@@ -2,11 +2,13 @@
 
 - **Escopo:** Schema, papéis do Postgres, variáveis e uso do Drizzle em qualquer Postgres.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-dados.md`, `spec-tenant-rbac.md`
-- **Paths do código:** `src/db/index.ts`, `src/db/schema.ts`, `drizzle.config.ts`, `docker/postgres/init.sql`, `tests/db/`
+- **Paths do código:** `src/db/index.ts`, `src/db/schema.ts`, `src/db/schema/`, `drizzle.config.ts`, `docker/postgres/init.sql`, `tests/db/`
 
 ## Arquivos
 
-- `src/db/schema.ts`: schema Drizzle (a fase 4 divide em `src/db/schema/<domínio>.ts`).
+- `src/db/schema.ts`: reexporta o schema. Tabelas novas ficam por domínio em
+  `src/db/schema/<domínio>.ts` (hoje `email.ts`; `contact_messages` segue no
+  `schema.ts`) e entram aqui com `export * from "./schema/<domínio>"`.
 - `src/db/index.ts`: `getDb()`, conexão de runtime com `DATABASE_URL` lida de `getEnv()`.
 - `drizzle.config.ts`: usa `DIRECT_URL` (fallback `DATABASE_URL`).
 - `drizzle/`: migrations geradas; `npm run db:generate` e `npm run db:migrate`.
@@ -22,6 +24,26 @@ contact_messages
   message text not null
   created_at timestamp with timezone default now
 ```
+
+```text
+email_message   (plataforma, sem tenant_id nem RLS)
+  id uuid pk, to_hash (sha256), template, provider, provider_message_id (índice),
+  status (queued|sent|delivered|bounced|complained|failed), error, sent_at,
+  created_at (índice), updated_at
+email_suppression
+  email_hash text pk, reason (hard_bounce|complaint|manual), created_at
+```
+
+Nenhuma das duas guarda o endereço em claro nem o corpo. `tenant_id` em `email_message`
+(opcional na spec) entra quando a fase 4 criar a tabela de tenants.
+
+## Schema `pgboss`
+
+A migration `0004_email_jobs` cria o schema `pgboss` e dá `USAGE` e privilégios padrão
+ao `bizu_app` (`ALTER DEFAULT PRIVILEGES`). As tabelas do pg-boss são criadas por
+`npm run jobs:install` (primeiro `start()` com `DIRECT_URL`), não pelo Drizzle: o
+Drizzle Kit não conhece essas tabelas e não deve gerar migration para elas. Detalhes em
+`tech/20-jobs.md`.
 
 ## Papéis do Postgres
 

@@ -11,7 +11,7 @@
 | 0 | Reposicionamento: textos, docs, rules, `/dashboard` → `/app`, stubs removidos | concluída |
 | 1 | Infra local: papéis do Postgres, Mailpit, `.env.example`, `env.ts`, CI com Postgres, `test:db`, seams de e-mail | concluída |
 | 2 | Auth núcleo (Better Auth, equipe e plataforma) | pendente |
-| 3 | E-mail transacional completo e jobs (pg-boss) | pendente |
+| 3 | E-mail transacional completo e jobs (pg-boss) | concluída |
 | 4 | Tenant, equipe, RBAC e RLS | pendente |
 | 5 | Admin e planos | pendente |
 | 6 | Billing núcleo + Stripe | pendente |
@@ -32,8 +32,12 @@
   headers de segurança.
 - Variáveis de ambiente validadas em `src/lib/env.ts` na inicialização.
 - Postgres do Docker com `bizu_owner` e `bizu_app` (`docker/postgres/init.sql`) e Mailpit.
-- E-mail: interface `EmailProvider` com provedores `memory` e `smtp` (`src/lib/email/`);
-  fila, templates e bounces entram na fase 3.
+- E-mail: `sendEmail` grava `email_message` e enfileira `email.send` (pg-boss, retry 5x,
+  dead letter, supressão); provedores `smtp`, `resend` e `memory`; webhook
+  `POST /api/webhooks/email/:provider`; 14 templates gerais; `npm run email:preview`
+  (`tech/19-email.md`, `tech/20-jobs.md`).
+- Jobs: pg-boss 12 no schema `pgboss` (`npm run jobs:install`), `JOBS_MODE=inline|worker|off`,
+  `maintenance.prune`, `GET /api/ready`. Filas de billing e LGPD entram nas fases 6 e 10.
 - Biome, Vitest (`npm test` sem banco, `npm run test:db` com banco) e CI com Postgres.
 - Dockerfile multi-stage para VPS.
 

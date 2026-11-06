@@ -2,7 +2,7 @@
 
 - **Escopo:** Rotas `/api/*`, validação Zod e montagem no servidor único.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`
-- **Paths do código:** `src/api/auth.ts`, `src/api/rate-limit.ts`, `src/api/log.ts`, `src/api/app.ts`, `src/components/contact/contact-form.tsx`, `src/lib/schemas/contact.ts`, `src/server.ts`
+- **Paths do código:** `src/api/auth.ts`, `src/api/rate-limit.ts`, `src/api/log.ts`, `src/api/app.ts`, `src/api/ready.ts`, `src/api/webhooks-email.ts`, `src/components/contact/contact-form.tsx`, `src/lib/schemas/contact.ts`, `src/server.ts`
 
 
 ## 6. Hono API
@@ -13,7 +13,9 @@ Rotas atuais:
 
 | Metodo | Rota | Funcao |
 |--------|------|--------|
-| GET | `/api/health` | Healthcheck |
+| GET | `/api/health` | Liveness simples |
+| GET | `/api/ready` | Prontidão: `{ db, jobs }` (`SELECT 1` e fila `email.send`, timeout 2 s cada); 503 se algum falhar (`src/api/ready.ts`) |
+| POST | `/api/webhooks/email/:provider` | Eventos de entrega, bounce e reclamação do provedor de e-mail (`src/api/webhooks-email.ts`): corpo bruto, assinatura conferida antes do JSON (400 se inválida), 404 se `:provider` não for o configurado; hard bounce e reclamação criam `email_suppression` |
 | GET | `/api/me` | Rota privada: retorna o usuario autenticado |
 | POST | `/api/contact` | Persiste mensagem em `contact_messages` |
 

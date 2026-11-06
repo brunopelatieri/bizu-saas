@@ -18,7 +18,8 @@ estão nas rules e no cabeçalho de cada arquivo.
 | Tokens de design, Tailwind, dark mode | `tech/09-tema-css.md` |
 | Landing, header, páginas públicas | `tech/10-site-publico.md` |
 | Áreas `/app/**`, `/admin/**`, `/portal/**` | `tech/11-dashboard.md` |
-| E-mail transacional, Mailpit | `tech/19-email.md` |
+| E-mail transacional, templates, bounces, Mailpit | `tech/19-email.md` |
+| Jobs em segundo plano, pg-boss, filas, `JOBS_MODE`, worker | `tech/20-jobs.md` |
 | Componentes base | `tech/12-shadcn-ui.md` |
 | Docker, VPS, variáveis de ambiente | `infra-deploy.md`, `tech/14-deploy.md` |
 | Lint, testes, CI | `tech/15-qualidade.md` |
