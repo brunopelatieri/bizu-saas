@@ -29,7 +29,7 @@ impersonation_grant       consentimento do owner: expires_at, revoked_at, used_b
 tenant_payment_credential encrypted_secret bytea, key_version, sem tela (RLS)
 rate_limit_bucket         key em hash, window_start, count (RATE_LIMIT_STORE=postgres)
 session                   token unique, user_id, expires_at, impersonated_by,
-                          active_organization_id
+                          impersonation_expires_at, active_organization_id
 account                   provider_id = credential guarda a senha
 verification              tokens de reset, em hash
 rate_limit                key unique, count, last_request (rate limit do Better Auth)

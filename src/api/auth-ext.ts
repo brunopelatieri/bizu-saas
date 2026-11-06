@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { zValidator } from "@hono/zod-validator";
-import { getSessionCookie } from "better-auth/cookies";
 import type { Context } from "hono";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
@@ -19,7 +18,7 @@ import {
 } from "@/api/verification-guard";
 import { audit } from "@/lib/audit";
 import { runInBackground } from "@/lib/auth/background";
-import { AUTH_COOKIE_PREFIX, CLIENT_IP_HEADER } from "@/lib/auth/constants";
+import { CLIENT_IP_HEADER } from "@/lib/auth/constants";
 import { purgeExpiredPendingSignup } from "@/lib/auth/pending-signup";
 import { getAuth } from "@/lib/auth/server";
 import { readVerificationClaims } from "@/lib/auth/verification-issue";
@@ -120,10 +119,9 @@ const OPEN_WHILE_IMPERSONATING = new Set([
 const closedWhileImpersonating = createMiddleware(async (c, next) => {
   const { headers } = c.req.raw;
 
-  if (
-    OPEN_WHILE_IMPERSONATING.has(c.req.path) ||
-    !getSessionCookie(headers, { cookiePrefix: AUTH_COOKIE_PREFIX })
-  ) {
+  // Sem `getSessionCookie` aqui: com o cookie repetido, ele lê o último valor e o handler,
+  // o primeiro. Quem decide é `resolveSession`, que lê como o handler.
+  if (OPEN_WHILE_IMPERSONATING.has(c.req.path) || !headers.has("Cookie")) {
     return next();
   }
 

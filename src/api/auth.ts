@@ -4,6 +4,7 @@ import { logError } from "@/api/log";
 import { withImpersonator } from "@/lib/audit";
 import { AUTH_COOKIE_PREFIX } from "@/lib/auth/constants";
 import { getAuth } from "@/lib/auth/server";
+import { impersonationExpired } from "@/lib/auth/sessions";
 import { type AuthUser, type PlatformRole, toAuthUser } from "@/lib/auth/types";
 
 export type AuthSession = { id: string; expiresAt: Date };
@@ -36,6 +37,13 @@ export const resolveSession: ResolveSession = async (headers) => {
   });
 
   if (!result) return null;
+
+  if (
+    result.session.impersonatedBy &&
+    (await impersonationExpired(result.session.id))
+  ) {
+    return null;
+  }
 
   return {
     user: toAuthUser(result),

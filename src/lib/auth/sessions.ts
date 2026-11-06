@@ -33,6 +33,23 @@ export async function listOwnSessions(
   }));
 }
 
+/**
+ * `expires_at` não limita a personificação: o `getSession` só deixa de renovar a sessão se o
+ * cliente mandar o cookie `dont_remember`, e quem personifica pode simplesmente apagá-lo. O
+ * teto fica numa coluna que o Better Auth não toca. Sem ele, a sessão não vale (falha fechada).
+ */
+export async function impersonationExpired(sessionId: string, now = new Date()) {
+  const [row] = await getDb()
+    .select({ limit: session.impersonationExpiresAt })
+    .from(session)
+    .where(eq(session.id, sessionId));
+
+  if (row?.limit && row.limit > now) return false;
+
+  await getDb().delete(session).where(eq(session.id, sessionId));
+  return true;
+}
+
 /** O token só existe aqui dentro, para a chamada do Better Auth. */
 export async function findOwnSessionToken(userId: string, sessionId: string) {
   const [row] = await getDb()

@@ -60,7 +60,8 @@ export async function impersonationAccess(
 
 /**
  * Prende a sessão ao tenant do consentimento, sem tocar em `last_tenant_id`, que é do
- * usuário. Se o grant acaba antes da 1 h padrão, a sessão acaba com ele.
+ * usuário. Se o grant acaba antes da 1 h padrão, a sessão acaba com ele. Quem garante o
+ * prazo é `impersonation_expires_at`, conferida a cada requisição em `resolveSession`.
  */
 export async function bindImpersonation(
   sessionId: string,
@@ -75,7 +76,11 @@ export async function bindImpersonation(
 
   await getDb()
     .update(session)
-    .set({ activeOrganizationId: tenantId, expiresAt })
+    .set({
+      activeOrganizationId: tenantId,
+      expiresAt,
+      impersonationExpiresAt: expiresAt,
+    })
     .where(eq(session.id, sessionId));
 
   return expiresAt;

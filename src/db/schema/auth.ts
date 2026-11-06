@@ -63,6 +63,8 @@ export const session = pgTable(
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
     impersonatedBy: text("impersonated_by"),
+    // Teto da personificação, que o Better Auth não renova (`impersonationExpired`).
+    impersonationExpiresAt: timestamptz("impersonation_expires_at"),
     activeOrganizationId: uuid("active_organization_id").references(
       () => organization.id,
       { onDelete: "set null" },

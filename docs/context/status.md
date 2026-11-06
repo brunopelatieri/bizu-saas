@@ -109,6 +109,7 @@ Detalhes em `tech/26-seguranca.md`.
 | `CREDENTIALS_ENCRYPTION_KEY` de exemplo `change-me...` | Base64 válido de um texto `change-me...`, recusado em produção | A validação de 32 bytes reprovaria o exemplo antigo |
 | `RATE_LIMIT_STORE`: memória em dev | Produção **recusa** `memory` na subida | Com réplicas, o limite cairia em silêncio |
 | `impersonator_id` só nas ações `platform.*` | `AsyncLocalStorage` leva `impersonator_id` a todo `audit()` da requisição | Auditoria dupla sem depender de cada rota |
+| Personificação com 1 h do plugin (`impersonationSessionDuration`) | Mais `session.impersonation_expires_at`, conferida a cada requisição | Achado do security-review: apagar o cookie `dont_remember` renovava a sessão por 7 dias, além do grant |
 | `tenant_payment_credential` | Com `aad` `tenant:provider`, `created_at` e `updated_at` | Cifra copiada de outra linha falha na leitura |
 
 ## Desvios da spec na fase 8

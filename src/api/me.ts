@@ -74,13 +74,16 @@ meRoutes.get("/api/me", authRateLimit, requireAuth, async (c) => {
         permissions,
       },
     },
-    tenants: memberships.map(({ id, slug, name, role, status }) => ({
-      id,
-      slug,
-      name,
-      role,
-      status,
-    })),
+    // Quem personifica entra em um tenant: os outros da pessoa não são da conta dele.
+    tenants: memberships
+      .filter(({ id }) => !user.impersonatedBy || id === tenant?.id)
+      .map(({ id, slug, name, role, status }) => ({
+        id,
+        slug,
+        name,
+        role,
+        status,
+      })),
     permissions,
     billing: billing?.billing ?? null,
     features: billing?.features ?? [],

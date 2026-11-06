@@ -114,11 +114,17 @@ fora do banco e do backup do banco.
    (`impersonation-started`).
 
 **Presa ao tenant:** `POST /api/tenant/active` é bloqueado, e `/api/me` não cai em outro tenant da
-pessoa. Sem isso, um consentimento do tenant A abriria o tenant B do mesmo usuário.
+pessoa nem lista os demais. Sem isso, um consentimento do tenant A abriria o tenant B do mesmo usuário.
+
+**Teto:** `session.impersonation_expires_at`, conferida em `resolveSession` a cada requisição. Não use
+`expires_at` para isso: o `getSession` só deixa de renovar a sessão quando o cliente manda o cookie
+`dont_remember`, e quem personifica pode apagá-lo. Teto vencido ou ausente apaga a sessão.
 
 **Revogar** (`DELETE /api/tenant/support-grant/:id`) apaga as sessões personificadas do tenant na hora.
 
-**Bloqueios** (403 `IMPERSONATION_BLOCKED`, com auditoria `platform.impersonation_blocked_action`):
+**Bloqueios** (403 `IMPERSONATION_BLOCKED`, com auditoria `platform.impersonation_blocked_action`).
+Guarda nova decide por `resolveSession`, nunca por `getSessionCookie`: com o cookie repetido, um lê
+o último valor e o Better Auth, o primeiro.
 
 | Rotas | Como |
 |---|---|

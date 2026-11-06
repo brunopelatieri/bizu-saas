@@ -233,6 +233,52 @@ describe("personificação", () => {
       expect(row?.expires_at.getTime()).toBe(soon.getTime());
     });
 
+    it("apagar o cookie dont_remember não estica a sessão além do teto", async () => {
+      await grant();
+      const cookie = await enterAs(member);
+      const withoutGuard = cookie
+        .split("; ")
+        .filter((pair) => !pair.includes("dont_remember"))
+        .join("; ");
+
+      // A 1ª leitura sem o cookie renova `expires_at` para 7 dias.
+      expect((await call("GET", "/api/me", { cookie: withoutGuard })).status).toBe(200);
+
+      const [refreshed] = await owner<
+        { id: string; expires_at: Date; impersonation_expires_at: Date }[]
+      >`
+        select id, expires_at, impersonation_expires_at from session
+        where user_id = ${member.id} and impersonated_by is not null
+        order by created_at desc limit 1
+      `;
+      expect(refreshed?.impersonation_expires_at.getTime()).toBeLessThanOrEqual(
+        Date.now() + 60 * 60 * 1000,
+      );
+
+      await owner`
+        update session set impersonation_expires_at = now() - interval '1 second'
+        where id = ${refreshed?.id as string}
+      `;
+
+      const expired = await call("GET", "/api/me", { cookie: withoutGuard });
+      expect(expired.status).toBe(401);
+
+      const left = await owner`select 1 from session where id = ${refreshed?.id as string}`;
+      expect(left).toHaveLength(0);
+    });
+
+    it("sessão personificada sem teto gravado não vale", async () => {
+      await grant();
+      const cookie = await enterAs(member);
+
+      await owner`
+        update session set impersonation_expires_at = null
+        where user_id = ${member.id} and impersonated_by is not null
+      `;
+
+      expect((await call("GET", "/api/me", { cookie })).status).toBe(401);
+    });
+
     it("o último consentimento vale para mais de uma pessoa do suporte", async () => {
       await grant();
       const other = await makePlatformUser(owner, "platform_owner");
@@ -422,6 +468,16 @@ describe("personificação", () => {
       });
     });
 
+    it("/api/me mostra só o tenant do consentimento", async () => {
+      await grant();
+      const cookie = await enterAs(tenantOwner);
+
+      const me = await call("GET", "/api/me", { cookie });
+      const { tenants } = (await me.json()) as { tenants: { id: string }[] };
+
+      expect(tenants.map(({ id }) => id)).toEqual([tenantId]);
+    });
+
     it("não muda o último tenant da pessoa", async () => {
       await grant();
       const [before] = await owner<{ last_tenant_id: string | null }[]>`
@@ -444,6 +500,7 @@ describe("personificação", () => {
     beforeEach(async () => {
       await grant();
       cookie = await enterAs(tenantOwner);
+      await waitForBackgroundTasks();
       mail.reset();
     });
 
@@ -497,6 +554,35 @@ describe("personificação", () => {
         impersonator_id: support.id,
         metadata: { method, path },
       });
+    });
+
+    it("cookie repetido não escapa do bloqueio", async () => {
+      const session = cookie
+        .split("; ")
+        .find((pair) => pair.includes("session_token")) as string;
+      const [name] = session.split("=");
+
+      for (const header of [
+        `${session}; ${name}=`,
+        `${name}=; ${session}`,
+        `${session}; ${name}=forjado`,
+      ]) {
+        const response = await call("POST", "/api/auth/change-email", {
+          cookie: header,
+          body: { newEmail: newEmail() },
+        });
+
+        expect(response.ok).toBe(false);
+        expect(await templatesSent()).toEqual([]);
+      }
+
+      const blocked = await call("POST", "/api/auth/change-email", {
+        cookie: `${session}; ${name}=`,
+        body: { newEmail: newEmail() },
+      });
+
+      expect(blocked.status).toBe(403);
+      expect(await blocked.json()).toMatchObject({ code: "IMPERSONATION_BLOCKED" });
     });
 
     it("variante de caminho não escapa", async () => {
