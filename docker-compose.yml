@@ -30,5 +30,43 @@ services:
       MP_SMTP_AUTH_ACCEPT_ANY: "1"
       MP_SMTP_AUTH_ALLOW_INSECURE: "1"
 
+  # Backup opcional: `docker compose --profile backup up -d backup`. Faz um `pg_dump` por dia
+  # (BACKUP_INTERVAL_HOURS) e guarda o banco e os arquivos de STORAGE_LOCAL_DIR, cifrados com
+  # `age`, no volume `backups`. Defina BACKUP_AGE_RECIPIENT com a chave PÚBLICA (`age-keygen`).
+  # Sem o perfil, nada disso sobe. Restauração e teste mensal: docs/context/tech/14-deploy.md.
+  backup:
+    profiles: ["backup"]
+    build: ./docker/backup
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      # Precisa atravessar o RLS (superusuário em dev; em produção, um papel com BYPASSRLS).
+      PGUSER: ${BACKUP_PGUSER:-postgres}
+      PGPASSWORD: ${BACKUP_PGPASSWORD:-postgres}
+      PGDATABASE: ${BACKUP_PGDATABASE:-bizu}
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+      BACKUP_KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+    volumes:
+      - backups:/backups
+      - ${STORAGE_LOCAL_DIR:-./.data/storage}:/storage:ro
+
+  # Armazenamento S3 compatível para testar STORAGE_PROVIDER=s3 sem conta na nuvem. Opcional:
+  # descomente, crie o bucket `bizu` em http://localhost:9001 (admin: minioadmin/minioadmin) e use
+  #   STORAGE_PROVIDER=s3  S3_ENDPOINT=http://localhost:9000  S3_REGION=us-east-1
+  #   S3_BUCKET=bizu  S3_ACCESS_KEY_ID=minioadmin  S3_SECRET_ACCESS_KEY=minioadmin
+  # minio:
+  #   image: minio/minio:latest
+  #   command: server /data --console-address ":9001"
+  #   ports:
+  #     - "9000:9000"
+  #     - "9001:9001"
+  #   volumes:
+  #     - minio_data:/data
+
 volumes:
   postgres_data:
+  backups:
+  # minio_data:

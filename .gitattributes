@@ -1,0 +1,2 @@
+# Scripts de container precisam de LF: com CRLF o `sh` do Alpine não os executa.
+*.sh text eol=lf
