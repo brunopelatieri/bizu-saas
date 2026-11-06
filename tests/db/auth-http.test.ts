@@ -7,6 +7,7 @@ import { api } from "@/api/app";
 import { waitForBackgroundTasks } from "@/lib/auth/background";
 import { createMemoryProvider } from "@/lib/email/providers/memory";
 import { setEmailProviderForTests } from "@/lib/email/send";
+import { comparableHeaders } from "./tenant-helpers";
 
 /**
  * O mesmo adaptador de produção, sobre HTTP de verdade. `api.request()` entrega um
@@ -120,7 +121,7 @@ describe("autenticação sobre o servidor Node", () => {
         ip,
       );
       // O servidor carimba `Date` em cada resposta: o resto tem de ser idêntico.
-      const { date: _date, ...headers } = Object.fromEntries(response.headers);
+      const headers = comparableHeaders(response);
 
       return {
         status: response.status,
