@@ -69,6 +69,10 @@ Rode antes de um release, com `stripe listen` aberto e o cartão de teste `4242 
 - [ ] Trial com mais de 48 h: nada é cobrado agora e `provider_subscription_ref` é preenchido.
 - [ ] Cartão `4000 0000 0000 0341`: a falha leva a `past_due` e ao e-mail no Mailpit.
 - [ ] Upgrade: fatura de proração e plano novo na hora.
+- [ ] Upgrade com cartão recusado (`4000 0000 0000 0341`): erro na tela, plano mantido.
+- [ ] Upgrade de quem paga por boleto: conferir o que `error_if_incomplete` faz.
+- [ ] Pausar: faturas anuladas e organização em somente leitura. Retomar depois do fim do período:
+      ciclo novo cobrado na hora, e recusa deixa pausada.
 - [ ] Downgrade: `pending_plan_id` preenchido e preço novo na próxima fatura.
 - [ ] Cancelar no fim do período e desfazer.
 - [ ] Portal abre e volta para `/app/assinatura`.
@@ -85,6 +89,8 @@ Rode antes de um release, com `stripe listen` aberto e o cartão de teste `4242 
   levam o `payment_intent`, e `enrichEvent` busca a fatura em `invoicePayments`.
 - **Downgrade** troca o preço no Stripe na hora, com `proration_behavior: "none"`: a próxima
   fatura já vem no valor novo, e o plano local só muda no fim do período.
+- **Pausa** usa `pause_collection: { behavior: "void" }`: as faturas do período são anuladas, e por
+  isso o acesso é cortado. Retomar depois do período pago usa `billing_cycle_anchor: { type: "now" }`.
 - **Trial com menos de 48 h** cobra na hora: o Stripe recusa `trial_end` mais perto que isso
   no Checkout.
 - **Cliente** é criado só com nome, e-mail e `tenantId`. Mudar o perfil de faturamento depois

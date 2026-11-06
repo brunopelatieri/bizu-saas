@@ -128,6 +128,8 @@ export type SubscriptionMetadata = {
   lastProviderEventAt?: string;
   /** Preço do downgrade agendado em `pending_plan_id`. */
   pendingPlanPriceId?: string;
+  /** Pausada: até quando já estava pago (ISO 8601). Depois disso, retomar cobra. */
+  paidThrough?: string;
   alert?: SubscriptionAlert;
 };
 

@@ -37,7 +37,9 @@ export async function loadTenantBilling(
   // checkout abandonado nasce `expired` com o plano escolhido.
   const planApplies =
     state !== "locked" &&
-    !["expired", "canceled", "unpaid"].includes(current?.subscription.status ?? "");
+    !["expired", "canceled", "unpaid", "paused"].includes(
+      current?.subscription.status ?? "",
+    );
   const trialEndsAt =
     state === "trialing" ? (current?.subscription.trialEndsAt ?? null) : null;
 

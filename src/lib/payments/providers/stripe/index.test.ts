@@ -403,6 +403,7 @@ describe("assinatura", () => {
     expect(stub.subscriptions.update).toHaveBeenCalledWith("sub_1", {
       items: [{ id: "si_1", price: "price_test_pro" }],
       proration_behavior: "always_invoice",
+      payment_behavior: "error_if_incomplete",
       metadata: { planPriceId: "preco-local" },
     });
   });
@@ -411,9 +412,10 @@ describe("assinatura", () => {
     const stub = subscriptions();
     await stubbed(stub).updateSubscription?.(ctx, "sub_1", { price, prorate: false });
 
-    expect(stub.subscriptions.update.mock.calls[0]?.[1]).toMatchObject({
-      proration_behavior: "none",
-    });
+    const [, params] = stub.subscriptions.update.mock.calls[0] ?? [];
+
+    expect(params).toMatchObject({ proration_behavior: "none" });
+    expect(params).not.toHaveProperty("payment_behavior");
   });
 
   it("cancela no fim do período ou agora", async () => {
@@ -434,7 +436,7 @@ describe("assinatura", () => {
     const provider = stubbed(stub);
 
     await provider.pauseSubscription?.(ctx, "sub_1");
-    await provider.resumeSubscription?.(ctx, "sub_1");
+    await provider.resumeSubscription?.(ctx, "sub_1", { chargeNow: false });
 
     expect(stub.subscriptions.update).toHaveBeenNthCalledWith(1, "sub_1", {
       pause_collection: { behavior: "void" },
@@ -442,6 +444,20 @@ describe("assinatura", () => {
     expect(stub.subscriptions.update).toHaveBeenNthCalledWith(2, "sub_1", {
       pause_collection: "",
       cancel_at_period_end: false,
+    });
+  });
+
+  it("retomar depois do período pago abre ciclo novo, cobrado ou recusado na hora", async () => {
+    const stub = subscriptions();
+
+    await stubbed(stub).resumeSubscription?.(ctx, "sub_1", { chargeNow: true });
+
+    expect(stub.subscriptions.update).toHaveBeenCalledWith("sub_1", {
+      pause_collection: "",
+      cancel_at_period_end: false,
+      billing_cycle_anchor: { type: "now" },
+      proration_behavior: "none",
+      payment_behavior: "error_if_incomplete",
     });
   });
 

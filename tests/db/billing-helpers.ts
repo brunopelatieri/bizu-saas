@@ -306,6 +306,7 @@ export type SubscriptionState = {
     dunningNotices?: Record<string, string>;
     lastProviderEventAt?: string;
     pendingPlanPriceId?: string;
+    paidThrough?: string;
   };
 };
 

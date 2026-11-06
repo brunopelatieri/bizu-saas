@@ -109,8 +109,11 @@ function nextMetadata(
   decision: AppliedDecision,
   occurredAt: Date | undefined,
 ) {
-  const { pendingPlanPriceId, dunningNotices, ...rest } = row.metadata;
+  const { pendingPlanPriceId, dunningNotices, paidThrough, ...rest } = row.metadata;
   const metadata: SubscriptionMetadata = { ...rest };
+  const through = paidThrough ?? row.currentPeriodEnd?.toISOString();
+
+  if (decision.status === "paused" && through) metadata.paidThrough = through;
 
   if (pendingPlanPriceId && decision.patch.pendingPlanId === undefined) {
     metadata.pendingPlanPriceId = pendingPlanPriceId;

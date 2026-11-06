@@ -398,7 +398,7 @@ export async function runBillingReconcile(
       .from(subscription)
       .where(
         and(
-          inArray(subscription.status, ["trialing", "active", "past_due"]),
+          inArray(subscription.status, ["trialing", "active", "past_due", "paused"]),
           isNotNull(subscription.provider),
           isNotNull(subscription.providerSubscriptionRef),
           options.tenantIds

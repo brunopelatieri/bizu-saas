@@ -93,5 +93,7 @@ Decisões registradas com o motivo. Detalhes em `tech/24-billing-cobranca.md`.
 | `GET /api/billing/portal` | `POST` | Abre sessão no provedor; pedido no brief da fase |
 | `GET /api/billing/plans` só com `requireTenant` | Com `billing:read` | Pedido no brief da fase |
 | Sem rota de pausa | `POST /api/billing/pause` | A spec expõe "pausar" e não tinha rota |
+| Pausa sem regra de acesso | `paused` + `read_only`; retomar após o período pago cobra um ciclo novo | Achado do security-review: `pause_collection: void` anula as faturas e o plano seguiria de graça |
+| Upgrade imediato | Imediato, mas só com a diferença paga (`error_if_incomplete`) | Achado do security-review: cartão recusado daria o plano maior até o fim da carência |
 | Checkout `não personificado` | Sem a checagem | Personificação é da fase 9 |
 

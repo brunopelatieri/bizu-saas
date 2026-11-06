@@ -218,6 +218,9 @@ export function createStripeProvider(deps: {
         await client.subscriptions.update(ref, {
           items: [{ id: item.id, price: price.providerPriceRef }],
           proration_behavior: prorate ? "always_invoice" : "none",
+          // Sem isto o Stripe aceita a troca com o cartão recusado, e o plano maior valeria
+          // até o fim da carência sem a diferença paga.
+          ...(prorate ? { payment_behavior: "error_if_incomplete" as const } : {}),
           metadata: { planPriceId: price.id },
         });
       }),
@@ -239,11 +242,18 @@ export function createStripeProvider(deps: {
         });
       }),
 
-    resumeSubscription: (_ctx, ref) =>
+    resumeSubscription: (_ctx, ref, { chargeNow }) =>
       guard(async () => {
         await client.subscriptions.update(ref, {
           pause_collection: "",
           cancel_at_period_end: false,
+          ...(chargeNow
+            ? {
+                billing_cycle_anchor: { type: "now" },
+                proration_behavior: "none" as const,
+                payment_behavior: "error_if_incomplete" as const,
+              }
+            : {}),
         });
       }),
 

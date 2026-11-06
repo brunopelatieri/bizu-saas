@@ -463,6 +463,20 @@ describe("troca de plano", () => {
     });
   });
 
+  it("cobrança recusada no upgrade não troca o plano", async () => {
+    const declined = createStubProvider({
+      updateSubscription: async () => {
+        throw new Error("card_declined");
+      },
+    });
+    setProvidersForTests([declined]);
+
+    const response = await change(pro.priceId);
+
+    expect(response.status).toBe(502);
+    expect((await subscriptionState(owner, tenantId)).plan_id).toBe(basic.id);
+  });
+
   it("o owner desfaz o downgrade: o provedor volta ao preço atual", async () => {
     await change(pro.priceId);
     await change(basic.priceId);
@@ -545,13 +559,106 @@ describe("cancelamento de assinatura pausada", () => {
 });
 
 describe("pausa e portal", () => {
-  it("pausa quando capabilities.pause", async () => {
-    const response = await call("POST", "/api/billing/pause", {
-      cookie: user.cookie,
-    });
+  const pause = () =>
+    call("POST", "/api/billing/pause", { cookie: user.cookie });
+  const resume = () =>
+    call("POST", "/api/billing/reactivate", { cookie: user.cookie });
+  const chargeNowOf = (index: number) =>
+    (stub.calls.resumeSubscription?.[index]?.[2] as { chargeNow: boolean })?.chargeNow;
+
+  it("pausa quando capabilities.pause, e o plano não segue de graça", async () => {
+    const response = await pause();
 
     expect(response.status).toBe(200);
+
+    const row = await subscriptionState(owner, tenantId);
+    expect(row.status).toBe("paused");
+    expect(row.metadata.paidThrough).toBe(row.current_period_end?.toISOString());
+    expect(await accessModeOf(owner, tenantId)).toBe("read_only");
+
+    const write = await call("PATCH", "/api/tenant", {
+      cookie: user.cookie,
+      body: { name: "Pausada" },
+    });
+    expect((await bodyOf(write)).code).toBe("TENANT_READ_ONLY");
+  });
+
+  it("pausada não recebe as features do plano", async () => {
+    const featured = await createPaidPlan(owner, 100, { features: ["recurso_pago"] });
+    await updateSubscription(owner, tenantId, { plan_id: featured.id });
+    await pause();
+
+    const me = await bodyOf(await call("GET", "/api/me", { cookie: user.cookie }));
+
+    expect(me.features).toEqual([]);
+  });
+
+  it("retomar dentro do período pago devolve o acesso sem cobrar", async () => {
+    await pause();
+
+    const response = await resume();
+
+    expect(response.status).toBe(200);
+    expect(chargeNowOf(0)).toBe(false);
+    expect((await subscriptionState(owner, tenantId)).status).toBe("active");
+    expect((await subscriptionState(owner, tenantId)).metadata.paidThrough).toBeUndefined();
+    expect(await accessModeOf(owner, tenantId)).toBe("full");
+  });
+
+  it("pausar antes da renovação e retomar depois dela cobra um ciclo novo", async () => {
+    await pause();
+
+    // O provedor avança o período mesmo com a fatura anulada: `paid_through` não muda.
+    await sendWebhook([
+      {
+        type: "subscription.updated",
+        subscriptionRef: ref,
+        status: "paused",
+        currentPeriodEnd: inDays(60).toISOString(),
+      },
+    ]);
+    await drain();
+    const row = await subscriptionState(owner, tenantId);
+    await updateSubscription(owner, tenantId, {
+      metadata: owner.json({ ...row.metadata, paidThrough: inDays(-1).toISOString() }),
+    });
+
+    await resume();
+
+    expect(chargeNowOf(0)).toBe(true);
+  });
+
+  it("cobrança recusada ao retomar deixa tudo pausado", async () => {
+    const declined = createStubProvider({
+      resumeSubscription: async () => {
+        throw new Error("card_declined");
+      },
+    });
+    setProvidersForTests([declined]);
+    await pause();
+    await updateSubscription(owner, tenantId, {
+      metadata: owner.json({ paidThrough: inDays(-1).toISOString() }),
+    });
+
+    const response = await resume();
+
+    expect(response.status).toBe(502);
     expect((await subscriptionState(owner, tenantId)).status).toBe("paused");
+    expect(await accessModeOf(owner, tenantId)).toBe("read_only");
+  });
+
+  it("a reconciliação também olha as pausadas", async () => {
+    await pause();
+    stub.remoteSubscription = {
+      ref,
+      status: "canceled",
+      cancelAtPeriodEnd: false,
+    };
+
+    const result = await runBillingReconcile(new Date(), only());
+
+    expect(result.checked).toBe(1);
+    expect((await subscriptionState(owner, tenantId)).status).toBe("canceled");
   });
 
   it("sem capabilities.pause, recusa antes de chamar o provedor", async () => {

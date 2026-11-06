@@ -234,8 +234,16 @@ export interface PaymentProvider {
     input: { atPeriodEnd: boolean },
   ): Promise<void>;
   pauseSubscription?(ctx: PaymentContext, ref: string): Promise<void>;
-  /** Além da spec: desfaz a pausa e o cancelamento agendado. */
-  resumeSubscription?(ctx: PaymentContext, ref: string): Promise<void>;
+  /**
+   * Além da spec: desfaz a pausa e o cancelamento agendado. `chargeNow`: o período pago
+   * acabou durante a pausa, e a retomada abre um ciclo novo, cobrado na hora. Se a cobrança
+   * falhar, lance erro: nada pode voltar sem pagamento.
+   */
+  resumeSubscription?(
+    ctx: PaymentContext,
+    ref: string,
+    input: { chargeNow: boolean },
+  ): Promise<void>;
   /** Além da spec: cobrança avulsa da diferença quando o provedor não prorrateia. */
   chargeOnce?(
     ctx: PaymentContext,

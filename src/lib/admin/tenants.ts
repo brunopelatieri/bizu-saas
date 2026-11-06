@@ -218,7 +218,7 @@ export async function unsuspendTenant(tenantId: string) {
       .update(organization)
       .set({
         status: "active",
-        accessMode: sub && ["expired", "unpaid", "canceled"].includes(sub.status)
+        accessMode: sub && ["expired", "unpaid", "canceled", "paused"].includes(sub.status)
           ? "read_only"
           : "full",
       })

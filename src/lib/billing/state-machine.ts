@@ -342,6 +342,7 @@ function subscriptionUpdated(
       status: "paused",
       reason: "provider_paused",
       patch,
+      accessMode: "read_only",
       applyPendingPrice: period.applyPendingPrice,
     };
   }
@@ -415,6 +416,7 @@ function providerSynced(
       status: "paused",
       reason: "reconciled_paused",
       patch,
+      accessMode: "read_only",
       applyPendingPrice: period.applyPendingPrice,
     };
   }
@@ -550,11 +552,14 @@ export function transition(
     case "pause.requested":
       if (!event.supported) return ignored("pause_not_supported");
       if (current.status !== "active") return ignored("not_active");
+      // Pausa suspende a cobrança: o provedor anula as faturas. Sem cortar o serviço, seria
+      // o plano de graça, e por tempo indeterminado.
       return {
         outcome: "applied",
         status: "paused",
         reason: "paused",
         patch: {},
+        accessMode: "read_only",
       };
 
     case "admin.canceled":

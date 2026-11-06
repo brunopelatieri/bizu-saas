@@ -63,6 +63,7 @@ function SubscriptionCard({
   canManage,
 }: SubscriptionCardProps) {
   const [confirming, setConfirming] = useState(false);
+  const [confirmingPause, setConfirmingPause] = useState(false);
   const cancel = useBillingMutation("Cancelamento agendado.");
   const reactivate = useBillingMutation("Assinatura mantida.");
   const pause = useBillingMutation("Assinatura pausada.");
@@ -124,7 +125,7 @@ function SubscriptionCard({
                 size="sm"
                 variant="outline"
                 disabled={pending}
-                onClick={() => pause.mutate({ path: "/api/billing/pause" })}
+                onClick={() => setConfirmingPause(true)}
               >
                 Pausar
               </Button>
@@ -142,6 +143,21 @@ function SubscriptionCard({
           </div>
         ) : null}
       </CardContent>
+
+      <ConfirmDialog
+        open={confirmingPause}
+        title="Pausar a assinatura?"
+        description="A cobrança para e a organização fica em modo somente leitura até você retomar. Se o período pago terminar antes disso, retomar cobra um ciclo novo na hora."
+        confirmLabel="Pausar"
+        pending={pause.isPending}
+        onCancel={() => setConfirmingPause(false)}
+        onConfirm={() =>
+          pause.mutate(
+            { path: "/api/billing/pause" },
+            { onSettled: () => setConfirmingPause(false) },
+          )
+        }
+      />
 
       <ConfirmDialog
         open={confirming}

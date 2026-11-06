@@ -429,7 +429,7 @@ export async function startCheckout(
     kind: "inline",
     invoiceId,
     pixPayload: result.pixPayload,
-    boletoUrl: result.boletoUrl,
+    boletoUrl: safeUrl(result.boletoUrl),
     boletoLine: result.boletoLine,
     expiresAt: result.expiresAt.toISOString(),
   };
@@ -535,8 +535,13 @@ export async function resumeSubscription(
     );
   }
 
+  // Pausada e com o período pago vencido, volta pagando. Sem data, também: na dúvida, cobra.
+  const { paidThrough } = row.metadata;
+  const chargeNow =
+    row.status === "paused" && (!paidThrough || new Date(paidThrough) <= now);
   const resume = provider.resumeSubscription;
-  await callProvider(() => resume(platformContext(), ref));
+
+  await callProvider(() => resume(platformContext(), ref, { chargeNow }));
 
   return applyOwnerEvent(tenantId, row.id, { type: "resume.requested" }, actor, now);
 }

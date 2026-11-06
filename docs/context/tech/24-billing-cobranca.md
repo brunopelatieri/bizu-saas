@@ -48,7 +48,7 @@ com a linha travada por `lockSubscription` e registra `subscription_event`.
 | `past_due` | `active` | `invoice.paid` |
 | `past_due` | `unpaid` + `read_only` | job `billing.dunning`, após `grace_until` |
 | `unpaid`, `expired`, `canceled` | `active` | `invoice.paid` de checkout novo (reativação) |
-| `active` | `paused` | `POST /api/billing/pause`, só com `capabilities.pause` |
+| `active` | `paused` + `read_only` | `POST /api/billing/pause`, só com `capabilities.pause` |
 | `paused` | `active` | `POST /api/billing/reactivate` ou o provedor retomar |
 | vivo | `canceled` + `read_only`, ou `active` no plano gratuito | fim do período, ou `subscription.canceled` |
 | qualquer | `canceled` + `read_only` | admin (imediato) |
@@ -67,6 +67,10 @@ Regras que não saem da tabela:
   referência, mas a tela oferece checkout.
 - **Evento de outra assinatura não mexe nesta:** `subscription.canceled` da substituída é
   `other_subscription`.
+- **Pausa corta o serviço.** O provedor anula as faturas da pausa: com acesso mantido, seria o
+  plano de graça. `metadata.paidThrough` guarda até quando estava pago. Retomar antes disso não
+  cobra; depois, abre um ciclo novo cobrado na hora (`chargeNow`), e a recusa deixa tudo pausado.
+  Sem isso, pausar um minuto antes da renovação e retomar depois dela daria um ciclo grátis.
 - **`locked` vence:** só `full` vira `read_only` e só `read_only` volta a `full`.
 - **Fora de ordem:** `metadata.lastProviderEventAt` guarda o maior `occurred_at` aplicado, mesmo
   quando o evento não mudou a assinatura. Evento mais antigo vira `ignored`. O mesmo instante
@@ -85,7 +89,7 @@ clique duplo abre o mesmo checkout.
 
 | Mudança | Comportamento |
 |---|---|
-| Upgrade | Imediato. Com `capabilities.proration`, o provedor prorrateia; sem, `prorationCents` + `chargeOnce` |
+| Upgrade | Imediato e só depois da diferença paga. Com `capabilities.proration`, o provedor prorrateia e recusa a troca se a cobrança falhar (502, plano mantido); sem, `prorationCents` + `chargeOnce` |
 | Downgrade | O preço novo entra no provedor sem proração, e o plano local espera em `pending_plan_id` até o fim do período. Assim a próxima fatura não sai com o preço antigo |
 | Comparação | Por valor mensal: anual vale `valor / 12` |
 | Para gratuito | Não existe: é cancelar. No fim do período, migra sozinho |
@@ -183,6 +187,8 @@ Em `tsx` (seed, worker em dev) o `import.meta.glob` não existe: `registry.ts` l
 - Dois checkouts simultâneos para planos diferentes podem ser pagos: o segundo vira alerta, e o
   estorno é manual.
 - Cupom de 100% não ativa no Stripe (fatura de zero é ignorada).
+- Upgrade com boleto: `error_if_incomplete` exige cobrança imediata e tende a recusar quem paga por
+  boleto. Falta conferir em sandbox; a saída seria `pending_if_incomplete`, que não aceita `metadata`.
 - `platform_setting.alert_email` não existe: o alerta fica só no `/admin`.
 - `payment_event` ainda não entra no `maintenance.prune` (fase 10).
 - Checkout personificado só será bloqueado com a personificação (fase 9).

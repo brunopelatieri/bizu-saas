@@ -346,16 +346,17 @@ describe("downgrade.due", () => {
 });
 
 describe("pausa", () => {
-  it("active → paused quando o provedor pausa", () => {
-    expect(
-      applied(
-        transition(
-          snapshot("active"),
-          { type: "pause.requested", supported: true },
-          NOW,
-        ),
-      ).status,
-    ).toBe("paused");
+  it("active → paused corta o acesso: sem cobrança, sem serviço", () => {
+    const decision = applied(
+      transition(
+        snapshot("active"),
+        { type: "pause.requested", supported: true },
+        NOW,
+      ),
+    );
+
+    expect(decision.status).toBe("paused");
+    expect(decision.accessMode).toBe("read_only");
   });
 
   it("sem capabilities.pause é recusada", () => {
@@ -480,10 +481,12 @@ describe("eventos do provedor sobre a assinatura", () => {
   });
 
   it("active → paused e paused → active", () => {
-    expect(
-      applied(transition(snapshot("active"), updated({ status: "paused" }), NOW))
-        .status,
-    ).toBe("paused");
+    const paused = applied(
+      transition(snapshot("active"), updated({ status: "paused" }), NOW),
+    );
+
+    expect(paused.status).toBe("paused");
+    expect(paused.accessMode).toBe("read_only");
     expect(applied(transition(snapshot("paused"), updated(), NOW)).status).toBe(
       "active",
     );
