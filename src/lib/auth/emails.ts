@@ -1,5 +1,7 @@
+import { INVITATION_TTL_SECONDS } from "@/lib/auth/constants";
 import { appLink } from "@/lib/auth/links";
 import { isPendingSignupExpired } from "@/lib/auth/pending-signup";
+import { roleLabel } from "@/lib/auth/permissions";
 import {
   readVerificationClaims,
   recordVerificationIssue,
@@ -11,6 +13,7 @@ import { existingUserSignupTemplate } from "@/lib/email/templates/auth/existing-
 import { passwordChangedTemplate } from "@/lib/email/templates/auth/password-changed";
 import { resetPasswordTemplate } from "@/lib/email/templates/auth/reset-password";
 import { verifyEmailTemplate } from "@/lib/email/templates/auth/verify-email";
+import { inviteMemberTemplate } from "@/lib/email/templates/invite-member";
 
 type Recipient = { id: string; email: string; name: string };
 
@@ -80,6 +83,27 @@ export async function sendChangeEmailDone(
       forgotPasswordUrl: appLink("/esqueci-senha"),
     }),
     tags: { template: "change-email-done" },
+  });
+}
+
+/** O link leva à página que só renderiza no GET: aceitar exige clique e sessão. */
+export async function sendInvitationLink(data: {
+  id: string;
+  role: string;
+  email: string;
+  organization: { name: string };
+  inviter: { user: { name: string } };
+}) {
+  await sendEmail({
+    to: data.email,
+    ...inviteMemberTemplate({
+      inviterName: data.inviter.user.name,
+      tenantName: data.organization.name,
+      roleLabel: roleLabel(data.role),
+      url: appLink(`/convite/${data.id}`),
+      expiresInDays: INVITATION_TTL_SECONDS / (24 * 60 * 60),
+    }),
+    tags: { template: "invite-member" },
   });
 }
 

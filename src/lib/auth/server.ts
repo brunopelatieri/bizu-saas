@@ -1,20 +1,34 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
-import { admin } from "better-auth/plugins";
+import { admin, organization } from "better-auth/plugins";
 import { getDb } from "@/db";
 import * as schema from "@/db/schema";
 import { runInBackground } from "@/lib/auth/background";
-import { AUTH_COOKIE_PREFIX, CLIENT_IP_HEADER } from "@/lib/auth/constants";
+import { audit } from "@/lib/audit";
+import {
+  AUTH_COOKIE_PREFIX,
+  CLIENT_IP_HEADER,
+  INVITATION_TTL_SECONDS,
+  MAX_CUSTOM_ROLES,
+  MAX_TENANTS_PER_USER,
+} from "@/lib/auth/constants";
 import {
   sendChangeEmailApproval,
   sendChangeEmailDone,
   sendExistingUserNotice,
+  sendInvitationLink,
   sendPasswordChangedNotice,
   sendResetPasswordLink,
   sendVerificationLink,
 } from "@/lib/auth/emails";
-import { platformAccessControl, platformRoles } from "@/lib/auth/permissions";
+import {
+  platformAccessControl,
+  platformRoles,
+  tenantAccessControl,
+  tenantRoles,
+} from "@/lib/auth/permissions";
 import { getEnv } from "@/lib/env";
+import { preferredTenantId } from "@/lib/tenant/membership";
 
 function createAuth() {
   const env = getEnv();
@@ -44,8 +58,14 @@ function createAuth() {
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: ({ user, token }) =>
         sendResetPasswordLink(user, token),
-      onPasswordReset: async ({ user }) => {
+      onPasswordReset: async ({ user }, request) => {
         runInBackground(sendPasswordChangedNotice(user));
+        runInBackground(
+          audit("auth.password_reset", {
+            actor: { id: user.id },
+            ip: request?.headers.get(CLIENT_IP_HEADER),
+          }),
+        );
       },
       onExistingUserSignUp: ({ user }) => sendExistingUserNotice(user),
     },
@@ -59,6 +79,12 @@ function createAuth() {
         sendVerificationLink(user, token),
       afterEmailVerification: async (user, request) => {
         runInBackground(sendChangeEmailDone(user, request));
+        runInBackground(
+          audit("auth.email_verified", {
+            actor: { id: user.id },
+            ip: request?.headers.get(CLIENT_IP_HEADER),
+          }),
+        );
       },
     },
 
@@ -78,6 +104,20 @@ function createAuth() {
       expiresIn: 60 * 60 * 24 * 7,
       updateAge: 60 * 60 * 24,
       cookieCache: { enabled: true, maxAge: 300 },
+    },
+
+    // Sessão nova abre no último tenant usado, se a pessoa ainda for membro.
+    databaseHooks: {
+      session: {
+        create: {
+          before: async (session) => ({
+            data: {
+              ...session,
+              activeOrganizationId: await preferredTenantId(session.userId),
+            },
+          }),
+        },
+      },
     },
 
     // Só o reset usa `verification`: o token não fica legível no banco.
@@ -103,6 +143,32 @@ function createAuth() {
         defaultRole: "user",
         adminRoles: ["platform_owner", "platform_support"],
         impersonationSessionDuration: 3600,
+      }),
+      // Só por `auth.api.*`: `/api/auth/organization/*` não responde (`auth-ext.ts`).
+      // `status`, `access_mode` e `settings` do tenant não passam pelo plugin.
+      organization({
+        ac: tenantAccessControl,
+        roles: tenantRoles,
+        creatorRole: "owner",
+        dynamicAccessControl: {
+          enabled: true,
+          maximumRolesPerOrganization: MAX_CUSTOM_ROLES,
+        },
+        allowUserToCreateOrganization: (user) => user.emailVerified,
+        organizationLimit: MAX_TENANTS_PER_USER,
+        invitationExpiresIn: INVITATION_TTL_SECONDS,
+        requireEmailVerificationOnInvitation: true,
+        cancelPendingInvitationsOnReInvite: true,
+        // Exclusão de tenant tem carência e fluxo próprio (fase 10).
+        disableOrganizationDeletion: true,
+        sendInvitationEmail: (data) => sendInvitationLink(data),
+        schema: {
+          organizationRole: {
+            additionalFields: {
+              description: { type: "string", required: false, input: true },
+            },
+          },
+        },
       }),
     ],
 

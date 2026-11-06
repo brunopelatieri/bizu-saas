@@ -45,6 +45,7 @@ Standalone, com `noindex`, sem `loader` nem `action`:
 | `/verificar-email` | `src/routes/auth/verify-email.tsx` | Renderiza; o botao consome `?token=` |
 | `/esqueci-senha` | `src/routes/auth/forgot-password.tsx` | Pede o link de reset |
 | `/redefinir-senha` | `src/routes/auth/reset-password.tsx` | Renderiza; o formulario consome `?token=` |
+| `/convite/:id` | `src/routes/auth/invite.tsx` | Renderiza; o botao aceita o convite |
 
 ### Blog
 

@@ -111,14 +111,40 @@ Conferidos no código do Better Auth 1.7.18. Em cada caso seguiu a alternativa m
 | `platform_support` só sem `delete`, `set-role` e `set-password` | Também sem `ban` e sem `session.revoke` | O plugin não compara o papel do alvo: o suporte baniria o proprietário. `spec-tenant-rbac.md` não dá essas ações ao suporte |
 | Cadastro pendente sem prazo | Expira em 24 h: sem link novo, e novo cadastro recria a conta | Conta pendente guarda a senha de quem cadastrou. A janela de 24 h é risco aceito pelo usuário, que manteve a confirmação em um clique (`tech/16-bugs-riscos.md`, RISK-006) |
 
+### Desvios da SPEC na fase 4 (tenant e RBAC)
+
+Conferidos no código do Better Auth 1.7.18. Em cada caso seguiu a alternativa mais segura.
+
+| Previsto | Implementado | Motivo |
+|---|---|---|
+| Plugin com rotas HTTP; `authClient.organization.setActive` | `/api/auth/organization/*` responde 404; tudo passa por rotas próprias e `auth.api.*`; troca em `POST /api/tenant/active`, sem `organizationClient` | As rotas do plugin pulam `requireTenant`, reservadas, último owner com trava e auditoria |
+| Reservadas em `beforeCreateOrgRole`/`beforeUpdateOrgRole` | `roleSchema` nas rotas `/api/roles` | Esses hooks não existem na 1.7.18 |
+| `requirePermission` chama `auth.api.hasPermission` | Lista única de `loadRoleCatalog`, usada também por `/api/me`; teste compara com `hasPermission` | Evita outra leitura de sessão por checagem e `/api/me` precisaria da lista de qualquer forma |
+| `requirePermission("customer:delete")` | `requirePermission("customer", "delete")` | Forma pedida na fase, tipada pelo catálogo |
+| Só `admin` não altera `owner` | `canActOnRole`: ninguém concede ou altera papel com mais permissões que o seu | Papel personalizado com `member:update` promoveria alguém a `admin` |
+| Último owner pela checagem do plugin | Troca de papel e remoção próprias, em transação com `FOR UPDATE` | Dois owners se rebaixando ao mesmo tempo deixavam o tenant sem nenhum |
+| Colunas extras por `additionalFields` | Colunas lidas por Drizzle; o plugin não as conhece | Nada delas entra pela API do plugin; `requireTenant` já as lê direto |
+| `billing_profile_id` em `organization` | Fora | `spec-dados.md` usa `billing_profile.tenant_id`; chega com a fase 5 |
+| `organization_role.permission` jsonb | `text` | O plugin grava e relê JSON serializado; em jsonb viraria uma string dentro do JSON |
+| `withTenant` em `src/db/tenant.ts`, `tenantPolicy` em `src/db/rls.ts` | `withTenant` em `src/db/rls.ts`; `tenantPolicy` em `src/db/tenant-policy.ts` | O Drizzle Kit carrega o schema sem `@/` nem ambiente; `rls.ts` importa a conexão |
+| Policy `to bizu_app` | `to bizu_app, bizu_owner` | Com `FORCE`, o dono sem policy não acessa nada, e o seed precisa gravar |
+| `/app/equipe/papeis` | Seção em `/app/configuracoes` | Pedido da fase; `GET /api/roles` exige `role:create`, porque o catálogo não tem `role:read` |
+| `callbackURL=/convite/:id/aceitar` na verificação | Onboarding lista os convites abertos do e-mail verificado | A verificação pode ocorrer em outro aparelho; o link do e-mail ignora a `url` do Better Auth |
+| `customer` em `rls.test.ts` | `audit_log` | `customer` chega na fase 8; o inventário cobrirá |
+| `tenant_id` em `email_message` | Sem a coluna | `spec-dados.md` a deixa sem RLS, e o inventário exige RLS em toda tabela com a coluna |
+
+Fora desta fase: perfil de cobrança e trial no onboarding, `checkLimit`, `POST /api/team/transfer`
+(dá para promover outro owner e se rebaixar), sair da organização, `/trocar-organizacao`,
+`/app/auditoria` e `DELETE /api/tenant`.
+
 ## Não verificado (marcar antes de implementar)
 
 - Better Auth, conferido na 1.7.18: token de verificação é JWT HS256; `expiresIn` vale;
   `beforeEmailVerification` não expõe o token, mas a `request` traz a URL com ele; o campo
   da sessão se chama `impersonatedBy`; `send-verification-email` responde igual para e-mail
   inexistente quando não há sessão.
-- Drizzle Kit: geração de `pgPolicy` com papel próprio e `FORCE ROW LEVEL SECURITY`
-  (precisa migration customizada).
+- Drizzle Kit, conferido na 0.31: gera `pgPolicy` com papel próprio em string, sem `entities.roles`;
+  `FORCE ROW LEVEL SECURITY` fica em migration customizada.
 - Stripe: Connect com contas conectadas brasileiras; `application_fee_amount`;
   cartão no Brasil (assumido disponível); assinatura por boleto (listada como
   "recurring ✓" mas "off-session ✗").

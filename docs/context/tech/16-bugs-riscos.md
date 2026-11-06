@@ -93,6 +93,14 @@ Status:
 
 - Dependencia removida com `npm uninstall next-themes`.
 
+### BUG-006 — DELETE respondia 500 no servidor Node (corrigido)
+
+O `bodyLimit` do Hono remonta a `Request` quando não há `Content-Length`, como em todo DELETE
+do navegador. O `react-router-hono-server` liga o @hono/node-server com
+`overrideGlobalObjects: false`, e o construtor nativo não aceita o objeto dele. Os testes não
+viam: `api.request()` entrega um `Request` nativo, e `serve()` usa `true`. Corrigido com
+`overrideGlobalObjects: true` em `src/server.ts`. Regressão em `tests/db/tenant-http.test.ts`.
+
 ### RISK-001 — `/api/contact` ainda nao usava Zod (corrigido)
 
 Estado atual:

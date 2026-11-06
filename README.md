@@ -182,11 +182,23 @@ Better Auth com sessão em cookie, sobre o mesmo Postgres. Antes do primeiro ace
 
 1. Com `npm run dev` no ar, cadastre-se em `http://localhost:5173/cadastro`.
 2. Abra o Mailpit em `http://localhost:8025` e clique no link recebido.
-3. Na página aberta, clique em **Confirmar meu e-mail**. Você entra em `/app`.
+3. Na página aberta, clique em **Confirmar meu e-mail**.
+4. Em `/app/onboarding`, crie sua organização (nome e identificador). Você vira proprietário
+   dela e entra em `/app`.
 
 O link vale por 1 hora e só pode ser usado uma vez; abrir a página não o consome. Sem
 confirmar, o login responde 403. Para testar a recuperação de senha, use `/esqueci-senha`;
 a troca de e-mail fica em `/app/configuracoes`.
+
+**Convidar a equipe:**
+
+1. Em `/app/equipe`, informe o e-mail e o papel e clique em **Enviar convite**.
+2. Em outro navegador ou aba anônima, abra o link que chegou no Mailpit. A página mostra o
+   convite; abri-la não o consome.
+3. Cadastre-se com o e-mail do convite e confirme. O onboarding mostra o convite aberto.
+4. Clique em **Aceitar convite**. A pessoa entra em `/app` com as permissões do papel.
+
+O convite vale 48 horas. Papéis personalizados ficam em `/app/configuracoes`.
 
 Ainda não há seed. Para virar proprietário da plataforma, promova sua conta:
 
@@ -194,7 +206,7 @@ Ainda não há seed. Para virar proprietário da plataforma, promova sua conta:
 update "user" set role = 'platform_owner' where email = 'voce@empresa.com';
 ```
 
-Detalhes em `docs/context/tech/08-auth.md`.
+Detalhes em `docs/context/tech/08-auth.md` e `docs/context/tech/21-tenant-rbac.md`.
 
 ### Testes
 

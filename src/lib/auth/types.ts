@@ -6,6 +6,24 @@ export const PLATFORM_ROLES = [
 
 export type PlatformRole = (typeof PLATFORM_ROLES)[number];
 
+/** Organização de que a pessoa faz parte. */
+export type TenantSummary = {
+  id: string;
+  slug: string;
+  name: string;
+  role: string;
+  status: string;
+};
+
+/** Resposta de `GET /api/me`. `features` e `limits` chegam com a fase 5. */
+export type MeResponse = {
+  user: AuthUser;
+  tenants: TenantSummary[];
+  permissions: string[];
+  features: string[];
+  limits: Record<string, number>;
+};
+
 /** Usuário independente de provedor, usado pela interface e pela API. */
 export type AuthUser = {
   id: string;
@@ -40,7 +58,7 @@ function toPlatformRole(role: string | null | undefined): PlatformRole {
 
 /**
  * Converte a sessão do Better Auth em `AuthUser`. Usada pela API e pelo cliente.
- * 2FA (fase 9) e tenant ativo (fase 4) ainda não existem.
+ * O tenant ativo vem de `GET /api/me`; 2FA (fase 9) ainda não existe.
  */
 export function toAuthUser({ user, session }: SessionData): AuthUser {
   return {

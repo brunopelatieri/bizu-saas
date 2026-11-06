@@ -1,6 +1,6 @@
 import type { MetaFunction } from "react-router";
 import { useLocation } from "react-router";
-import { dashboardTitleFromPath } from "@/lib/constants/dashboard-nav";
+import { appTitleFromPath } from "@/lib/constants/app-nav";
 
 export const meta: MetaFunction = () => [
   { title: "Em breve — Bizu SaaS" },
@@ -9,7 +9,7 @@ export const meta: MetaFunction = () => [
 
 export default function ComingSoon() {
   const { pathname } = useLocation();
-  const title = dashboardTitleFromPath(pathname);
+  const title = appTitleFromPath(pathname);
 
   return (
     <div className="flex flex-col items-center justify-center py-24 text-center">

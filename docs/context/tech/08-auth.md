@@ -2,14 +2,14 @@
 
 - **Escopo:** Better Auth da equipe e da plataforma, verificação de e-mail, sessão e papéis.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-auth.md`, `spec-seguranca.md`
-- **Paths do código:** `src/lib/auth/`, `src/api/auth.ts`, `src/api/auth-ext.ts`, `src/api/verification-guard.ts`, `src/db/schema/auth.ts`, `src/lib/schemas/auth.ts`, `src/lib/email/templates/auth/`, `src/providers/auth-provider.tsx`, `src/components/auth/`, `src/pages/*-page.tsx`, `src/routes/auth/`
+- **Paths do código:** `src/lib/auth/`, `src/api/auth.ts`, `src/api/auth-ext.ts`, `src/api/guards.ts`, `src/api/verification-guard.ts`, `src/db/schema/auth.ts`, `src/lib/schemas/auth.ts`, `src/lib/email/templates/auth/`, `src/providers/auth-provider.tsx`, `src/components/auth/`, `src/pages/*-page.tsx`, `src/routes/auth/`
 
-## Estado atual (fase 2)
+## Estado atual
 
-Instância `auth`, para plataforma e equipe, com sessão em cookie no Postgres. Ainda não
-existem: `portalAuth` (fase 8), organizações (fase 4), 2FA e personificação (fase 9),
-`audit_log` (fase 4) e `consent_log` (fase 10). Até lá, nada grava auditoria e o aceite
-de termos é exigido, mas não registrado.
+Instância `auth`, para plataforma e equipe, com sessão em cookie no Postgres e o plugin
+`organization` (`tech/21-tenant-rbac.md`). Ainda não existem: `portalAuth` (fase 8), 2FA e
+personificação (fase 9) e `consent_log` (fase 10); o aceite de termos é exigido, mas não
+registrado.
 
 | Peça | Arquivo | Papel |
 |---|---|---|
@@ -19,7 +19,7 @@ de termos é exigido, mas não registrado.
 | E-mails | `src/lib/auth/emails.ts` | monta link com `APP_URL`, grava a emissão e chama `sendEmail` |
 | Servidor | `src/api/auth.ts` | `requireAuth` e `requirePlatform` |
 | Cliente | `src/lib/auth/client.ts`, `src/providers/auth-provider.tsx` | `authClient`, `useAuth()` |
-| Papéis | `src/lib/auth/permissions.ts` | `user`, `platform_owner`, `platform_support` em `user.role` |
+| Papéis | `src/lib/auth/permissions.ts` | plataforma em `user.role`; catálogo e papéis do tenant, compartilhados com o cliente |
 
 ## Rotas
 
@@ -30,6 +30,7 @@ de termos é exigido, mas não registrado.
 | `GET /api/auth/verify-email` | `auth-ext.ts` | 405: o token nunca é consumido em GET |
 | `POST /api/auth-ext/resend-verification` | `auth-ext.ts` | `{ ok: true }`; 3 por 15 min por IP, 3 por hora por e-mail |
 | `POST /api/auth-ext/forgot-password` | `auth-ext.ts` | `{ ok: true }`; 3 por 15 min por IP |
+| `/api/auth/organization/*` | `auth-ext.ts` | 404: as regras de tenant ficam nas rotas próprias; use `auth.api.*` |
 | demais `/api/auth/*` | Better Auth | `sign-in/email`, `sign-out`, `reset-password`, `change-email`, `get-session`, `admin/*` |
 
 Desligados por HTTP em `disabledPaths`, disponíveis em `auth.api.*`:
@@ -85,6 +86,11 @@ quando `afterEmailVerification` roda o usuário já tem o novo.
   de 5 min do cookie vale só para `/get-session`, que alimenta a interface.
 - `apiFetch`, ao receber 401 em `/app`, encerra a sessão antes de ir ao login. Sem isso o
   cache do cookie devolveria para `/app`, em ciclo.
+- `requireAuth` expõe `activeOrganizationId`; `requireTenant` e `requirePermission` ficam em
+  `src/api/permissions.ts`.
+- O cache do cookie guarda o tenant ativo antigo por até 5 minutos: nada lê esse valor, e
+  chamadas a `auth.api.*` passam `organizationId`.
+- Sessão nova abre no último tenant usado (`databaseHooks.session.create.before`).
 - `requirePlatform()` vem depois de `requireAuth`; passe `["platform_owner"]` nas rotas que
   o suporte não pode usar. O 2FA obrigatório entra na fase 9.
 - `platform_support` só lê em `/api/auth/admin/*`: o plugin não compara o papel do alvo, e
@@ -116,9 +122,10 @@ update "user" set role = 'platform_owner' where email = 'voce@empresa.com';
 - Falha fechada: Auth indisponível não abre rota.
 - Respostas de cadastro, reenvio, reset e troca de e-mail não revelam se o e-mail existe.
 - Trabalho que depende de o e-mail existir roda em `runInBackground`: a resposta sai antes.
-- Handler novo em `/api/auth/*` passa por `forwardedHeaders` e remonta o `Request`: no
-  servidor Node, `c.req.raw` não é aceito por `new Request()`. Teste em
-  `tests/db/auth-http.test.ts`, porque `api.request()` não reproduz isso.
+- Handler novo em `/api/auth/*` passa por `forwardedHeaders` e remonta o `Request`, para
+  mandar o IP resolvido. Teste em `tests/db/auth-http.test.ts`: `api.request()` entrega um
+  `Request` nativo, e o servidor Node, um objeto próprio.
+- Verificação e reset gravam `auth.email_verified` e `auth.password_reset` em `audit_log`.
 - O log de requisições passa por `redactTokens` (`src/api/request-logger.ts`).
 - Schema do Better Auth é escrito à mão a partir de `getAuthTables`. `@better-auth/cli`
   1.4 não acompanha a 1.7 e traz Prisma e `better-sqlite3` como dependências.

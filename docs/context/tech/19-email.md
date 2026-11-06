@@ -75,6 +75,12 @@ Em `templates/auth/`, enviados por `src/lib/auth/emails.ts` com `sendEmail`:
 provedor, então o tempo não revela se o e-mail existe. Links vêm de `appLink`
 (`src/lib/auth/links.ts`).
 
+## Convite de equipe
+
+`sendInvitationLink` (`src/lib/auth/emails.ts`) envia `invite-member` com link para
+`/convite/:id`, página que só renderiza no GET. Como os de autenticação, corre em
+`runInBackground`.
+
 ## Como escrever um template
 
 ```ts

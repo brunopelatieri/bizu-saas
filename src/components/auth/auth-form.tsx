@@ -33,7 +33,13 @@ import {
 import { useAuth } from "@/providers/auth-provider";
 
 /** Tela depois do cadastro. A mesma para e-mail novo e existente. */
-function CheckEmailNotice({ email }: { email: string }) {
+function CheckEmailNotice({
+  email,
+  loginPath,
+}: {
+  email: string;
+  loginPath: string;
+}) {
   return (
     <div className="grid gap-4 text-sm">
       <div className="flex items-start gap-3">
@@ -48,7 +54,7 @@ function CheckEmailNotice({ email }: { email: string }) {
       </div>
       <ResendVerification email={email} />
       <p className="text-center text-muted-foreground">
-        <Link to="/login" className={authLinkClassName}>
+        <Link to={loginPath} className={authLinkClassName}>
           Já confirmei, entrar
         </Link>
       </p>
@@ -173,14 +179,23 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
   );
 }
 
-export function SignupForm() {
+type SignupFormProps = {
+  /** Cadastro por convite: o e-mail é o do convite. */
+  lockedEmail?: string;
+  loginPath?: string;
+};
+
+export function SignupForm({
+  lockedEmail,
+  loginPath = "/login",
+}: SignupFormProps) {
   const { signUp } = useAuth();
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const form = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
       name: "",
-      email: "",
+      email: lockedEmail ?? "",
       password: "",
       termsVersion: TERMS_VERSION,
     },
@@ -200,7 +215,9 @@ export function SignupForm() {
     }
   }
 
-  if (submittedEmail) return <CheckEmailNotice email={submittedEmail} />;
+  if (submittedEmail) {
+    return <CheckEmailNotice email={submittedEmail} loginPath={loginPath} />;
+  }
 
   return (
     <div className="grid w-full gap-4">
@@ -240,6 +257,7 @@ export function SignupForm() {
                     type="email"
                     autoComplete="email"
                     placeholder="voce@empresa.com"
+                    readOnly={Boolean(lockedEmail)}
                     className={authInputClassName}
                   />
                 </FormControl>
@@ -310,7 +328,7 @@ export function SignupForm() {
 
       <p className="text-center text-sm text-muted-foreground">
         Já tem conta?{" "}
-        <Link to="/login" className={authLinkClassName}>
+        <Link to={loginPath} className={authLinkClassName}>
           Entrar
         </Link>
       </p>

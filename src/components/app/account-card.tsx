@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { apiFetch } from "@/lib/api/client";
+import { roleLabel } from "@/lib/auth/permissions";
 import type { AuthUser } from "@/lib/auth/types";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -10,7 +11,7 @@ import { useAuth } from "@/providers/auth-provider";
  * protegido por `requireAuth`.
  */
 export function AccountCard() {
-  const { user } = useAuth();
+  const { user, tenant } = useAuth();
 
   const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ["me", user?.id],
@@ -50,6 +51,12 @@ export function AccountCard() {
             <dt className="text-muted-foreground">E-mail</dt>
             <dd className="break-all text-foreground">
               {data.user.email}
+            </dd>
+            <dt className="text-muted-foreground">Organização</dt>
+            <dd className="text-foreground">{tenant?.name}</dd>
+            <dt className="text-muted-foreground">Papel</dt>
+            <dd className="text-foreground">
+              {tenant ? roleLabel(tenant.role) : null}
             </dd>
           </dl>
         )}

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -22,19 +23,19 @@ import {
 } from "@/lib/auth/user-display";
 import { cn } from "@/lib/utils";
 
-type DashboardUserMenuProps = {
+type AppUserMenuProps = {
   user: AuthUser | null;
   collapsed?: boolean;
   onSignOut: () => void;
   className?: string;
 };
 
-export function DashboardUserMenu({
+export function AppUserMenu({
   user,
   collapsed = false,
   onSignOut,
   className,
-}: DashboardUserMenuProps) {
+}: AppUserMenuProps) {
   const displayName = getUserDisplayName(user);
   const initials = getUserInitials(user);
   const email = user?.email ?? "";
@@ -68,12 +69,14 @@ export function DashboardUserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger render={triggerButton} />
       <DropdownMenuContent align="end" side="top" className="w-56">
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col gap-1">
-            <span className="text-sm font-medium">{displayName}</span>
-            <span className="text-xs text-muted-foreground">{email}</span>
-          </div>
-        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col gap-1">
+              <span className="text-sm font-medium">{displayName}</span>
+              <span className="text-xs text-muted-foreground">{email}</span>
+            </div>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem render={<Link to="/app/configuracoes" />}>
           <Settings />

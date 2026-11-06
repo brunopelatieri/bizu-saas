@@ -15,7 +15,11 @@ export type AuthEnv = {
   };
 };
 
-export type ResolvedSession = { user: AuthUser; session: AuthSession };
+export type ResolvedSession = {
+  user: AuthUser;
+  session: AuthSession;
+  activeOrganizationId?: string | null;
+};
 
 /** Retorna a sessão dos cookies, `null` se não houver e lança se o Auth falhar. */
 export type ResolveSession = (headers: Headers) => Promise<ResolvedSession | null>;
@@ -35,6 +39,7 @@ const resolveSession: ResolveSession = async (headers) => {
   return {
     user: toAuthUser(result),
     session: { id: result.session.id, expiresAt: result.session.expiresAt },
+    activeOrganizationId: result.session.activeOrganizationId,
   };
 };
 
@@ -74,8 +79,7 @@ export function createRequireAuth(resolve: ResolveSession) {
 
     c.set("user", resolved.user);
     c.set("session", resolved.session);
-    // A organização ativa entra com o plugin `organization` (fase 4).
-    c.set("activeOrganizationId", null);
+    c.set("activeOrganizationId", resolved.activeOrganizationId ?? null);
     await next();
   });
 }

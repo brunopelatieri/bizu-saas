@@ -68,7 +68,7 @@ api.get("/api/notes", authRateLimit, requireAuth, async (c) => {
 
 1. Crie o route module em `src/routes/app.notes.tsx`, com `meta` e sem `loader`.
 2. Registre em `src/routes.ts`, dentro do layout de `/app`.
-3. Adicione o item em `src/lib/constants/dashboard-nav.ts` (menu e título).
+3. Adicione o item em `src/lib/constants/app-nav.ts` (menu e título).
 4. Busque os dados com TanStack Query e `apiFetch`, seguindo `AccountCard`.
 
 ```ts

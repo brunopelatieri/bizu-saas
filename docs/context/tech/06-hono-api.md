@@ -2,7 +2,7 @@
 
 - **Escopo:** Rotas `/api/*`, validação Zod e montagem no servidor único.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`
-- **Paths do código:** `src/api/auth.ts`, `src/api/auth-ext.ts`, `src/api/verification-guard.ts`, `src/api/rate-limit.ts`, `src/api/request-logger.ts`, `src/api/log.ts`, `src/api/app.ts`, `src/api/ready.ts`, `src/api/webhooks-email.ts`, `src/components/contact/contact-form.tsx`, `src/lib/schemas/contact.ts`, `src/server.ts`
+- **Paths do código:** `src/api/auth.ts`, `src/api/auth-ext.ts`, `src/api/guards.ts`, `src/api/permissions.ts`, `src/api/tenant-errors.ts`, `src/api/me.ts`, `src/api/tenant.ts`, `src/api/team.ts`, `src/api/roles.ts`, `src/api/invitations.ts`, `src/api/verification-guard.ts`, `src/api/rate-limit.ts`, `src/api/request-logger.ts`, `src/api/log.ts`, `src/api/app.ts`, `src/api/ready.ts`, `src/api/webhooks-email.ts`, `src/components/contact/contact-form.tsx`, `src/lib/schemas/contact.ts`, `src/server.ts`
 
 
 ## 6. Hono API
@@ -16,13 +16,18 @@ Rotas atuais:
 | GET | `/api/health` | Liveness simples |
 | GET | `/api/ready` | Prontidão: `{ db, jobs }` (`SELECT 1` e fila `email.send`, timeout 2 s cada); 503 se algum falhar (`src/api/ready.ts`) |
 | POST | `/api/webhooks/email/:provider` | Eventos de entrega, bounce e reclamação do provedor de e-mail (`src/api/webhooks-email.ts`): corpo bruto, assinatura conferida antes do JSON (400 se inválida), 404 se `:provider` não for o configurado; hard bounce e reclamação criam `email_suppression` |
-| GET | `/api/me` | Rota privada: `{ user, tenants, features, limits }` |
+| GET | `/api/me` | Rota privada: `{ user, tenants, permissions, features, limits }` |
+| GET | `/api/me/invitations` | Convites abertos para o e-mail da sessão |
+| GET, POST, PATCH | `/api/tenant`, `/api/tenant/active` | Criar, ler, editar e trocar o tenant ativo |
+| GET, POST, PATCH, DELETE | `/api/team/*` | Equipe e convites |
+| GET, POST, PATCH, DELETE | `/api/roles/*` | Papéis personalizados |
+| GET, POST | `/api/invitations/:id`, `/:id/accept` | Lado de quem recebe o convite |
 | POST | `/api/contact` | Persiste mensagem em `contact_messages` |
 | POST | `/api/auth/sign-up/email` | Cadastro, com `signupSchema` e corpo uniforme |
 | POST | `/api/auth/verify-email` | Consome o link, atras do `verificationGuard` |
 | POST | `/api/auth-ext/resend-verification` | Reenvio, sempre `{ ok: true }` |
 | POST | `/api/auth-ext/forgot-password` | Pedido de reset, sempre `{ ok: true }` |
-| GET, POST | `/api/auth/*` | Demais rotas do Better Auth |
+| GET, POST | `/api/auth/*` | Demais rotas do Better Auth; `/api/auth/organization/*` responde 404 |
 
 Autenticacao:
 
@@ -31,6 +36,11 @@ Autenticacao:
 - Sem cookie ou com sessao invalida: 401. E-mail nao verificado: 403
   `EMAIL_NOT_VERIFIED`. Auth indisponivel: 503.
 - `requirePlatform()` vem depois de `requireAuth` e recusa com 403 quem nao e da plataforma.
+- Rota de tenant: `requireAuth` + `requireTenant` + `requirePermission(recurso, acao)`
+  (`src/api/permissions.ts`). Regras e tabela de rotas em `tech/21-tenant-rbac.md`.
+- Essas rotas nao importam `@/db`: o Biome recusa (`biome.json`), e os dados passam por
+  `src/lib/tenant/`. Erros saem por `handleTenantError`.
+- Id de rota usa `validId`: malformado responde 404 sem chegar ao banco.
 - Toda rota privada usa `authRateLimit` (60 por minuto) antes de `requireAuth`, porque
   cada sessao validada consulta o banco. O `ProtectedRoute` nao protege dados.
 - No cliente, use `apiFetch` (`src/lib/api/client.ts`): envia cookies, padroniza erros em
@@ -47,7 +57,11 @@ Protecoes:
 - O limite fica em memoria: com varias instancias, use um store compartilhado.
 - `rateLimit({ key })` conta por outra chave; `/api/auth-ext/resend-verification` usa o
   hash do e-mail.
-- `/api/auth/*` e `/api/auth-ext/*` usam `bodyLimit` de 16 KB e `sameOrigin`.
+- `/api/auth/*`, `/api/auth-ext/*` e as rotas de tenant usam `jsonBodyLimit` (16 KB) e
+  `sameOrigin` (`src/api/guards.ts`).
+- `src/server.ts` liga `overrideGlobalObjects`: sem `Content-Length`, como em todo DELETE do
+  navegador, o `bodyLimit` remonta a `Request` e responderia 500. Teste rota nova com corpo
+  ou DELETE em `tests/db/tenant-http.test.ts`; `api.request()` nao passa por esse caminho.
 - O log de requisicoes e `requestLogger` (`src/api/request-logger.ts`), que mascara
   `?token=`. O logger padrao do `react-router-hono-server` fica desligado.
 - Respostas 5xx nao consomem tentativa; erros de validacao, sim.

@@ -1,6 +1,8 @@
 import { BarChart3, CreditCard, UserCog, Users } from "lucide-react";
 import { Link } from "react-router";
-import { AccountCard } from "@/components/dashboard/account-card";
+import { AccountCard } from "@/components/app/account-card";
+import { useTeam } from "@/components/app/team/team-api";
+import { useCan } from "@/components/auth/can";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,55 +12,64 @@ import {
 } from "@/components/ui/card";
 import { useAuth } from "@/providers/auth-provider";
 
-const stats = [
-  {
-    label: "Clientes",
-    value: "0",
-    icon: Users,
-    href: "/app/clientes",
-    description: "Nenhum cliente cadastrado ainda",
-  },
-  {
-    label: "Equipe",
-    value: "1",
-    icon: UserCog,
-    href: "/app/equipe",
-    description: "Só você por enquanto",
-  },
-  {
-    label: "Assinatura",
-    value: "Trial",
-    icon: CreditCard,
-    href: "/app/assinatura",
-    description: "Plano e faturas da sua conta",
-  },
-];
-
-const quickActions = [
-  {
-    label: "Cadastrar cliente",
-    description: "Adicione um cliente ou lead e envie o acesso ao portal.",
-    href: "/app/clientes",
-    icon: Users,
-  },
-  {
-    label: "Convidar equipe",
-    description: "Convide colaboradores e defina o papel de cada um.",
-    href: "/app/equipe",
-    icon: UserCog,
-  },
-  {
-    label: "Escolher plano",
-    description: "Veja os planos e pague por Pix, boleto ou cartão.",
-    href: "/app/assinatura",
-    icon: CreditCard,
-  },
-];
-
 export function DashboardPage() {
-  const { user } = useAuth();
+  const { user, tenant } = useAuth();
+  const can = useCan();
+  const team = useTeam();
 
   const firstName = user?.name.split(" ")[0] ?? "usuário";
+  const memberCount = team.data?.members.length;
+
+  const stats = [
+    {
+      label: "Clientes",
+      value: "0",
+      icon: Users,
+      href: "/app/clientes",
+      description: "Nenhum cliente cadastrado ainda",
+      visible: can("customer", "read"),
+    },
+    {
+      label: "Equipe",
+      value: memberCount === undefined ? "–" : String(memberCount),
+      icon: UserCog,
+      href: "/app/equipe",
+      description: memberCount === 1 ? "Só você por enquanto" : "Membros ativos",
+      visible: true,
+    },
+    {
+      label: "Assinatura",
+      value: "Trial",
+      icon: CreditCard,
+      href: "/app/assinatura",
+      description: "Plano e faturas da sua conta",
+      visible: can("billing", "read"),
+    },
+  ];
+
+  const quickActions = [
+    {
+      label: "Cadastrar cliente",
+      description: "Adicione um cliente ou lead e envie o acesso ao portal.",
+      href: "/app/clientes",
+      icon: Users,
+      visible: can("customer", "create"),
+    },
+    {
+      label: "Convidar equipe",
+      description: "Convide colaboradores e defina o papel de cada um.",
+      href: "/app/equipe",
+      icon: UserCog,
+      visible: can("invitation", "create"),
+    },
+    {
+      label: "Escolher plano",
+      description: "Veja os planos e pague por Pix, boleto ou cartão.",
+      href: "/app/assinatura",
+      icon: CreditCard,
+      visible: can("billing", "manage"),
+    },
+  ].filter(({ visible }) => visible);
 
   return (
     <div className="space-y-8">
@@ -67,15 +78,16 @@ export function DashboardPage() {
           Olá, {firstName}! 👋
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Bem-vindo à sua conta. Comece cadastrando clientes ou convidando a
-          equipe.
+          Você está em {tenant?.name}.
         </p>
       </div>
 
       <AccountCard />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {stats.map(({ label, value, icon: Icon, href, description }) => (
+        {stats
+          .filter(({ visible }) => visible)
+          .map(({ label, value, icon: Icon, href, description }) => (
           <Link key={label} to={href}>
             <Card className="group cursor-pointer transition-shadow hover:shadow-md">
               <CardHeader className="flex flex-row items-center justify-between pb-2">

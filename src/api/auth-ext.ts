@@ -2,8 +2,12 @@ import { createHash } from "node:crypto";
 import { zValidator } from "@hono/zod-validator";
 import type { Context } from "hono";
 import { Hono } from "hono";
-import { bodyLimit } from "hono/body-limit";
-import { createMiddleware } from "hono/factory";
+import {
+  jsonBodyLimit,
+  MINUTE,
+  sameOrigin,
+  validationError,
+} from "@/api/guards";
 import { clientKey, rateLimit } from "@/api/rate-limit";
 import {
   INVALID_LINK_MESSAGE,
@@ -14,15 +18,12 @@ import { CLIENT_IP_HEADER } from "@/lib/auth/constants";
 import { purgeExpiredPendingSignup } from "@/lib/auth/pending-signup";
 import { getAuth } from "@/lib/auth/server";
 import { readVerificationClaims } from "@/lib/auth/verification-issue";
-import { getEnv } from "@/lib/env";
 import {
   emailOnlySchema,
   signupSchema,
   type VerificationStep,
   verifyEmailSchema,
 } from "@/lib/schemas/auth";
-
-const MINUTE = 60 * 1000;
 
 /** O IP resolvido por `TRUSTED_PROXY_HOPS`, sobrescrevendo o que o cliente mandar. */
 function forwardedHeaders(c: Context) {
@@ -32,37 +33,6 @@ function forwardedHeaders(c: Context) {
   headers.delete("Content-Length");
   return headers;
 }
-
-const jsonBodyLimit = bodyLimit({
-  maxSize: 16 * 1024,
-  onError: (c) => c.json({ error: "Requisição muito grande." }, 413),
-});
-
-/**
- * Recusa `Origin` de outro site. O Better Auth só faz isso quando a requisição traz
- * cookie: sem esta checagem, cadastro e login aceitariam envio de qualquer origem.
- */
-const sameOrigin = createMiddleware(async (c, next) => {
-  const origin = c.req.header("Origin");
-
-  if (origin && origin !== new URL(getEnv().APP_URL).origin) {
-    return c.json({ error: "Origem não permitida." }, 403);
-  }
-
-  await next();
-});
-
-const validationError = (
-  result: { success: boolean; error?: { issues: { message: string }[] } },
-  c: Context,
-) => {
-  if (!result.success) {
-    return c.json(
-      { error: result.error?.issues[0]?.message ?? "Dados inválidos." },
-      400,
-    );
-  }
-};
 
 /** O corpo do Better Auth não diz em que etapa o token estava. */
 function verificationStep(token: string): VerificationStep {
@@ -96,6 +66,9 @@ const rateLimitByEmail = rateLimit({
  *   visita. Aqui só existe POST, atrás do `verificationGuard`.
  * - `/api/auth-ext/*`: respondem `{ ok: true }` na hora, antes de saber se o e-mail
  *   existe. O trabalho segue em segundo plano.
+ * - `/api/auth/organization/*`: fechado. Tenant, equipe e papéis passam pelas rotas
+ *   próprias (`tenant.ts`, `team.ts`, `roles.ts`), que aplicam `requireTenant`, permissões
+ *   reservadas, regra de último owner e auditoria; o plugin só responde a `auth.api.*`.
  */
 export const authRoutes = new Hono();
 
@@ -154,9 +127,13 @@ authRoutes.post(
   },
 );
 
+authRoutes.all("/api/auth/organization/*", (c) =>
+  c.json({ error: "Não encontrado." }, 404),
+);
+
 authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
-  // Remontada: no servidor Node, `c.req.raw` é um objeto do @hono/node-server que o
-  // construtor de `Request` não aceita. O `jsonBodyLimit` já limitou o corpo.
+  // Remontada para levar o IP resolvido em `forwardedHeaders`. O `jsonBodyLimit` já
+  // limitou o corpo.
   const { method, url } = c.req;
   const body = method === "POST" ? await c.req.text() : undefined;
 
