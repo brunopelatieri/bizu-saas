@@ -33,7 +33,9 @@ export async function listUsers(input: { q?: string; page: number }) {
       emailVerified: user.emailVerified,
       banned: user.banned,
       banReason: user.banReason,
-      tenants: sql<number>`(select count(*)::int from ${member} where ${member.userId} = ${user.id})`,
+      // Com uma tabela só no `from`, o Drizzle tira o prefixo das colunas: `${user.id}`
+      // viraria `id`, e dentro da subconsulta seria o da outra tabela.
+      tenants: sql<number>`(select count(*)::int from ${member} where ${member.userId} = "user"."id")`,
       createdAt: user.createdAt,
     })
     .from(user)
@@ -66,8 +68,8 @@ export function listPortalUsers(input: { q?: string; page: number }) {
         name: portalUser.name,
         email: portalUser.email,
         emailVerified: portalUser.emailVerified,
-        tenants: sql<number>`(select count(*)::int from ${customer} where ${customer.portalUserId} = ${portalUser.id})`,
-        sessions: sql<number>`(select count(*)::int from ${portalSession} where ${portalSession.userId} = ${portalUser.id} and ${portalSession.expiresAt} > now())`,
+        tenants: sql<number>`(select count(*)::int from ${customer} where ${customer.portalUserId} = "portal_user"."id")`,
+        sessions: sql<number>`(select count(*)::int from ${portalSession} where ${portalSession.userId} = "portal_user"."id" and ${portalSession.expiresAt} > now())`,
         createdAt: portalUser.createdAt,
       })
       .from(portalUser)

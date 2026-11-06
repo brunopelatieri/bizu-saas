@@ -33,14 +33,14 @@ export default [
   // ---------------------------------------------------------------------------
   // Área do tenant (owner e equipe) — client-only (SEM loader de servidor).
   // O ProtectedRoute faz o gate no cliente; nenhum dado sensível é
-  // renderizado no HTML inicial. A área /portal (cliente/lead) entra na fase 8
-  // da spec saas-foundation; /admin segue o mesmo modelo.
+  // renderizado no HTML inicial. /admin segue o mesmo modelo.
   // ---------------------------------------------------------------------------
   layout("components/auth/protected-route.tsx", [
     route("app/onboarding", "routes/app.onboarding.tsx"),
     route("app", "components/app/app-layout.tsx", [
       index("routes/app.tsx"),
-      route("clientes", "routes/app.coming-soon.tsx", { id: "app-clientes" }),
+      route("clientes", "routes/app.customers.tsx"),
+      route("clientes/:id", "routes/app.customers.$id.tsx"),
       route("equipe", "routes/app.team.tsx"),
       route("assinatura", "routes/app.subscription.tsx"),
       route("assinatura/faturas", "routes/app.subscription.invoices.tsx"),
@@ -60,6 +60,23 @@ export default [
       route("assinaturas", "routes/admin/subscriptions.tsx"),
       route("webhooks", "routes/admin/webhooks.tsx"),
       route("configuracoes", "routes/admin/settings.tsx"),
+    ]),
+  ]),
+
+  // ---------------------------------------------------------------------------
+  // Portal do cliente — client-only, com sessão própria (`bizu_portal`). Nada na URL
+  // identifica o tenant além do `org` do login: o ativo fica na sessão do portal.
+  // ---------------------------------------------------------------------------
+  layout("components/portal/portal-root.tsx", [
+    route("portal/login", "routes/portal/login.tsx"),
+    route("portal/entrar", "routes/portal/enter.tsx"),
+    route("portal/confirmar", "routes/portal/confirm.tsx"),
+    route("portal/cadastro", "routes/portal/signup.tsx"),
+    route("portal/escolher", "routes/portal/choose.tsx"),
+    route("portal", "components/portal/portal-layout.tsx", [
+      index("routes/portal/home.tsx"),
+      route("conta", "routes/portal/account.tsx"),
+      route("faturas", "routes/portal/invoices.tsx"),
     ]),
   ]),
 ] satisfies RouteConfig;

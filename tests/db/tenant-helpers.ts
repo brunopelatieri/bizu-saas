@@ -1,4 +1,4 @@
-import { randomUUID } from "node:crypto";
+import { randomInt, randomUUID } from "node:crypto";
 import postgres from "postgres";
 import { expect } from "vitest";
 import { api } from "@/api/app";
@@ -9,7 +9,9 @@ const PASSWORD = "senha-forte-123";
 export const DOMAIN = "tenant-test.bizu.local";
 export const APP_ORIGIN = "http://localhost:5173";
 
-let ipCounter = 0;
+// Cada arquivo roda com o módulo novo: sem o sorteio, repetiria os IPs do anterior e
+// herdaria os contadores de `rate_limit`, que ficam no banco.
+let ipCounter = randomInt(0, 60_000);
 
 function nextIp() {
   ipCounter += 1;

@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 type Overview = {
   tenants: Record<BillingState, number>;
   tenantsTotal: number;
+  customers: number;
   users: { total: number; banned: number };
   trialsExpiringSoon: number;
   activePlans: number;
@@ -78,7 +79,7 @@ export function AdminOverviewPage() {
                 />
               ))}
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
               <Stat
                 label="Testes acabando"
                 value={data.trialsExpiringSoon}
@@ -89,6 +90,12 @@ export function AdminOverviewPage() {
                 value={data.users.total}
                 hint={`${data.users.banned} banidos`}
                 to="/admin/usuarios"
+              />
+              <Stat
+                label="Clientes"
+                value={data.customers}
+                hint="Clientes e leads de todos os tenants"
+                to="/admin/usuarios?scope=portal"
               />
               <Stat
                 label="Planos ativos"

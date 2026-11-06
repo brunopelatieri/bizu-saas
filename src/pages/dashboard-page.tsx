@@ -1,6 +1,7 @@
 import { BarChart3, CreditCard, UserCog, Users } from "lucide-react";
 import { Link } from "react-router";
 import { AccountCard } from "@/components/app/account-card";
+import { useCustomers } from "@/components/app/customers/customers-api";
 import { useTeam } from "@/components/app/team/team-api";
 import { useCan } from "@/components/auth/can";
 import { Button } from "@/components/ui/button";
@@ -16,9 +17,11 @@ export function DashboardPage() {
   const { user, tenant, billing } = useAuth();
   const can = useCan();
   const team = useTeam();
+  const customers = useCustomers({ page: 1 }, can("customer", "read"));
 
   const firstName = user?.name.split(" ")[0] ?? "usuário";
   const memberCount = team.data?.members.length;
+  const customerCount = customers.data?.total;
   const subscriptionHint =
     billing?.state === "trialing"
       ? `Teste: ${billing.trialDaysLeft ?? 0} dia(s) restante(s)`
@@ -29,10 +32,13 @@ export function DashboardPage() {
   const stats = [
     {
       label: "Clientes",
-      value: "0",
+      value: customerCount === undefined ? "–" : String(customerCount),
       icon: Users,
       href: "/app/clientes",
-      description: "Nenhum cliente cadastrado ainda",
+      description:
+        customerCount === 0
+          ? "Nenhum cliente cadastrado ainda"
+          : "Clientes e leads cadastrados",
       visible: can("customer", "read"),
     },
     {
