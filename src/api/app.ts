@@ -5,9 +5,11 @@ import { zValidator } from "@hono/zod-validator";
 import { adminRoutes } from "@/api/admin";
 import { authRoutes } from "@/api/auth-ext";
 import { billingRoutes } from "@/api/billing";
+import { customerRoutes } from "@/api/customers";
 import { invitationRoutes } from "@/api/invitations";
 import { logError } from "@/api/log";
 import { meRoutes } from "@/api/me";
+import { portalRoutes } from "@/api/portal";
 import { rateLimit } from "@/api/rate-limit";
 import { checkReady } from "@/api/ready";
 import { rolesRoutes } from "@/api/roles";
@@ -25,7 +27,8 @@ import { contactMessageSchema } from "@/lib/schemas/contact";
  * rodando no mesmo processo Node — por isso não há mais necessidade de CORS
  * (front e API compartilham a mesma origem).
  *
- * Rota privada: use `requireAuth`, que coloca o usuário em `c.get("user")`.
+ * Rota privada: use `requireAuth`, que coloca o usuário em `c.get("user")`. No portal,
+ * `requirePortalAuth`, que coloca o cliente em `c.get("portalUser")`.
  */
 export const api = new Hono();
 
@@ -48,9 +51,13 @@ api.route("/", paymentWebhooks);
 // Better Auth em /api/auth/* e rotas próprias em /api/auth-ext/* (src/api/auth-ext.ts).
 api.route("/", authRoutes);
 
+// Better Auth do portal em /api/portal/auth/* e a API do cliente (src/api/portal.ts).
+api.route("/", portalRoutes);
+
 api.route("/", meRoutes);
 api.route("/", tenantRoutes);
 api.route("/", teamRoutes);
+api.route("/", customerRoutes);
 api.route("/", rolesRoutes);
 api.route("/", invitationRoutes);
 api.route("/", billingRoutes);

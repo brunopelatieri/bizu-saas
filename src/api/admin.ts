@@ -26,7 +26,12 @@ import {
   unsuspendTenant,
 } from "@/lib/admin/tenants";
 import { listSubscriptions } from "@/lib/admin/subscriptions";
-import { assertBannable, listUsers } from "@/lib/admin/users";
+import {
+  assertBannable,
+  listPortalUsers,
+  listUsers,
+  revokePortalSessions,
+} from "@/lib/admin/users";
 import { type AuditAction, audit } from "@/lib/audit";
 import { getAuth } from "@/lib/auth/server";
 import {
@@ -263,7 +268,29 @@ adminRoutes.patch(
 adminRoutes.get(
   "/api/admin/users",
   zValidator("query", usersQuerySchema, validationError),
-  async (c) => c.json(await listUsers(c.req.valid("query"))),
+  async (c) => {
+    const { scope, ...query } = c.req.valid("query");
+
+    return c.json(
+      await (scope === "portal" ? listPortalUsers(query) : listUsers(query)),
+    );
+  },
+);
+
+adminRoutes.post(
+  "/api/admin/portal-users/:id/revoke-sessions",
+  ownerOnly,
+  validId,
+  async (c) => {
+    const { id } = c.req.valid("param");
+
+    await revokePortalSessions(id);
+    await auditAdmin(c, "admin.portal_sessions_revoked", {
+      target: { type: "portal_user", id },
+    });
+
+    return c.json({ ok: true });
+  },
 );
 
 adminRoutes.post(

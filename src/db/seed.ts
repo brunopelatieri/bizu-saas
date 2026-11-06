@@ -60,6 +60,12 @@ export const SEED_USERS = {
   acmeMember: { email: "acme.membro@bizu.local", name: "Carla Membro", role: "user" },
 } as const;
 
+/** Clientes do portal. Júlia é ativa em dois tenants: prova a escolha em `/portal/escolher`. */
+export const SEED_CUSTOMERS = {
+  julia: { email: "julia@cliente.local", name: "Júlia Lima" },
+  lead: { email: "lead@cliente.local", name: "Lia Lead" },
+} as const;
+
 export function assertSeedAllowed(env: Record<string, string | undefined>) {
   if (env.NODE_ENV === "production" && env.SEED_ALLOW_PRODUCTION !== "1") {
     throw new Error(
@@ -77,13 +83,29 @@ export function assertSeedAllowed(env: Record<string, string | undefined>) {
   return password;
 }
 
-export type SeedSummary = { users: number; plans: number; tenant: string };
+export type SeedSummary = {
+  users: number;
+  plans: number;
+  tenant: string;
+  customers: number;
+};
 
 export async function runSeed(password: string): Promise<SeedSummary> {
   // Imports tardios: o ambiente precisa estar carregado antes de `getEnv()`.
   const { getDb } = await import("@/db");
-  const { account, member, organization, plan, planPrice, platformSetting, user } =
-    await import("@/db/schema");
+  const {
+    account,
+    customer,
+    member,
+    organization,
+    plan,
+    planPrice,
+    platformSetting,
+    portalAccount,
+    portalUser,
+    user,
+  } = await import("@/db/schema");
+  const { withTenant } = await import("@/db/rls");
   const { getAuth } = await import("@/lib/auth/server");
   const { SETTING_DEFAULTS, SETTING_KEYS } = await import("@/lib/billing/settings");
   const { startTrial } = await import("@/lib/billing/subscription");
@@ -185,7 +207,75 @@ export async function runSeed(password: string): Promise<SeedSummary> {
 
   await startTrial(acme.id);
 
-  return { users: ids.size, plans: SEED_PLANS.length, tenant: "acme" };
+  // Tenant "beta": prova o multi-tenant. O admin da Acme também é membro aqui.
+  let [beta] = await db
+    .select({ id: organization.id })
+    .from(organization)
+    .where(eq(organization.slug, "beta"));
+
+  if (!beta) {
+    [beta] = await db
+      .insert(organization)
+      .values({ name: "Studio Beta", slug: "beta" })
+      .returning({ id: organization.id });
+  }
+  if (!beta) throw new Error("tenant beta não foi criado");
+
+  const betaMember = ids.get(SEED_USERS.acmeAdmin.email);
+  if (betaMember) {
+    await db
+      .insert(member)
+      .values({ organizationId: beta.id, userId: betaMember, role: "member" })
+      .onConflictDoNothing();
+  }
+
+  await startTrial(beta.id);
+
+  // Portal: Júlia com senha e e-mail verificado; a lead, sem identidade, à espera do convite.
+  const { julia, lead } = SEED_CUSTOMERS;
+
+  await db
+    .insert(portalUser)
+    .values({ ...julia, emailVerified: true })
+    .onConflictDoNothing({ target: portalUser.email });
+
+  const [juliaUser] = await db
+    .select({ id: portalUser.id })
+    .from(portalUser)
+    .where(eq(portalUser.email, julia.email));
+  if (!juliaUser) throw new Error("cliente julia não foi criada");
+
+  await db
+    .insert(portalAccount)
+    .values({
+      userId: juliaUser.id,
+      providerId: "credential",
+      accountId: juliaUser.id,
+      password: passwordHash,
+    })
+    .onConflictDoNothing();
+
+  const seedCustomer = (tenantId: string, values: typeof customer.$inferInsert) =>
+    withTenant(tenantId, (tx) =>
+      tx.insert(customer).values(values).onConflictDoNothing(),
+    );
+
+  for (const tenantId of [acme.id, beta.id]) {
+    await seedCustomer(tenantId, {
+      ...julia,
+      tenantId,
+      portalUserId: juliaUser.id,
+      status: "active",
+    });
+  }
+  await seedCustomer(acme.id, { ...lead, tenantId: acme.id });
+
+  return {
+    users: ids.size,
+    plans: SEED_PLANS.length,
+    tenant: "acme",
+    customers: Object.keys(SEED_CUSTOMERS).length,
+  };
 }
 
 async function main() {
@@ -197,10 +287,13 @@ async function main() {
     const summary = await runSeed(password);
 
     console.log(
-      `Seed concluído: ${summary.users} usuários, ${summary.plans} planos e o tenant ${summary.tenant}.`,
+      `Seed concluído: ${summary.users} usuários, ${summary.plans} planos, ${summary.customers} clientes e o tenant ${summary.tenant}.`,
     );
     console.log(
       `Entre em /login com ${SEED_USERS.platformOwner.email} (admin) ou ${SEED_USERS.acmeOwner.email} (tenant), senha em SEED_PASSWORD.`,
+    );
+    console.log(
+      `Portal: ${SEED_CUSTOMERS.julia.email} em /portal/login?org=acme, com a mesma senha.`,
     );
     process.exit(0);
   } catch (error) {

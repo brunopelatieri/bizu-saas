@@ -2,7 +2,7 @@ import { and, eq, lt } from "drizzle-orm";
 import { getDb } from "@/db";
 import { user } from "@/db/schema";
 
-const PENDING_SIGNUP_TTL_MS = 24 * 60 * 60 * 1000;
+export const PENDING_SIGNUP_TTL_MS = 24 * 60 * 60 * 1000;
 
 /**
  * A senha é criada antes de o e-mail ser provado. Sem prazo, quem cadastra o e-mail de

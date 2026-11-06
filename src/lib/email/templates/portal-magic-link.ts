@@ -9,8 +9,8 @@ export type PortalMagicLinkInput = {
 
 export const previewInput: PortalMagicLinkInput = {
   tenantName: "Acme Ltda",
-  url: "http://localhost:5173/portal/entrar?token=exemplo",
-  expiresInMinutes: 15,
+  url: "http://localhost:5173/portal/entrar?token=exemplo&org=acme",
+  expiresInMinutes: 10,
 };
 
 export function portalMagicLinkTemplate(input: PortalMagicLinkInput) {

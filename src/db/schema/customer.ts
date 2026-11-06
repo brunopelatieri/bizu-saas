@@ -6,12 +6,15 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import {
+  type CustomerStatus,
+  customerStatuses,
+} from "../../lib/tenant/customer-constants";
 import { tenantPolicy } from "../tenant-policy";
 import { portalUser } from "./portal-auth";
 import { organization } from "./tenant";
 
-export const customerStatuses = ["lead", "active", "blocked"] as const;
-export type CustomerStatus = (typeof customerStatuses)[number];
+export type { CustomerStatus };
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
 

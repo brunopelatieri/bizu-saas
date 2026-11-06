@@ -1,6 +1,6 @@
 import { and, count, eq, gt, ne } from "drizzle-orm";
 import { getDb } from "@/db";
-import { invitation, member, organizationRole } from "@/db/schema";
+import { customer, invitation, member, organizationRole } from "@/db/schema";
 import type { PlanLimits } from "@/db/schema/billing";
 import { LIMIT_LABELS, type LimitMetric } from "@/lib/billing/constants";
 import { withTenant } from "@/db/rls";
@@ -52,8 +52,8 @@ export type LimitSource = {
 
 /**
  * Uso corrente. `members` conta membros e convites pendentes e vigentes: o convite já
- * reserva o assento. `customers` e `storage_mb` ganham contagem com as fases 8 e 10;
- * até lá o uso é 0 e o limite não bloqueia nada.
+ * reserva o assento. `storage_mb` ganha contagem na fase 10; até lá o uso é 0 e o limite
+ * não bloqueia nada.
  */
 export const databaseLimitSource: LimitSource = {
   async limits(tenantId) {
@@ -92,6 +92,13 @@ export const databaseLimitSource: LimitSource = {
           .select({ total: count() })
           .from(organizationRole)
           .where(eq(organizationRole.organizationId, tenantId));
+
+        return row?.total ?? 0;
+      }
+      case "customers": {
+        const [row] = await withTenant(tenantId, (tx) =>
+          tx.select({ total: count() }).from(customer),
+        );
 
         return row?.total ?? 0;
       }
