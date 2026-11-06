@@ -69,7 +69,8 @@ export function PortalSignupPage() {
             <MailCheck className="mt-0.5 size-5 shrink-0 text-primary" />
             <p className="text-muted-foreground">
               Se o cadastro estiver aberto, enviamos um link para{" "}
-              <span className="break-all">{sentTo}</span>. Ele vale por 1 hora.
+              <span className="break-all">{sentTo}</span>. Ele vale por 1 hora. Sem
+              confirmar, o login responde como senha incorreta.
             </p>
           </div>
           <Link to={login} className={authLinkClassName}>

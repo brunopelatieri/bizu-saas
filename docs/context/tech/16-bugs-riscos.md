@@ -186,6 +186,14 @@ Acao recomendada:
 
 ---
 
+### RISK-008 — Cadastro + login revelam se o e-mail existe em `/api/auth` (aberto)
+
+Achado no security-review da fase 8, no código da fase 2. `/api/auth/sign-up/email` responde
+igual para e-mail novo e existente, mas o login confere a senha antes da verificação: com a senha
+usada no cadastro, responde 403 `EMAIL_NOT_VERIFIED` se a conta é nova e 401 se ela já existia.
+Quem sonda envia e-mail ao alvo, então o ataque não é silencioso. O portal já fecha esse caminho
+(`hideUnverified`). Na equipe, a correção muda a tela de login, que hoje oferece o reenvio.
+
 ### RISK-007 — Pré-sequestro no autocadastro do portal (risco aceito)
 
 É o RISK-006 no portal, só em tenant com `portal_self_signup` ligado. Quem cadastra o e-mail de

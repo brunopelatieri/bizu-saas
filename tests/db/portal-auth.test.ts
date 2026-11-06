@@ -454,7 +454,7 @@ describe("portal: autenticação", () => {
       const unconfirmed = await call("POST", "/api/portal/auth/sign-in/email", {
         body: { email, password: PASSWORD },
       });
-      expect(unconfirmed.status).toBe(403);
+      expect(unconfirmed.status).toBe(401);
       await waitForBackgroundTasks();
 
       const link = mail.sent.filter(({ to }) => to === email).at(0);
@@ -486,6 +486,33 @@ describe("portal: autenticação", () => {
       expect((await call("GET", "/api/portal/customer", { cookie })).status).toBe(403);
 
       await allowSelfSignup(false);
+    });
+
+    it("cadastro + login não revelam se o e-mail já existia", async () => {
+      await allowSelfSignup(true);
+      const fresh = customerEmail();
+      const { id, email: taken } = await createCustomer(tenantOwner);
+      await call("POST", `/api/customers/${id}/invite`, {
+        cookie: tenantOwner.cookie,
+      });
+
+      const probe = async (email: string) => {
+        await signup(email, tenant.slug);
+        await waitForBackgroundTasks();
+
+        const response = await call("POST", "/api/portal/auth/sign-in/email", {
+          body: { email, password: PASSWORD },
+        });
+
+        return { status: response.status, body: await response.text() };
+      };
+
+      const newAccount = await probe(fresh);
+      const existing = await probe(taken);
+      await allowSelfSignup(false);
+
+      expect(newAccount.status).toBe(401);
+      expect(newAccount).toEqual(existing);
     });
 
     it("confirmar não liga a identidade a um cliente já ativo", async () => {

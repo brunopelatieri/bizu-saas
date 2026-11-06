@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { Hono } from "hono";
+import { type Context, Hono } from "hono";
 import { forwardedHeaders, createRateLimitByEmail } from "@/api/auth-ext";
 import {
   authRateLimit,
@@ -73,6 +73,23 @@ export const portalRoutes = new Hono<PortalTenantEnv>();
 
 portalRoutes.onError(handleTenantError);
 portalRoutes.use("/api/portal/*", sameOrigin, jsonBodyLimit);
+
+/**
+ * O Better Auth confere a senha antes da verificação. Com o autocadastro, isso vira um
+ * oráculo: cadastra-se o e-mail com uma senha qualquer, e o login responde 403 se a conta é
+ * nova e 401 se já existia. Por fora, as duas respostas são a de senha errada; o link de
+ * verificação segue sendo reenviado.
+ */
+async function hideUnverified(response: Response, c: Context) {
+  const { code } = (await response.clone().json()) as { code?: string };
+
+  if (code !== "EMAIL_NOT_VERIFIED") return response;
+
+  return c.json(
+    { code: "INVALID_EMAIL_OR_PASSWORD", message: "Invalid email or password" },
+    401,
+  );
+}
 
 /** Remonta o GET do Better Auth atrás do POST do botão. */
 function verifyRequest(url: string, token: string, headers: Headers) {
@@ -153,10 +170,11 @@ portalRoutes.on(["GET", "POST"], `${PORTAL_AUTH_BASE_PATH}/*`, async (c) => {
   }
 
   const body = method === "POST" ? await c.req.text() : undefined;
-
-  return getPortalAuth().handler(
+  const response = await getPortalAuth().handler(
     new Request(url, { method, headers: forwardedHeaders(c), body }),
   );
+
+  return response.status === 403 ? hideUnverified(response, c) : response;
 });
 
 /** Só o que a tela de login mostra. Slug malformado é só algo que não existe. */

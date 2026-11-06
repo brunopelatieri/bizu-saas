@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { apiFetch } from "@/lib/api/client";
-import { AuthActionError } from "@/lib/auth/client";
 import { lastPortalOrg, rememberPortalOrg } from "@/lib/portal/last-org";
 import {
   emailOnlySchema,
@@ -128,15 +127,8 @@ function PasswordForm({ org }: { org: string | null }) {
       await signIn(values, org);
       navigate("/portal", { replace: true });
     } catch (error) {
-      const unverified =
-        error instanceof AuthActionError && error.code === "EMAIL_NOT_VERIFIED";
-
       toast.error(
-        unverified
-          ? "Confirme seu e-mail: enviamos um novo link."
-          : error instanceof Error
-            ? error.message
-            : "Falha ao entrar. Tente novamente.",
+        error instanceof Error ? error.message : "Falha ao entrar. Tente novamente.",
       );
     }
   }

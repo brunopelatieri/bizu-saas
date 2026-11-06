@@ -69,6 +69,7 @@
   Quem já tem conta no portal não se autocadastra em outro tenant: pede ao owner. O convite sai
   sem `Reply-To` do owner. `portal_session`, `portal_verification` e `portal_rate_limit` ficam
   fora do `maintenance.prune` até a fase 10, como as tabelas equivalentes da equipe.
+- **RISK-008:** cadastro + login em `/api/auth` revelam se o e-mail existe (`tech/16-bugs-riscos.md`).
 - `/api/customers` confere o limite do plano fora da transação do insert: requisições
   simultâneas podem passar um cliente do limite, como já acontece com `members`.
 - **Stripe sem sandbox real:** o módulo foi validado com fixtures escritas a partir dos tipos do SDK e
@@ -102,6 +103,7 @@
 | `portalAuth` com troca de e-mail | Sem troca de e-mail no portal | `customer.email` é a chave do vínculo em cada tenant, e a troca pede regra própria |
 | `/portal/entrar` e `/portal/escolher` | Mais `/portal/cadastro` e `/portal/confirmar` | O autocadastro pede tela e confirmação |
 | `GET /api/portal/me` com `status` | Mais `available` e `GET /api/portal/customer` | Tenant suspenso fecha o portal mesmo com cliente `active`, e a tela precisa dos dados do cadastro |
+| Login de conta não verificada responde 403 `EMAIL_NOT_VERIFIED` | No portal, responde o mesmo 401 de senha errada | Achado do security-review: cadastro + login revelariam se o e-mail existe |
 | Tenant `beta` no plano `free` no seed | `beta` em trial, por `startTrial` | Mesmo caminho do onboarding; o seed só precisa dele para provar dois tenants |
 
 ## Desvios da spec na fase 6
