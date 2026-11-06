@@ -8,6 +8,7 @@ import {
 import { AppNav } from "@/components/app/app-nav";
 import { AppTopbar } from "@/components/app/app-topbar";
 import { BillingBanner } from "@/components/app/billing-banner";
+import { ConsentGate } from "@/components/app/consent-gate";
 import { ImpersonationBanner } from "@/components/app/impersonation-banner";
 import { TenantSwitcher } from "@/components/app/tenant-switcher";
 import {
@@ -71,6 +72,7 @@ export function AppLayout() {
 
   return (
     <div className="flex h-svh overflow-hidden bg-background">
+      <ConsentGate />
       <AppSidebar collapsed={collapsed} />
 
       <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>

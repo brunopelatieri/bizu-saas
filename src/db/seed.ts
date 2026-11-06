@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import { config } from "dotenv";
 import { pathToFileURL } from "node:url";
 import { logError } from "@/api/log";
+import { acceptCurrentVersions, pendingConsents } from "@/lib/lgpd/consent";
 
 /**
  * `npm run db:seed`: dados de desenvolvimento. Idempotente: roda quantas vezes quiser e
@@ -296,6 +297,18 @@ export async function runSeed(password: string): Promise<SeedSummary> {
     });
   }
   await seedCustomer(acme.id, { ...lead, tenantId: acme.id });
+
+  // Contas do seed já aceitaram os textos vigentes: sem isso, o primeiro login abriria o
+  // modal de re-aceite. O cadastro real grava o aceite pelo hook de `src/lib/lgpd/consent.ts`.
+  const seeded: Array<{ type: "user" | "portal_user"; id: string }> = [
+    ...[...ids.values()].map((id) => ({ type: "user" as const, id })),
+    { type: "portal_user" as const, id: juliaUser.id },
+  ];
+  for (const subject of seeded) {
+    if ((await pendingConsents(subject)).length > 0) {
+      await acceptCurrentVersions(subject, {});
+    }
+  }
 
   return {
     users: ids.size,

@@ -11,6 +11,7 @@ import { auditInTransaction } from "@/lib/audit";
 import { PENDING_SIGNUP_TTL_MS } from "@/lib/auth/pending-signup";
 import { getPortalAuth } from "@/lib/auth/portal";
 import type { PortalLinkContext } from "@/lib/auth/portal-emails";
+import { type ConsentMeta, withSignupConsent } from "@/lib/lgpd/consent";
 import { checkLimit } from "@/lib/billing/limits";
 import { ensurePortalUser } from "@/lib/portal/access";
 import type { PortalSignupInput } from "@/lib/schemas/portal";
@@ -123,25 +124,27 @@ async function purgeExpiredPortalSignup(email: string) {
 }
 
 /** Autocadastro, só se o tenant permitir. O `customer` nasce depois da confirmação. */
-export async function requestPortalSignup({
-  name,
-  email,
-  password,
-  org,
-}: PortalSignupInput) {
+export async function requestPortalSignup(
+  { name, email, password, org, termsVersion, marketing }: PortalSignupInput,
+  meta: ConsentMeta = {},
+) {
   const tenant = await findOpenTenant(org);
   if (!tenant?.selfSignup) return;
 
   await purgeExpiredPortalSignup(email);
-  await getPortalAuth().api.signUpEmail({
-    headers: new Headers(),
-    body: {
-      name,
-      email,
-      password,
-      callbackURL: `/portal?org=${encodeURIComponent(tenant.slug)}`,
-    },
-  });
+  await withSignupConsent(
+    { subjectType: "portal_user", termsVersion, marketing, ...meta },
+    () =>
+      getPortalAuth().api.signUpEmail({
+        headers: new Headers(),
+        body: {
+          name,
+          email,
+          password,
+          callbackURL: `/portal?org=${encodeURIComponent(tenant.slug)}`,
+        },
+      }),
+  );
 }
 
 /**

@@ -3,6 +3,19 @@ import type { AuthEnv } from "@/api/auth";
 import { missingPlatform2fa, requireAuth } from "@/api/auth";
 import { authRateLimit } from "@/api/guards";
 import { handleTenantError } from "@/api/tenant-errors";
+import { zValidator } from "@hono/zod-validator";
+import { jsonBodyLimit, sameOrigin, validationError } from "@/api/guards";
+import { blockWhileImpersonating } from "@/api/impersonation";
+import { clientKey } from "@/api/rate-limit";
+import { audit } from "@/lib/audit";
+import { LEGAL_VERSIONS } from "@/lib/legal/versions";
+import {
+  acceptCurrentVersions,
+  pendingConsents,
+  setMarketingConsent,
+} from "@/lib/lgpd/consent";
+import { acceptConsentSchema, marketingConsentSchema } from "@/lib/schemas/lgpd";
+import { TenantRuleError } from "@/lib/tenant/errors";
 import { permissionsOf } from "@/lib/auth/permissions";
 import { loadTenantBilling } from "@/lib/billing/summary";
 import type { AuthUser, MeResponse } from "@/lib/auth/types";
@@ -63,6 +76,10 @@ meRoutes.get("/api/me", authRateLimit, requireAuth, async (c) => {
   );
   const permissions = await activePermissions(tenant);
   const billing = tenant ? await loadTenantBilling(tenant) : null;
+  // O suporte não aceita termos em nome de ninguém: a sessão dele não pede re-aceite.
+  const consentRequired = user.impersonatedBy
+    ? []
+    : await pendingConsents({ type: "user", id: user.id });
 
   return c.json<MeResponse>({
     user: {
@@ -92,8 +109,62 @@ meRoutes.get("/api/me", authRateLimit, requireAuth, async (c) => {
       tenantRequires2fa: Boolean(tenant?.require2fa && !user.twoFactorEnabled),
       platformRequires2fa: missingPlatform2fa(user),
     },
+    consentRequired,
   });
 });
+
+meRoutes.use("/api/me/consent/*", sameOrigin, jsonBodyLimit);
+meRoutes.use("/api/me/consent", sameOrigin, jsonBodyLimit);
+
+/** Re-aceite dos textos legais (modal do `AppLayout`). */
+meRoutes.post(
+  "/api/me/consent",
+  authRateLimit,
+  requireAuth,
+  blockWhileImpersonating,
+  zValidator("json", acceptConsentSchema, validationError),
+  async (c) => {
+    const user = c.get("user");
+
+    if (c.req.valid("json").version !== LEGAL_VERSIONS.terms) {
+      throw new TenantRuleError(
+        409,
+        "STALE_LEGAL_VERSION",
+        "Os textos foram atualizados. Recarregue a página e leia a versão nova.",
+      );
+    }
+
+    await acceptCurrentVersions(
+      { type: "user", id: user.id },
+      { ip: clientKey(c), userAgent: c.req.header("User-Agent") },
+    );
+    await audit("auth.consent_accepted", {
+      actor: { id: user.id },
+      metadata: { version: LEGAL_VERSIONS.terms },
+      ip: clientKey(c),
+    });
+
+    return c.json({ ok: true });
+  },
+);
+
+/** Marketing é opcional e revogável a qualquer momento. */
+meRoutes.post(
+  "/api/me/consent/marketing",
+  authRateLimit,
+  requireAuth,
+  blockWhileImpersonating,
+  zValidator("json", marketingConsentSchema, validationError),
+  async (c) => {
+    await setMarketingConsent(
+      { type: "user", id: c.get("user").id },
+      c.req.valid("json").accepted,
+      { ip: clientKey(c), userAgent: c.req.header("User-Agent") },
+    );
+
+    return c.json({ ok: true });
+  },
+);
 
 meRoutes.get("/api/me/invitations", authRateLimit, requireAuth, async (c) =>
   c.json({ invitations: await listInvitationsFor(c.get("user").email) }),

@@ -40,6 +40,7 @@ export function PortalSignupPage() {
       email: "",
       password: "",
       termsVersion: TERMS_VERSION,
+      marketing: false,
       org,
     },
     mode: "onChange",
@@ -158,10 +159,49 @@ export function PortalSignupPage() {
                       onChange={(event) => field.onChange(event.target.checked)}
                     />
                     <span>
-                      Li e aceito os termos de uso e a política de privacidade.
-                    </span>
+                    Li e aceito os{" "}
+                    <a
+                      href="/legal/termos"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      termos de uso
+                    </a>{" "}
+                    e a{" "}
+                    <a
+                      href="/legal/privacidade"
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-primary underline"
+                    >
+                      política de privacidade
+                    </a>
+                    .
+                  </span>
                   </label>
                   <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="marketing"
+              render={({ field }) => (
+                <FormItem className="w-full">
+                  <label className="flex items-start gap-2 text-sm text-muted-foreground">
+                    <input
+                      ref={field.ref}
+                      name={field.name}
+                      onBlur={field.onBlur}
+                      type="checkbox"
+                      className="mt-0.5 size-4 accent-primary"
+                      checked={field.value === true}
+                      onChange={(event) => field.onChange(event.target.checked)}
+                    />
+                    <span>Quero receber novidades por e-mail (opcional).</span>
+                  </label>
                 </FormItem>
               )}
             />

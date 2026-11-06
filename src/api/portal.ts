@@ -48,7 +48,10 @@ import {
   setPasswordSchema,
 } from "@/lib/schemas/portal";
 import { activeTenantSchema, slugSchema } from "@/lib/schemas/tenant";
-import { notFound } from "@/lib/tenant/errors";
+import { LEGAL_VERSIONS } from "@/lib/legal/versions";
+import { acceptCurrentVersions, pendingConsents } from "@/lib/lgpd/consent";
+import { acceptConsentSchema } from "@/lib/schemas/lgpd";
+import { notFound, TenantRuleError } from "@/lib/tenant/errors";
 
 /**
  * O que o portal expõe do Better Auth. Lista fechada: magic link, cadastro e reset passam
@@ -198,7 +201,12 @@ portalRoutes.post(
   zValidator("json", portalSignupSchema, validationError),
   createRateLimitByEmail("portal-sign-up-by-email"),
   (c) => {
-    runInBackground(requestPortalSignup(c.req.valid("json")));
+    runInBackground(
+      requestPortalSignup(c.req.valid("json"), {
+        ip: clientKey(c),
+        userAgent: c.req.header("User-Agent"),
+      }),
+    );
 
     return c.json({ ok: true });
   },
@@ -239,6 +247,7 @@ portalRoutes.get("/api/portal/me", authRateLimit, requirePortalAuth, async (c) =
   }
 
   return c.json({
+    consentRequired: await pendingConsents({ type: "portal_user", id }),
     user: { id, name, email, phone, hasPassword: await hasPortalPassword(id) },
     tenants: tenants.map(({ id, slug, name, status, available }) => ({
       id,
@@ -250,6 +259,30 @@ portalRoutes.get("/api/portal/me", authRateLimit, requirePortalAuth, async (c) =
     active: active && { id: active.id, slug: active.slug, name: active.name },
   });
 });
+
+/** Re-aceite dos textos legais (modal do `PortalLayout`). */
+portalRoutes.post(
+  "/api/portal/me/consent",
+  authRateLimit,
+  requirePortalAuth,
+  zValidator("json", acceptConsentSchema, validationError),
+  async (c) => {
+    if (c.req.valid("json").version !== LEGAL_VERSIONS.terms) {
+      throw new TenantRuleError(
+        409,
+        "STALE_LEGAL_VERSION",
+        "Os textos foram atualizados. Recarregue a página e leia a versão nova.",
+      );
+    }
+
+    await acceptCurrentVersions(
+      { type: "portal_user", id: c.get("portalUser").id },
+      { ip: clientKey(c), userAgent: c.req.header("User-Agent") },
+    );
+
+    return c.json({ ok: true });
+  },
+);
 
 portalRoutes.post(
   "/api/portal/active-tenant",

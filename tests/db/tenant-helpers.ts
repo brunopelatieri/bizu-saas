@@ -180,6 +180,11 @@ export async function cleanUp(owner: postgres.Sql) {
         where u.email like ${pattern}
       )
     `;
+    await tx`
+      delete from consent_log where subject_id in (
+        select id from "user" where email like ${pattern}
+      )
+    `;
     await tx`delete from "user" where email like ${pattern}`;
   });
 }

@@ -7,6 +7,7 @@ const AUDIT_LABELS: Record<string, string> = {
   "auth.2fa_enabled": "2FA ativado",
   "auth.2fa_disabled": "2FA desativado",
   "auth.session_revoked": "Sessão encerrada",
+  "auth.consent_accepted": "Termos aceitos",
   "tenant.created": "Organização criada",
   "tenant.updated": "Organização alterada",
   "tenant.security_updated": "Regra de 2FA alterada",

@@ -17,6 +17,7 @@ export default [
     route("blog", "routes/blog.tsx"),
     route("blog/:slug", "routes/blog-post.tsx"),
     route("precos", "routes/pricing.tsx"),
+    route("legal/:slug", "routes/legal.tsx"),
   ]),
 
   // ---------------------------------------------------------------------------

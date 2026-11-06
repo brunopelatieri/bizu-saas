@@ -34,14 +34,17 @@ export type PortalMe = {
   user: PortalUser;
   tenants: PortalTenantSummary[];
   active: { id: string; slug: string; name: string } | null;
+  consentRequired: Array<"terms" | "privacy">;
 };
 
 const NO_TENANTS: PortalTenantSummary[] = [];
+const NO_CONSENT: PortalMe["consentRequired"] = [];
 
 type PortalAuthContextValue = {
   user: PortalUser | null;
   tenants: PortalTenantSummary[];
   active: PortalMe["active"];
+  consentRequired: PortalMe["consentRequired"];
   loading: boolean;
   accountError: Error | null;
   /** Lança `AuthActionError`. `org` só escolhe entre os tenants da pessoa. */
@@ -131,6 +134,7 @@ export function PortalAuthProvider({ children }: { children: ReactNode }) {
       user: me?.user ?? null,
       tenants: me?.tenants ?? NO_TENANTS,
       active: me?.active ?? null,
+      consentRequired: me?.consentRequired ?? NO_CONSENT,
       loading: isPending || (Boolean(data) && account.isPending),
       accountError: me ? null : account.error,
       signIn,

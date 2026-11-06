@@ -10,3 +10,4 @@ export * from "./schema/billing";
 export * from "./schema/customer";
 export * from "./schema/security";
 export * from "./schema/files";
+export * from "./schema/lgpd";

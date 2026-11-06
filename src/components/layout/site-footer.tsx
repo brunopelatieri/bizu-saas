@@ -57,9 +57,20 @@ export function SiteFooter() {
           <p className="text-sm text-muted-foreground">
             © {year} {siteConfig.author.name}. Todos os direitos reservados.
           </p>
-          <p className="text-xs text-muted-foreground">
-            {siteConfig.author.role}
-          </p>
+          <nav aria-label="Legal" className="flex gap-4 text-xs">
+            <Link
+              to="/legal/termos"
+              className="text-muted-foreground transition-colors hover:text-primary"
+            >
+              Termos de uso
+            </Link>
+            <Link
+              to="/legal/privacidade"
+              className="text-muted-foreground transition-colors hover:text-primary"
+            >
+              Privacidade
+            </Link>
+          </nav>
         </div>
       </div>
     </footer>

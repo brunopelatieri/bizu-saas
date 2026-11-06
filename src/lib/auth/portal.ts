@@ -26,7 +26,9 @@ import {
   sendPortalLink,
   sendPortalVerificationLink,
 } from "@/lib/auth/portal-emails";
+import { logError } from "@/api/log";
 import { getEnv } from "@/lib/env";
+import { recordSignupConsent } from "@/lib/lgpd/consent";
 import { recordPortalLogin, soleTenantId } from "@/lib/portal/access";
 
 /**
@@ -125,6 +127,15 @@ function createPortalAuth() {
     },
 
     databaseHooks: {
+      user: {
+        create: {
+          after: async (user) => {
+            await recordSignupConsent({ type: "portal_user", id: user.id }).catch(
+              (error) => logError("Falha ao registrar o consentimento", error),
+            );
+          },
+        },
+      },
       session: {
         create: {
           before: async (session) => ({

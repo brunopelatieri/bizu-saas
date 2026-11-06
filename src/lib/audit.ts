@@ -14,6 +14,7 @@ export type AuditAction =
   | "auth.2fa_enabled"
   | "auth.2fa_disabled"
   | "auth.session_revoked"
+  | "auth.consent_accepted"
   | "tenant.created"
   | "tenant.updated"
   | "tenant.security_updated"

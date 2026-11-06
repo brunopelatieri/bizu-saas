@@ -113,13 +113,21 @@ describe("parseSettings", () => {
         { key: "trial_days", value: 30 },
         { key: "grace_days", value: "sete" },
         { key: "trial_plan_id", value: "abc" },
+        { key: "dpo_email", value: "dpo@exemplo.com" },
+        { key: "audit_retention_days", value: -5 },
       ]),
     ).toEqual({
       trialPlanId: "abc",
       trialDays: 30,
       graceDays: 7,
       impersonationPolicy: "consent",
+      dpoEmail: "dpo@exemplo.com",
+      auditRetentionDays: 365,
     });
+  });
+
+  it("e-mail do encarregado sem arroba é ignorado", () => {
+    expect(parseSettings([{ key: "dpo_email", value: "sem-arroba" }]).dpoEmail).toBeNull();
   });
 });
 

@@ -42,6 +42,10 @@ function SettingsForm({
   const [trialDays, setTrialDays] = useState(String(settings.trialDays));
   const [graceDays, setGraceDays] = useState(String(settings.graceDays));
   const [policy, setPolicy] = useState(settings.impersonationPolicy);
+  const [dpoEmail, setDpoEmail] = useState(settings.dpoEmail ?? "");
+  const [retentionDays, setRetentionDays] = useState(
+    String(settings.auditRetentionDays),
+  );
   const save = useAdminMutation("Configurações salvas.");
 
   const items = [
@@ -62,6 +66,8 @@ function SettingsForm({
       trialDays: Number(trialDays),
       graceDays: Number(graceDays),
       impersonationPolicy: policy,
+      dpoEmail: dpoEmail.trim() === "" ? null : dpoEmail,
+      auditRetentionDays: Number(retentionDays),
     });
 
     if (!parsed.success) {
@@ -150,6 +156,38 @@ function SettingsForm({
                 max={60}
                 value={graceDays}
                 onChange={(e) => setGraceDays(e.target.value)}
+                readOnly={readOnly}
+              />
+            )}
+          </Field>
+
+          <Field
+            label="E-mail do encarregado (DPO)"
+            hint="Aparece nas páginas /legal/termos e /legal/privacidade. Deixe vazio enquanto não houver um."
+          >
+            {(id) => (
+              <Input
+                id={id}
+                type="email"
+                value={dpoEmail}
+                onChange={(e) => setDpoEmail(e.target.value)}
+                readOnly={readOnly}
+              />
+            )}
+          </Field>
+
+          <Field
+            label="Dias de retenção da auditoria"
+            hint="O job de manutenção apaga eventos mais antigos que isto (mínimo 30, padrão 365)."
+          >
+            {(id) => (
+              <Input
+                id={id}
+                type="number"
+                min={30}
+                max={3650}
+                value={retentionDays}
+                onChange={(e) => setRetentionDays(e.target.value)}
                 readOnly={readOnly}
               />
             )}

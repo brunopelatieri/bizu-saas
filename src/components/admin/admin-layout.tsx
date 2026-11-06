@@ -19,6 +19,7 @@ import {
   adminMainNav,
   adminTitleFromPath,
 } from "@/lib/constants/admin-nav";
+import { ConsentGate } from "@/components/app/consent-gate";
 import { useAuth } from "@/providers/auth-provider";
 
 const NAV = { main: adminMainNav, bottom: adminBottomNav };
@@ -53,6 +54,7 @@ export function AdminLayout() {
 
   return (
     <div className="flex h-svh overflow-hidden bg-background">
+      <ConsentGate />
       <AppSidebar
         collapsed={collapsed}
         nav={NAV}
