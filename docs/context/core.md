@@ -54,7 +54,7 @@ React Router v7 Framework Mode (SSR global)
   |-- Rotas de auth standalone: /login, /cadastro, /verificar-email, /esqueci-senha, /redefinir-senha
   |-- /app/**     owner e equipe do tenant, client-only
   |-- /admin/**   proprietário da plataforma, client-only (fase 5)
-  `-- /portal/**  clientes e leads do tenant, client-only (fase 8)
+  `-- /portal/**  clientes e leads do tenant, client-only
 
 Hono API no mesmo processo:
   |-- src/server.ts        valida env, monta a API e o SSR

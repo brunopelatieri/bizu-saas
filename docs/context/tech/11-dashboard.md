@@ -1,15 +1,15 @@
-# Áreas autenticadas (/app e /admin)
+# Áreas autenticadas (/app, /admin e /portal)
 
-- **Escopo:** Layout, rotas e estado atual da área autenticada do owner e da equipe (`/app`). A área da plataforma (`/admin`) está em `tech/22-admin.md`.
+- **Escopo:** Layout, rotas e estado atual da área autenticada do owner e da equipe (`/app`). A área da plataforma (`/admin`) está em `tech/22-admin.md`, e o portal (`/portal`), em `tech/25-portal-clientes.md`.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`, `spec-tenant-rbac.md`
-- **Paths do código:** `src/components/app/`, `src/components/admin/`, `src/components/auth/can.tsx`, `src/lib/constants/app-nav.ts`, `src/lib/constants/admin-nav.ts`, `src/lib/constants/permission-labels.ts`, `src/providers/auth-provider.tsx`, `src/pages/dashboard-page.tsx`, `src/pages/onboarding-page.tsx`, `src/pages/team-page.tsx`, `src/routes/app.tsx`, `src/routes/app.onboarding.tsx`, `src/routes/app.team.tsx`, `src/routes/app.settings.tsx`, `src/routes/app.coming-soon.tsx`
+- **Paths do código:** `src/components/app/`, `src/components/admin/`, `src/components/auth/can.tsx`, `src/lib/constants/app-nav.ts`, `src/lib/constants/admin-nav.ts`, `src/lib/constants/permission-labels.ts`, `src/providers/auth-provider.tsx`, `src/pages/dashboard-page.tsx`, `src/pages/onboarding-page.tsx`, `src/pages/team-page.tsx`, `src/routes/app.tsx`, `src/routes/app.onboarding.tsx`, `src/routes/app.team.tsx`, `src/routes/app.settings.tsx`, `src/routes/app.customers.tsx`, `src/routes/app.customers.$id.tsx`, `src/pages/customers-page.tsx`, `src/pages/customer-detail-page.tsx`, `src/components/app/customers/`
 
 ## Rotas
 
 | Rota | Estado |
 |---|---|
 | `/app` | visão geral com `AccountCard` e cards de clientes, equipe e assinatura |
-| `/app/clientes` | em breve (fase 8) |
+| `/app/clientes`, `/app/clientes/:id` | lista com busca, filtro e paginação; criar, editar, remover, bloquear, enviar acesso ao portal e último acesso (`tech/25-portal-clientes.md`) |
 | `/app/onboarding` | criação do tenant e convites abertos; fora do layout com sidebar |
 | `/app/equipe` | membros, convites, reenvio, revogação, troca de papel e remoção |
 | `/app/assinatura` | plano e estado, escolha de plano e método por capacidades, perfil de faturamento, cancelar, pausar, portal e faturas recentes |
@@ -18,7 +18,8 @@
 | `/app/configuracoes` | organização, papéis personalizados (só owner) e troca de e-mail |
 
 `/admin/**` (proprietário e suporte da plataforma, `tech/22-admin.md`) reaproveita o mesmo
-shell com outro menu; `/portal/**` (fase 8) seguirá o mesmo modelo.
+shell com outro menu; `/portal/**` é client-only como elas, com layout e sessão próprios: `PortalLayout` e
+`PortalAuthProvider`, sem nada de `/app`. `apiFetch` trata o 401 de cada área com o login dela.
 
 ## Estado atual
 

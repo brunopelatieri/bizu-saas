@@ -34,6 +34,10 @@ member                    unique (organization_id, user_id); role com papéis se
 invitation                email, role, status, expires_at, inviter_id
 organization_role         papéis personalizados; permission em texto, como o plugin grava
 audit_log                 tenant_id nulo = fora de tenant; ip_hash; RLS forçado
+customer                  unique (tenant_id, email); portal_user_id nulo até o envio; status lead|active|blocked; RLS forçado
+portal_user               identidade do cliente, global, sem role nem ban (sem RLS)
+portal_session            active_tenant_id: o tenant em uso no portal (sem RLS)
+portal_account, portal_verification, portal_rate_limit   instância portalAuth (sem RLS)
 plan                      slug unique, limits jsonb, features text[], is_free, active (sem RLS)
 plan_price                unique (plan_id, provider, interval); amount_cents; provider_price_ref (sem RLS)
 platform_setting          key pk, value jsonb: trial_plan_id, trial_days, grace_days (sem RLS)
@@ -78,7 +82,7 @@ Drizzle Kit não conhece essas tabelas e não deve gerar migration para elas. De
 Toda tabela com `tenant_id` tem `.enableRLS()`, `tenantPolicy()` no schema e
 `ALTER TABLE ... FORCE ROW LEVEL SECURITY` em migration customizada
 (`npx drizzle-kit generate --custom --name <nome>`; ver `0007_rls_roles.sql`). Sem o `FORCE`, o
-dono da tabela ignoraria o RLS. Entram nessa regra `audit_log`, `subscription` e `subscription_event` (migration `0009_rls_billing`).
+dono da tabela ignoraria o RLS. Entram nessa regra `audit_log`, `subscription` e `subscription_event` (migration `0009_rls_billing`), além de `customer` (`0013_rls_portal`).
 
 ```ts
 await withTenant(tenantId, (tx) => tx.select().from(auditLog));
@@ -89,6 +93,7 @@ await withPlatformScope("motivo", (tx) => tx.select().from(auditLog));
 - Fora de `withTenant`, `bizu_app` não lê nem grava nada: a query esquecida volta vazia.
 - A policy vale para `bizu_app` e `bizu_owner`. Com `FORCE`, o dono sem policy não acessaria
   nada, e o seed precisa gravar; ele também usa `app.bypass_tenant`.
+- As tabelas `portal_*` não têm RLS: a identidade do cliente atravessa tenants, e o vínculo fica em `customer`. Quem lê `customer` de vários tenants parte do `portal_user` da sessão, em `withPlatformScope`.
 - `organization`, `member`, `invitation` e `organization_role` não têm RLS
   (`spec-tenant-rbac.md`); o isolamento fica em `requireTenant` e em `src/lib/tenant/`.
 

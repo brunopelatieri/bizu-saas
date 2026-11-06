@@ -2,6 +2,10 @@
 paths:
   - "src/api/auth.ts"
   - "src/api/auth-ext.ts"
+  - "src/api/portal.ts"
+  - "src/api/portal-auth.ts"
+  - "src/lib/portal/**"
+  - "src/db/schema/portal-auth.ts"
   - "src/api/verification-guard.ts"
   - "src/lib/auth/**"
   - "src/lib/schemas/auth.ts"
@@ -20,6 +24,7 @@ paths:
 # Autenticação com Better Auth, sessão em cookie e falha fechada
 
 - Instância `getAuth()` em `src/lib/auth/server.ts`; rotas em `src/api/auth-ext.ts`.
+- Clientes e leads usam `getPortalAuth()` (`src/lib/auth/portal.ts`), com segredo derivado, cookies `bizu_portal` e tabelas `portal_*`: um cookie nunca vale pelo outro. Por HTTP, só o que está em `PORTAL_AUTH_PATHS` (`src/api/portal.ts`); `/api/portal/auth/magic-link/verify` só aceita POST.
 - Rota privada usa `requireAuth` (sessão no banco, e-mail verificado); de plataforma, também `requirePlatform`.
 - Nenhum token é consumido em GET: a página renderiza e um botão faz a chamada. `/api/auth/verify-email` só aceita POST, atrás do `verificationGuard`.
 - Respostas de cadastro, reenvio, reset e troca de e-mail nunca revelam se um e-mail existe: mesmo status, corpo e cabeçalhos. Trabalho que depende da existência roda em `runInBackground`.
@@ -33,4 +38,4 @@ paths:
 - Permissões são validadas no servidor; o cliente só esconde botões.
 - Sessões e usuários ficam no Postgres, via Drizzle.
 
-Para entender este domínio, leia: docs/context/tech/08-auth.md
+Para entender este domínio, leia: docs/context/tech/08-auth.md e docs/context/tech/25-portal-clientes.md

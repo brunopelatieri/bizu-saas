@@ -73,7 +73,7 @@ React Router v7 Framework Mode + SSR global
   |-- /login, /cadastro   autenticação (Better Auth) com verificação de e-mail
   |-- /app/**             owner e equipe, client-side, sem loader sensível
   |-- /admin/**           proprietário (fase 5)
-  `-- /portal/**          clientes e leads (fase 8)
+  `-- /portal/**          clientes e leads, com login próprio
 ```
 
 **Stack principal:** React 19, TypeScript, React Router v7, Vite, Tailwind v4,
@@ -194,12 +194,20 @@ Better Auth com sessão em cookie, sobre o mesmo Postgres. Antes do primeiro ace
 | `suporte@bizu.local` | `/admin` | suporte (só leitura) |
 | `acme.owner@bizu.local` | `/app` | owner do tenant `acme`, em teste no plano Pro |
 | `acme.admin@bizu.local`, `acme.membro@bizu.local` | `/app` | admin e membro do `acme` |
+| `julia@cliente.local` | `/portal/login?org=acme` | cliente ativa nos tenants `acme` e `beta` |
+| `lead@cliente.local` | não entra | lead do `acme`, sem senha, à espera do envio de acesso |
 
 A senha é a de `SEED_PASSWORD`. Em `/admin` você vê organizações, usuários, planos e as
 configurações do período de teste (dias, plano padrão e carência). Uma organização nova
 (cadastro, confirmação do e-mail e onboarding) já nasce em teste no plano padrão, com o aviso
 no topo de `/app`; `/precos` lista os planos ativos. Os `provider_price_ref` dos preços
 ficam vazios até você ligar um provedor (veja [Pagamentos](#pagamentos)).
+
+**Portal do cliente:** clientes e leads têm login próprio, separado da equipe. Em
+`/app/clientes`, cadastre alguém e clique em "Enviar acesso ao portal"; o convite cai no Mailpit
+(`http://localhost:8025`) e abre `/portal/entrar`, onde um botão faz a entrada. Depois disso, a
+pessoa pede um link de 10 minutos em `/portal/login?org=<slug>` ou define uma senha em
+`/portal/conta`. Quem é cliente de mais de um tenant escolhe em `/portal/escolher`.
 
 **Primeiro acesso sem o seed:**
 

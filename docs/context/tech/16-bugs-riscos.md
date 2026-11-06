@@ -186,6 +186,14 @@ Acao recomendada:
 
 ---
 
+### RISK-007 — Pré-sequestro no autocadastro do portal (risco aceito)
+
+É o RISK-006 no portal, só em tenant com `portal_self_signup` ligado. Quem cadastra o e-mail de
+outra pessoa define a senha antes de provar a posse; se o dono clicar na confirmação, a senha
+continua valendo. A confirmação nunca liga essa identidade a um cliente `active`, e o convite
+revoga a senha enquanto a conta não estiver verificada. Sobra o caso em que o dono confirma um
+cadastro que não fez e depois recebe acesso.
+
 ### RISK-006 — Pré-sequestro de conta dentro de 24 h (risco aceito)
 
 Quem cadastra o e-mail de outra pessoa define a senha antes de provar a posse. Se o dono

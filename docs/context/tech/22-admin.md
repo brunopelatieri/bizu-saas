@@ -61,6 +61,14 @@ escrita só aparece para `platform_owner` (`useIsPlatformOwner`). O menu do usu�
 "Administração" para quem tem papel de plataforma. Formulários validam com os schemas de
 `src/lib/schemas/admin.ts`; `limits` vazio vira `null` (ilimitado).
 
+## Usuários do portal
+
+`/admin/usuarios` tem duas abas. Clientes e leads são outra identidade (`portal_user`):
+`GET /api/admin/users?scope=portal` traz organizações e sessões em aberto, e
+`POST /api/admin/portal-users/:id/revoke-sessions`, só do proprietário, derruba as sessões. Não
+há banimento: o acesso é de cada tenant, por `customer.status`. O overview conta os clientes
+de todos os tenants.
+
 ## Ainda não existe
 
 Overview sem MRR e jobs mortos; `/admin/jobs`, `/admin/auditoria`; personificação (fase 9);
