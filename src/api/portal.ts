@@ -1,5 +1,5 @@
 import { zValidator } from "@hono/zod-validator";
-import { type Context, Hono } from "hono";
+import { Hono } from "hono";
 import { forwardedHeaders, createRateLimitByEmail } from "@/api/auth-ext";
 import {
   authRateLimit,
@@ -80,14 +80,18 @@ portalRoutes.use("/api/portal/*", sameOrigin, jsonBodyLimit);
  * nova e 401 se já existia. Por fora, as duas respostas são a de senha errada; o link de
  * verificação segue sendo reenviado.
  */
-async function hideUnverified(response: Response, c: Context) {
+async function hideUnverified(response: Response) {
   const { code } = (await response.clone().json()) as { code?: string };
 
   if (code !== "EMAIL_NOT_VERIFIED") return response;
 
-  return c.json(
-    { code: "INVALID_EMAIL_OR_PASSWORD", message: "Invalid email or password" },
-    401,
+  // Byte a byte a resposta do Better Auth: a ordem das chaves também distinguiria as duas.
+  return new Response(
+    JSON.stringify({
+      message: "Invalid email or password",
+      code: "INVALID_EMAIL_OR_PASSWORD",
+    }),
+    { status: 401, headers: response.headers },
   );
 }
 
@@ -174,7 +178,7 @@ portalRoutes.on(["GET", "POST"], `${PORTAL_AUTH_BASE_PATH}/*`, async (c) => {
     new Request(url, { method, headers: forwardedHeaders(c), body }),
   );
 
-  return response.status === 403 ? hideUnverified(response, c) : response;
+  return response.status === 403 ? hideUnverified(response) : response;
 });
 
 /** Só o que a tela de login mostra. Slug malformado é só algo que não existe. */

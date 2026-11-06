@@ -504,7 +504,11 @@ describe("portal: autenticação", () => {
           body: { email, password: PASSWORD },
         });
 
-        return { status: response.status, body: await response.text() };
+        return {
+          status: response.status,
+          headers: Object.fromEntries(response.headers),
+          body: await response.text(),
+        };
       };
 
       const newAccount = await probe(fresh);
