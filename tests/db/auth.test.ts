@@ -331,15 +331,51 @@ describe("autenticação", () => {
       expect(response.status).toBe(400);
     });
 
-    it("login antes de verificar responde 403 e não abre sessão", async () => {
+    it("login antes de verificar responde 401, não abre sessão e reenvia o link", async () => {
       const email = newEmail();
       await signUp(email);
+      await waitForBackgroundTasks();
+      mail.reset();
 
       const response = await signIn(email);
 
-      expect(response.status).toBe(403);
-      expect((await response.json()).code).toBe("EMAIL_NOT_VERIFIED");
+      expect(response.status).toBe(401);
       expect(sessionCookies(response)).not.toContain("session_token=");
+      expect(await templatesSentTo(email)).toEqual(["verify-email"]);
+    });
+
+    it("cadastro + login não revelam se o e-mail já existia", async () => {
+      const password = "senha-de-quem-sonda";
+
+      const probe = async (email: string) => {
+        await post("/api/auth/sign-up/email", {
+          name: "Sonda",
+          email,
+          password,
+          acceptTerms: true,
+          termsVersion: "2026-11",
+        });
+        await waitForBackgroundTasks();
+
+        const response = await signIn(email, password);
+
+        return {
+          status: response.status,
+          headers: Object.fromEntries(response.headers),
+          body: await response.text(),
+        };
+      };
+
+      const pending = newEmail();
+      await signUp(pending);
+
+      const newAccount = await probe(newEmail());
+      const verified = await probe((await verifiedUser()).email);
+      const unverified = await probe(pending);
+
+      expect(newAccount.status).toBe(401);
+      expect(newAccount).toEqual(verified);
+      expect(newAccount).toEqual(unverified);
     });
 
     it("reenvio para conta já verificada não envia nada", async () => {
@@ -383,7 +419,7 @@ describe("autenticação", () => {
       const login = await signIn(email, ATTACKER_PASSWORD);
 
       expect(resend.status).toBe(200);
-      expect(login.status).toBe(403);
+      expect(login.status).toBe(401);
       expect(await templatesSentTo(email)).toEqual([]);
     });
 

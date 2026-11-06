@@ -186,13 +186,13 @@ Acao recomendada:
 
 ---
 
-### RISK-008 — Cadastro + login revelam se o e-mail existe em `/api/auth` (aberto)
+### RISK-008 — Cadastro + login revelavam se o e-mail existe em `/api/auth` (corrigido)
 
 Achado no security-review da fase 8, no código da fase 2. `/api/auth/sign-up/email` responde
-igual para e-mail novo e existente, mas o login confere a senha antes da verificação: com a senha
-usada no cadastro, responde 403 `EMAIL_NOT_VERIFIED` se a conta é nova e 401 se ela já existia.
-Quem sonda envia e-mail ao alvo, então o ataque não é silencioso. O portal já fecha esse caminho
-(`hideUnverified`). Na equipe, a correção muda a tela de login, que hoje oferece o reenvio.
+igual para e-mail novo e existente, mas o login conferia a senha antes da verificação: com a senha
+usada no cadastro, respondia 403 `EMAIL_NOT_VERIFIED` se a conta era nova e 401 se ela já existia.
+Corrigido com `hideUnverified` (`src/api/auth-ext.ts`), o mesmo do portal, que devolve o 401 do
+Better Auth byte a byte. A tela de login passou a oferecer o reenvio sempre, sem depender do erro.
 
 ### RISK-007 — Pré-sequestro no autocadastro do portal (risco aceito)
 

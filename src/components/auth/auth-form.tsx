@@ -21,7 +21,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { AuthActionError } from "@/lib/auth/client";
 import { TERMS_VERSION } from "@/lib/legal/versions";
 import {
   type LoginInput,
@@ -48,7 +47,7 @@ function CheckEmailNotice({
           <p className="font-medium text-white">Confirme seu e-mail</p>
           <p className="mt-1 text-muted-foreground">
             Enviamos um link para <span className="break-all">{email}</span>. Ele
-            vale por 1 hora.
+            vale por 1 hora. Sem confirmar, o login responde como senha incorreta.
           </p>
         </div>
       </div>
@@ -65,7 +64,7 @@ function CheckEmailNotice({
 export function LoginForm({ nextPath }: { nextPath: string }) {
   const navigate = useNavigate();
   const { signIn } = useAuth();
-  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
+  const [resendOpen, setResendOpen] = useState(false);
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
@@ -73,17 +72,10 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
   });
 
   async function onSubmit(values: LoginInput) {
-    setUnverifiedEmail(null);
-
     try {
       await signIn(values);
       navigate(nextPath);
     } catch (error) {
-      if (error instanceof AuthActionError && error.code === "EMAIL_NOT_VERIFIED") {
-        setUnverifiedEmail(values.email);
-        return;
-      }
-
       toast.error(
         error instanceof Error ? error.message : "Falha ao entrar. Tente novamente.",
       );
@@ -155,18 +147,6 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
         </form>
       </Form>
 
-      {unverifiedEmail ? (
-        <div className="grid gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
-          <p className="font-medium text-amber-400">
-            Confirme seu e-mail para entrar
-          </p>
-          <p className="text-muted-foreground">
-            Enviamos um novo link para o seu e-mail.
-          </p>
-          <ResendVerification email={unverifiedEmail} />
-        </div>
-      ) : null}
-
       <div className="flex flex-wrap justify-between gap-2 text-sm text-muted-foreground">
         <Link to="/esqueci-senha" className={authLinkClassName}>
           Esqueci minha senha
@@ -174,6 +154,21 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
         <Link to="/cadastro" className={authLinkClassName}>
           Criar conta
         </Link>
+      </div>
+
+      {/* Fixo: o login responde igual para senha errada e conta não confirmada. */}
+      <div className="grid gap-3 text-center text-sm">
+        <button
+          type="button"
+          aria-expanded={resendOpen}
+          className={authLinkClassName}
+          onClick={() => setResendOpen((open) => !open)}
+        >
+          Não recebeu o link de confirmação?
+        </button>
+        {resendOpen ? (
+          <ResendVerification initialEmail={form.getValues("email")} />
+        ) : null}
       </div>
     </div>
   );

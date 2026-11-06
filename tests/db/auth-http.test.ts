@@ -23,17 +23,30 @@ describe("autenticação sobre o servidor Node", () => {
   let base: string;
   let owner: postgres.Sql;
 
-  function post(path: string, body: unknown, cookie?: string) {
+  function post(path: string, body: unknown, ip = "10.21.0.1") {
     return fetch(`${base}${path}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Origin: ORIGIN,
-        "X-Forwarded-For": "10.21.0.1",
-        ...(cookie ? { Cookie: cookie } : {}),
+        "X-Forwarded-For": ip,
       },
       body: JSON.stringify(body),
     });
+  }
+
+  function signUp(email: string, password: string, ip?: string) {
+    return post(
+      "/api/auth/sign-up/email",
+      {
+        name: "Ana",
+        email,
+        password,
+        acceptTerms: true,
+        termsVersion: "2026-11",
+      },
+      ip,
+    );
   }
 
   beforeAll(async () => {
@@ -67,13 +80,7 @@ describe("autenticação sobre o servidor Node", () => {
     const email = `${randomUUID()}@${DOMAIN}`;
     const password = "senha-forte-123";
 
-    const signup = await post("/api/auth/sign-up/email", {
-      name: "Ana",
-      email,
-      password,
-      acceptTerms: true,
-      termsVersion: "2026-11",
-    });
+    const signup = await signUp(email, password);
     expect(signup.status).toBe(200);
 
     await waitForBackgroundTasks();
@@ -94,5 +101,38 @@ describe("autenticação sobre o servidor Node", () => {
 
     const login = await post("/api/auth/sign-in/email", { email, password });
     expect(login.status).toBe(200);
+  });
+
+  it("cadastro + login não revelam se o e-mail já existia", async () => {
+    const password = "senha-de-quem-sonda";
+    const taken = `${randomUUID()}@${DOMAIN}`;
+    await signUp(taken, "senha-do-dono-da-conta", "10.21.1.1");
+    await waitForBackgroundTasks();
+    await owner`update "user" set email_verified = true where email = ${taken}`;
+
+    const probe = async (email: string, ip: string) => {
+      await signUp(email, password, ip);
+      await waitForBackgroundTasks();
+
+      const response = await post(
+        "/api/auth/sign-in/email",
+        { email, password },
+        ip,
+      );
+      // O servidor carimba `Date` em cada resposta: o resto tem de ser idêntico.
+      const { date: _date, ...headers } = Object.fromEntries(response.headers);
+
+      return {
+        status: response.status,
+        headers,
+        body: await response.text(),
+      };
+    };
+
+    const newAccount = await probe(`${randomUUID()}@${DOMAIN}`, "10.21.1.2");
+    const existing = await probe(taken, "10.21.1.3");
+
+    expect(newAccount.status).toBe(401);
+    expect(newAccount).toEqual(existing);
   });
 });

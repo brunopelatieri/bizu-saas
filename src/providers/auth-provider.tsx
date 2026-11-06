@@ -39,7 +39,7 @@ type AuthContextValue = {
   /** `GET /api/me` ainda não respondeu. */
   accountLoading: boolean;
   accountError: Error | null;
-  /** Lança `AuthActionError`; `code` traz `EMAIL_NOT_VERIFIED` e afins. */
+  /** Lança `AuthActionError`, com o `code` do Better Auth. */
   signIn: (values: LoginInput) => Promise<void>;
   /** Não abre sessão: a conta só entra depois de confirmar o e-mail. */
   signUp: (values: SignupInput) => Promise<void>;

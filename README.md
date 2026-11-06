@@ -218,7 +218,8 @@ pessoa pede um link de 10 minutos em `/portal/login?org=<slug>` ou define uma se
    dela e entra em `/app`.
 
 O link vale por 1 hora e só pode ser usado uma vez; abrir a página não o consome. Sem
-confirmar, o login responde 403. Para testar a recuperação de senha, use `/esqueci-senha`;
+confirmar, o login responde como senha incorreta, e a tela de login oferece o reenvio do link.
+Para testar a recuperação de senha, use `/esqueci-senha`;
 a troca de e-mail fica em `/app/configuracoes`.
 
 **Convidar a equipe:**

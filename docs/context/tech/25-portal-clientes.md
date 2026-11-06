@@ -98,7 +98,7 @@ ainda sem tela.
 E-mail já cadastrado recebe só o aviso `existing-user-signup`: quem já é cliente de outro
 tenant pede o acesso ao owner.
 
-O login nunca responde `EMAIL_NOT_VERIFIED`: `hideUnverified` (`src/api/portal.ts`) troca o 403
+O login nunca responde `EMAIL_NOT_VERIFIED`: `hideUnverified` (`src/api/auth-ext.ts`) troca o 403
 pelo 401 de senha errada. O Better Auth confere a senha antes da verificação, e sem isso bastaria
 cadastrar um e-mail com uma senha qualquer e tentar entrar para saber se ele já existia. O link
 de confirmação continua sendo reenviado.

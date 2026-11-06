@@ -49,8 +49,12 @@ Desligados por HTTP em `disabledPaths`, disponíveis em `auth.api.*`:
 4. A rota remonta um GET interno para o Better Auth, que valida o JWT (1 h), marca
    `email_verified` e abre a sessão.
 
-Sem verificação, não há sessão: login responde 403 `EMAIL_NOT_VERIFIED` e dispara um novo
-link (`sendOnSignIn`). `requireAuth` também recusa `emailVerified = false`.
+Sem verificação, não há sessão: login com a senha certa responde o mesmo 401 de senha errada e
+dispara um novo link (`sendOnSignIn`). `hideUnverified` (`auth-ext.ts`) faz a troca em todo o
+proxy para o Better Auth, que confere a senha antes da verificação: sem ela, cadastrar um e-mail
+com uma senha qualquer e tentar entrar diria se ele já existia. A tela de login não sabe por que
+a entrada falhou, então o reenvio fica fixo nela, em "Não recebeu o link de confirmação?".
+`requireAuth` também recusa `emailVerified = false`.
 
 A linha é consumida antes do Better Auth rodar. Se ele falhar nesse instante, o link
 se perde e a pessoa pede outro: a falha é fechada.
@@ -124,7 +128,7 @@ update "user" set role = 'platform_owner' where email = 'voce@empresa.com';
 - `ProtectedRoute` faz o gate no cliente e não protege dados.
 - Toda rota privada usa `authRateLimit` e `requireAuth`.
 - Falha fechada: Auth indisponível não abre rota.
-- Respostas de cadastro, reenvio, reset e troca de e-mail não revelam se o e-mail existe.
+- Respostas de cadastro, login sem verificação, reenvio, reset e troca de e-mail não revelam se o e-mail existe.
 - Trabalho que depende de o e-mail existir roda em `runInBackground`: a resposta sai antes.
 - Handler novo em `/api/auth/*` passa por `forwardedHeaders` e remonta o `Request`, para
   mandar o IP resolvido. Teste em `tests/db/auth-http.test.ts`: `api.request()` entrega um
