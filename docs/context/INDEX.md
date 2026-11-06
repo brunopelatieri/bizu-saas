@@ -12,8 +12,8 @@ estão nas rules e no cabeçalho de cada arquivo.
 | PRD/SPEC, modelo, tokens, novo projeto | `ai-engineering.md`, `docs/specs/README.md` |
 | Rota, loader, `meta`, SSR, blog | `tech/05-react-router.md` |
 | Endpoint `/api/*`, `requireAuth` | `tech/06-hono-api.md` |
-| Schema, migration, query, Postgres do Supabase | `tech/07-banco-drizzle.md` |
-| Login, sessão, Storage, Edge Functions, Realtime | `tech/08-supabase.md` |
+| Schema, migration, query | `tech/07-banco-drizzle.md` |
+| Login, sessão, provedor de autenticação | `tech/08-auth.md` |
 | Tokens de design, Tailwind, dark mode | `tech/09-tema-css.md` |
 | Landing, header, páginas públicas | `tech/10-site-publico.md` |
 | Área `/dashboard/**` | `tech/11-dashboard.md` |

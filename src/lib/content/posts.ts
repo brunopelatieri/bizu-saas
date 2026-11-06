@@ -54,7 +54,7 @@ const posts: Post[] = [
     slug: "stack-ideal-portais-de-clientes",
     title: "Stack ideal para portais de clientes em 2026",
     excerpt:
-      "React, shadcn/ui, Supabase e Drizzle — como essa combinação entrega uma experiência premium sem complexidade desnecessária.",
+      "React, shadcn/ui, Hono e Drizzle — como essa combinação entrega uma experiência premium sem complexidade desnecessária.",
     tag: "Ferramentas",
     readTime: "6 min",
     date: "28 Mai 2026",
@@ -62,8 +62,8 @@ const posts: Post[] = [
     cover: "/bizu_bru_ia_blog3.webp",
     content:
       "Uma boa stack é aquela que some do seu caminho. React Router em Framework Mode entrega SSR " +
-      "para SEO, Hono cuida da API, Drizzle tipa o banco de ponta a ponta e o Supabase resolve " +
-      "auth e storage. Mostramos como cada peça se encaixa em um portal de clientes real.",
+      "para SEO, Hono cuida da API e Drizzle tipa o banco de ponta a ponta. " +
+      "Mostramos como cada peça se encaixa em um portal de clientes real.",
   },
 ];
 

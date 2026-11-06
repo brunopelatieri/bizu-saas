@@ -10,13 +10,6 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-
-# VITE_* e fixado no bundle pelo Vite durante o build: injetar so em runtime nao
-# tem efeito. Passe com --build-arg. Use aqui apenas valores publicos, pois eles
-# vao para o JavaScript enviado ao navegador.
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_PUBLISHABLE_KEY
-
 RUN npm run build
 
 # ---------------------------------------------------------------------------

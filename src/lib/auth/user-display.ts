@@ -1,19 +1,17 @@
-import type { User } from "@supabase/supabase-js";
+import type { AuthUser } from "@/lib/auth/types";
 
-export function getUserDisplayName(user: User | null): string {
-  const metadataName = user?.user_metadata?.full_name;
-  if (typeof metadataName === "string" && metadataName.trim()) {
-    return metadataName.trim();
-  }
+export function getUserDisplayName(user: AuthUser | null): string {
+  const name = user?.fullName?.trim();
+  if (name) return name;
 
   const emailPrefix = user?.email?.split("@")[0];
   return emailPrefix ?? "Usuário";
 }
 
-export function getUserInitials(user: User | null): string {
-  const name = user?.user_metadata?.full_name;
-  if (typeof name === "string" && name.trim()) {
-    const parts = name.trim().split(/\s+/);
+export function getUserInitials(user: AuthUser | null): string {
+  const name = user?.fullName?.trim();
+  if (name) {
+    const parts = name.split(/\s+/);
     if (parts.length >= 2) {
       return `${parts[0]?.[0]}${parts.at(-1)?.[0]}`.toUpperCase();
     }

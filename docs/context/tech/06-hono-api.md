@@ -14,17 +14,19 @@ Rotas atuais:
 | Metodo | Rota | Funcao |
 |--------|------|--------|
 | GET | `/api/health` | Healthcheck |
-| GET | `/api/me` | Rota privada: sincroniza e retorna o `profile` do usuario |
+| GET | `/api/me` | Rota privada: retorna o usuario autenticado |
 | POST | `/api/contact` | Persiste mensagem em `contact_messages` |
 
 Autenticacao:
 
 - `requireAuth` (`src/api/auth.ts`) exige `Authorization: Bearer <access_token>`,
-  valida o token no Supabase Auth e coloca o usuario em `c.get("user")`.
+  valida o token em `verifyToken` e coloca o usuario em `c.get("user")`.
+- Ainda nao ha provedor: `verifyToken` sempre falha, e rotas privadas respondem 503.
 - Sem token ou com token invalido: 401. Auth indisponivel ou limitando (429, 5xx): 503.
 - Toda rota privada usa `authRateLimit` (60 por minuto) antes de `requireAuth`, porque
-  cada token validado e uma chamada ao Supabase Auth. O `ProtectedRoute` nao protege dados.
-- No cliente, use `apiFetch` (`src/lib/api/client.ts`), que envia o token da sessao.
+  cada token validado pode consultar o provedor. O `ProtectedRoute` nao protege dados.
+- No cliente, use `apiFetch` (`src/lib/api/client.ts`), que padroniza os erros. O envio do
+  token entra junto com o provedor.
 
 Protecoes:
 

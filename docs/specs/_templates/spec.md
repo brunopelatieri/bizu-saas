@@ -15,11 +15,11 @@
 
 ## Modelo de dados (Drizzle)
 
-Dados passam sempre pelo Drizzle. Toda tabela nova leva `.enableRLS()`.
+Dados passam sempre pelo Drizzle.
 
 | Tabela | Colunas principais | Observações |
 |---|---|---|
-| `<tabela>` | `<colunas>` | <FK, índices; dados de usuário referenciam `profiles.id`> |
+| `<tabela>` | `<colunas>` | <FK e índices> |
 
 - **Migration:** alteração em `src/db/schema.ts` + `npm run db:generate`.
 - **Rollout:** <impacto em dados existentes e etapa separada do deploy>.
@@ -29,14 +29,6 @@ Dados passam sempre pelo Drizzle. Toda tabela nova leva `.enableRLS()`.
 | Método e rota | Entrada (schema Zod) | Saída | Autorização |
 |---|---|---|---|
 | `POST /api/<recurso>` | `<schema>` em `src/lib/schemas/` | `<resposta>` | <`requireAuth` + check de permissão> |
-
-## Supabase
-
-Só preencha se usar Auth, Storage, Edge Functions ou Realtime broadcast/presence.
-CRUD da aplicação nunca passa por aqui.
-
-- **Serviço:** <qual e para quê>
-- **Permissão:** <validada no servidor, com `requireAuth` + checks>
 
 ## Interface
 

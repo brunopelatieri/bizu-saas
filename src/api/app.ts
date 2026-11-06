@@ -6,7 +6,6 @@ import { requireAuth } from "@/api/auth";
 import { logError } from "@/api/log";
 import { rateLimit } from "@/api/rate-limit";
 import { getDb } from "@/db";
-import { syncProfile } from "@/db/profiles";
 import { contactMessages } from "@/db/schema";
 import { contactMessageSchema } from "@/lib/schemas/contact";
 
@@ -24,20 +23,14 @@ export const api = new Hono();
 // HSTS fica com o reverse proxy, que conhece o domínio e seus subdomínios.
 api.use("*", secureHeaders({ strictTransportSecurity: false }));
 
-// Vem antes de `requireAuth`: cada token validado é uma chamada ao Supabase Auth.
+// Vem antes de `requireAuth`: cada token validado pode consultar o provedor de Auth.
 const authRateLimit = rateLimit({ limit: 60, windowMs: 60 * 1000 });
 
 api.get("/api/health", (c) => c.json({ ok: true }));
 
-api.get("/api/me", authRateLimit, requireAuth, async (c) => {
-  try {
-    const profile = await syncProfile(c.get("user"));
-    return c.json({ profile });
-  } catch (error) {
-    logError("Falha ao sincronizar perfil", error);
-    return c.json({ error: "Não foi possível carregar sua conta." }, 500);
-  }
-});
+api.get("/api/me", authRateLimit, requireAuth, (c) =>
+  c.json({ user: c.get("user") }),
+);
 
 api.post(
   "/api/contact",

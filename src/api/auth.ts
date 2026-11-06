@@ -1,42 +1,21 @@
-import { createClient, type User } from "@supabase/supabase-js";
 import { createMiddleware } from "hono/factory";
 import { logError } from "@/api/log";
-import { requireSupabaseConfig } from "@/lib/supabase/config";
+import type { AuthUser } from "@/lib/auth/types";
 
-export type AuthEnv = { Variables: { user: User } };
+export type AuthEnv = { Variables: { user: AuthUser } };
 
 /** Retorna o usuário do token, `null` se for inválido e lança se o Auth falhar. */
-export type VerifyToken = (token: string) => Promise<User | null>;
+export type VerifyToken = (token: string) => Promise<AuthUser | null>;
 
-let authClient: ReturnType<typeof createClient> | undefined;
-
-function getAuthClient() {
-  authClient ??= createClient(
-    import.meta.env.VITE_SUPABASE_URL,
-    import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
-    { auth: { persistSession: false, autoRefreshToken: false } },
-  );
-
-  return authClient;
-}
-
-// Só estes status dizem que o token é ruim. Os demais, como 429 e 5xx, são falha do Auth.
-const INVALID_TOKEN_STATUS = new Set([400, 401, 403]);
-
-export const verifySupabaseToken: VerifyToken = async (token) => {
-  requireSupabaseConfig();
-
-  const { data, error } = await getAuthClient().auth.getUser(token);
-
-  if (!error) return data.user;
-  if (error.status && INVALID_TOKEN_STATUS.has(error.status)) return null;
-  throw error;
+/** Ponto único da autenticação no servidor: o novo provedor substitui esta função. */
+const verifyToken: VerifyToken = async () => {
+  throw new Error("Provedor de autenticação não configurado.");
 };
 
 /**
- * Exige `Authorization: Bearer <access_token>`. O gate do `ProtectedRoute` roda
- * no cliente e não protege dados: toda rota privada da API deve usar este
- * middleware. Falha fechada: se o Auth estiver indisponível, a rota não abre.
+ * Exige `Authorization: Bearer <token>`. O gate do `ProtectedRoute` roda no cliente
+ * e não protege dados: toda rota privada da API deve usar este middleware.
+ * Falha fechada: se o Auth estiver indisponível, a rota não abre.
  */
 export function createRequireAuth(verify: VerifyToken) {
   return createMiddleware<AuthEnv>(async (c, next) => {
@@ -46,7 +25,7 @@ export function createRequireAuth(verify: VerifyToken) {
       return c.json({ error: "Autenticação necessária." }, 401);
     }
 
-    let user: User | null;
+    let user: AuthUser | null;
 
     try {
       user = await verify(token);
@@ -64,4 +43,4 @@ export function createRequireAuth(verify: VerifyToken) {
   });
 }
 
-export const requireAuth = createRequireAuth(verifySupabaseToken);
+export const requireAuth = createRequireAuth(verifyToken);

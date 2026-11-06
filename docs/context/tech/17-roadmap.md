@@ -17,7 +17,7 @@
 
 - Criar tabela `posts`.
 - Criar modelos `clients`, `projects`, `project_updates`, `files`.
-- Integrar Supabase Storage aos arquivos do dashboard.
+- Escolher o armazenamento de arquivos do dashboard.
 
 Fora do escopo do template: multi-tenant, planos e cobranca recorrente. Quem precisar
 disso deve tratar como projeto SaaS, com spec propria.
@@ -25,7 +25,7 @@ disso deve tratar como projeto SaaS, com spec propria.
 ### Longo prazo
 
 - E-mails transacionais, quando o projeto precisar.
-- Papeis simples (ex.: admin e usuario) em `profiles`, se o projeto precisar.
+- Papeis simples (ex.: admin e usuario), se o projeto precisar.
 - Observabilidade: logs estruturados, health/readiness, tracing.
 - CI com typecheck/build/test.
 - Backups e restore documentados para VPS.

@@ -24,7 +24,7 @@ Mudança de código em um domínio exige atualizar, no mesmo trabalho:
 
 ## Regras globais
 
-- Dados da app sempre via Drizzle, em qualquer Postgres; Supabase para Auth e serviços.
+- Dados da app sempre via Drizzle, em qualquer Postgres.
 - Rota privada da API usa `requireAuth`; o gate do cliente não protege dados.
 - Preserve TypeScript estrito.
 - Multi-tenant e cobrança recorrente estão fora do escopo do template.

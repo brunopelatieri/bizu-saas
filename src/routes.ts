@@ -22,7 +22,6 @@ export default [
   // Páginas de autenticação (standalone, sem header/footer)
   // ---------------------------------------------------------------------------
   route("login", "routes/login.tsx"),
-  route("auth/callback", "routes/auth-callback.tsx"),
 
   // ---------------------------------------------------------------------------
   // Área autenticada — client-only (SEM loader de servidor).

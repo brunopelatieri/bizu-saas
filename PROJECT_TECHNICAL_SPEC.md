@@ -21,7 +21,7 @@ Docker e Portainer.
 |---|---|
 | 1 a 4 | `01-visao-geral.md`, `02-stack.md`, `03-estrutura-pastas.md`, `04-scripts.md` |
 | 5 e 6 | `05-react-router.md`, `06-hono-api.md` |
-| 7 e 8 | `07-banco-drizzle.md`, `08-supabase.md` |
+| 7 e 8 | `07-banco-drizzle.md`, `08-auth.md` |
 | 9 a 12 | `09-tema-css.md`, `10-site-publico.md`, `11-dashboard.md`, `12-shadcn-ui.md` |
 | 13 a 15 | `13-skills-rules.md`, `14-deploy.md`, `15-qualidade.md` |
 | 16 a 18 | `16-bugs-riscos.md`, `17-roadmap.md`, `18-conclusao.md` |

@@ -67,11 +67,6 @@ Runtime:
 - `TRUSTED_PROXY_HOPS` (quantidade de reverse proxies; 1 com um proxy)
 - `DATABASE_URL`
 
-Build (`--build-arg`, fixadas no bundle):
-
-- `VITE_SUPABASE_URL`
-- `VITE_SUPABASE_PUBLISHABLE_KEY`
-
 Migrations:
 
 - `DIRECT_URL`

@@ -12,21 +12,19 @@
 4. Remova o que for da demonstração: `src/lib/constants/projects.ts`, posts de exemplo
    em `src/lib/content/posts.ts` e os cards de exemplo do dashboard.
 
-## Criar uma tabela ligada ao usuário
+## Criar uma tabela
 
-Em `src/db/schema.ts`, referencie `profiles.id` e mantenha `.enableRLS()`:
+Em `src/db/schema.ts`:
 
 ```ts
 export const notes = pgTable("notes", {
   id: uuid("id").primaryKey().defaultRandom(),
-  userId: uuid("user_id")
-    .notNull()
-    .references(() => profiles.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull(),
   title: text("title").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true, mode: "string" })
     .notNull()
     .defaultNow(),
-}).enableRLS();
+});
 ```
 
 Depois gere e aplique a migration:
@@ -54,7 +52,7 @@ api.get("/api/notes", authRateLimit, requireAuth, async (c) => {
 ```
 
 - Valide a entrada com `zValidator` e um schema em `src/lib/schemas/`.
-- Antes de gravar com FK para `profiles`, chame `await syncProfile(user)`.
+- Enquanto não houver provedor de autenticação, estas rotas respondem 401 ou 503.
 - Envolva o acesso ao banco em `try/catch` e registre com `logError`.
 - Teste com `api.request()`, como em `src/api/app.test.ts`.
 

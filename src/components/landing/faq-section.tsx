@@ -19,19 +19,9 @@ const faqs = [
       "Não é o foco. Ele não traz multi-tenant, planos nem cobrança recorrente. A proposta é ser simples para projetos com um único cliente ou organização; um SaaS exigiria essas camadas a mais.",
   },
   {
-    question: "Preciso usar o Postgres do Supabase?",
-    answer:
-      "Não. O Supabase Auth cuida do login e o Drizzle acessa qualquer Postgres: local, na sua VPS ou o do próprio Supabase. Para trocar de banco, basta mudar a DATABASE_URL.",
-  },
-  {
     question: "O que é a metodologia de AI Software Engineering aqui?",
     answer:
       "Especificar antes de implementar (PRD e SPEC), manter contexto técnico vivo e enxuto em docs/context e fazer mudanças pequenas e documentadas. Assim humanos e agentes de IA decidem com o mesmo mapa técnico.",
-  },
-  {
-    question: "Por que Supabase e Postgres juntos?",
-    answer:
-      "O Supabase é auxiliar — Auth, Storage, Functions e Realtime. Os dados da aplicação ficam no seu próprio Postgres via Drizzle, mantendo controle e portabilidade.",
   },
   {
     question: "Onde faço o deploy?",

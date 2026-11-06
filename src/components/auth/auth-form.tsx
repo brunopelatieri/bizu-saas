@@ -21,8 +21,8 @@ import {
   type LoginInput,
   type SignupInput,
 } from "@/lib/schemas/auth";
-import { getSupabase } from "@/lib/supabase/client";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/auth-provider";
 
 const inputClassName =
   "h-10 w-full bg-black/25 px-3 text-sm placeholder:text-muted-foreground/80";
@@ -39,6 +39,7 @@ const tabTriggerClassName = cn(
 
 function LoginForm({ nextPath }: { nextPath: string }) {
   const navigate = useNavigate();
+  const { signIn } = useAuth();
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
@@ -47,11 +48,7 @@ function LoginForm({ nextPath }: { nextPath: string }) {
 
   async function onSubmit(values: LoginInput) {
     try {
-      const supabase = getSupabase();
-      const { error } = await supabase.auth.signInWithPassword(values);
-
-      if (error) throw error;
-
+      await signIn(values);
       toast.success("Login realizado com sucesso.");
       navigate(nextPath);
     } catch (err) {
@@ -129,6 +126,7 @@ function LoginForm({ nextPath }: { nextPath: string }) {
 
 function SignupForm({ nextPath }: { nextPath: string }) {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const form = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
     defaultValues: { name: "", email: "", phone: "", password: "" },
@@ -137,29 +135,9 @@ function SignupForm({ nextPath }: { nextPath: string }) {
 
   async function onSubmit(values: SignupInput) {
     try {
-      const supabase = getSupabase();
-      const { data, error } = await supabase.auth.signUp({
-        email: values.email,
-        password: values.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            full_name: values.name,
-            phone: values.phone,
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      if (data.session) {
-        toast.success("Conta criada com sucesso.");
-        navigate(nextPath);
-        return;
-      }
-
-      toast.success("Conta criada. Verifique seu e-mail para confirmar o cadastro.");
-      form.reset();
+      await signUp(values);
+      toast.success("Conta criada com sucesso.");
+      navigate(nextPath);
     } catch (err) {
       toast.error(
         err instanceof Error

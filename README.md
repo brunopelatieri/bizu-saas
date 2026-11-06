@@ -1,6 +1,6 @@
 # Bizu Starter
 
-**Bizu Starter** é o ponto de partida para projetos pequenos e médios que **não são SaaS**, mas precisam de site público, área de login e dashboard. Usa Supabase Auth e Drizzle em qualquer Postgres, com documentação viva e fluxo pensado para **AI Software Engineering**.
+**Bizu Starter** é o ponto de partida para projetos pequenos e médios que **não são SaaS**, mas precisam de site público, área de login e dashboard. Usa Drizzle em qualquer Postgres, com documentação viva e fluxo pensado para **AI Software Engineering**.
 
 Serve para portais de clientes, áreas de membros, sites institucionais com painel, blogs com área administrativa e sistemas internos.
 
@@ -17,7 +17,7 @@ Serve para portais de clientes, áreas de membros, sites institucionais com pain
   - [Resumo Técnico 80/20](#resumo-técnico-8020)
   - [Metodologia Sugerida](#metodologia-sugerida)
   - [Como Clonar e Rodar](#como-clonar-e-rodar)
-    - [Configurar o Supabase Auth](#configurar-o-supabase-auth)
+    - [Autenticação](#autenticação)
     - [Escolha do Postgres](#escolha-do-postgres)
     - [Banco local e Drizzle](#banco-local-e-drizzle)
   - [Variáveis Principais](#variáveis-principais)
@@ -40,10 +40,9 @@ Serve para portais de clientes, áreas de membros, sites institucionais com pain
 ## O Que Vem Pronto
 
 - Landing page responsiva, blog com SSR, páginas públicas e meta tags
-- Login com Supabase Auth e dashboard client-side
+- Telas de login e dashboard client-side, ainda sem provedor de autenticação
 - API Hono no mesmo processo Node do SSR, com rotas privadas validadas no servidor
-- Drizzle ORM em qualquer Postgres: local, VPS ou o do Supabase
-- Tabela `profiles` ligada ao Supabase Auth e exemplo completo de dado privado no dashboard
+- Drizzle ORM em qualquer Postgres
 - Rate limit, headers de segurança, lint, testes e CI
 - Base visual com shadcn/ui, Tailwind v4, tema claro/escuro e componentes prontos
 - Estrutura de contexto para agentes de IA entenderem o projeto antes de mexer
@@ -58,11 +57,11 @@ React Router v7 Framework Mode + SSR global
   |
   |-- /api/*              Hono API -> Drizzle -> Postgres
   |-- /, /sobre, /blog    rotas públicas com SSR e SEO
-  |-- /login              Supabase Auth
+  |-- /login              autenticação (provedor a definir)
   `-- /dashboard/**       client-side, sem loader sensível no servidor
 ```
 
-**Stack principal:** React 19, TypeScript, React Router v7, Vite, Tailwind v4, shadcn/ui, Hono, Drizzle, Postgres, Supabase Auth/Storage, Zod, Zustand, TanStack Query, React Hook Form, Biome, Vitest e Docker.
+**Stack principal:** React 19, TypeScript, React Router v7, Vite, Tailwind v4, shadcn/ui, Hono, Drizzle, Postgres, Zod, Zustand, TanStack Query, React Hook Form, Biome, Vitest e Docker.
 
 ---
 
@@ -89,7 +88,7 @@ Comandos disponíveis no Claude Code:
 |---|---|
 | `/prd <feature>` | Cria o PRD em `docs/specs/<feature>/` |
 | `/spec <feature>` | Escreve a SPEC técnica a partir do PRD |
-| `/ctx-banco-drizzle`, `/ctx-supabase-auth`, `/ctx-api-hono`, `/ctx-dashboard`, `/ctx-infra-deploy` | Carregam o contexto do domínio |
+| `/ctx-banco-drizzle`, `/ctx-auth`, `/ctx-api-hono`, `/ctx-dashboard`, `/ctx-infra-deploy` | Carregam o contexto do domínio |
 | `/context-budget` | Mede o contexto sempre carregado |
 
 > **Regra prática:** mudou código em um domínio? Atualize o arquivo correspondente em `docs/context/` no mesmo trabalho. O método completo, incluindo escolha de modelo e como adaptar o template a um novo projeto, está em `docs/context/ai-engineering.md`.
@@ -98,7 +97,7 @@ Comandos disponíveis no Claude Code:
 
 ## Como Clonar e Rodar
 
-**Pré-requisitos:** Node.js 22 e Docker. Para login e dashboard, também um projeto no [Supabase](https://supabase.com).
+**Pré-requisitos:** Node.js 22 e Docker.
 
 ```bash
 git clone https://github.com/brunopelatieri/bizu-starter.git
@@ -118,17 +117,9 @@ App em desenvolvimento:
 http://localhost:5173
 ```
 
-### Configurar o Supabase Auth
+### Autenticação
 
-Sem estas variáveis, o site público funciona, mas login e dashboard não.
-
-1. Crie um projeto no painel do Supabase.
-2. Copie a URL do projeto e a chave publishable para o `.env.local`, em `VITE_SUPABASE_URL` e `VITE_SUPABASE_PUBLISHABLE_KEY`.
-3. Em **Authentication > URL Configuration**, defina a **Site URL** como `http://localhost:5173` e adicione `http://localhost:5173/auth/callback` em **Redirect URLs**.
-4. Reinicie o `npm run dev`, porque as variáveis `VITE_*` são lidas ao iniciar.
-5. Crie uma conta em `/login`. Por padrão, o Supabase exige confirmação por e-mail; em desenvolvimento, você pode desligá-la nas opções do provedor Email.
-
-Em produção, repita o passo 3 com o domínio real.
+O projeto ainda não tem provedor de autenticação, então login e dashboard ficam bloqueados. O site público funciona normalmente. Para conectar um provedor, veja `docs/context/tech/08-auth.md`.
 
 ### Escolha do Postgres
 
@@ -138,9 +129,8 @@ O Drizzle é a única camada de dados. Para trocar de banco, basta mudar `DATABA
 |---|---|
 | Docker local | Desenvolvimento, já configurado no `.env.example` |
 | VPS ou gerenciado | Projeto com infraestrutura própria |
-| Postgres do Supabase | Projeto que quer tudo no Supabase, sem VPS para banco |
 
-O `supabase.from()` não é usado em nenhum dos casos. As tabelas têm RLS ligado, o que fecha a Data API do Supabase sem afetar o app, desde que a role da `DATABASE_URL` seja dona das tabelas. No transaction pooler do Supabase (porta 6543), adicione `?prepare=false` à `DATABASE_URL`.
+Em pooler no modo transaction, como PgBouncer, adicione `?prepare=false` à `DATABASE_URL`.
 
 ### Banco local e Drizzle
 
@@ -180,16 +170,6 @@ Por padrão, o `start` usa `PORT=3000`.
 | `DIRECT_URL` | Conexão usada pelo Drizzle Kit/migrations |
 | `PORT` | Porta do servidor único em produção |
 | `TRUSTED_PROXY_HOPS` | Quantidade de reverse proxies na frente do app; use `1` atrás de um proxy |
-| `VITE_SUPABASE_URL` | URL pública do projeto Supabase |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | Chave pública do Supabase |
-
-Em imagem Docker, as variáveis `VITE_*` entram no build, não em runtime:
-
-```bash
-docker build -t bizu-starter \
-  --build-arg VITE_SUPABASE_URL=https://your-project-ref.supabase.co \
-  --build-arg VITE_SUPABASE_PUBLISHABLE_KEY=your-publishable-key .
-```
 
 ---
 

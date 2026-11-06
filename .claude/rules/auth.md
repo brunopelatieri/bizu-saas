@@ -1,0 +1,23 @@
+---
+paths:
+  - "src/api/auth.ts"
+  - "src/lib/auth/**"
+  - "src/lib/schemas/auth.ts"
+  - "src/providers/auth-provider.tsx"
+  - "src/components/auth/**"
+  - "src/routes/login.tsx"
+  - "src/pages/login-page.tsx"
+---
+
+# Autenticação sem provedor, com ponto único de integração
+
+O projeto ainda não tem provedor de autenticação: login e dashboard estão bloqueados.
+
+- Cliente: o provedor entra em `noProvider`, em `src/providers/auth-provider.tsx`.
+- Servidor: o provedor entra em `verifyToken`, em `src/api/auth.ts`.
+- Use `AuthUser` (`src/lib/auth/types.ts`), sem expor tipos do provedor na interface.
+- Nunca abra o gate para contornar a falta de provedor: a falha é fechada.
+- Permissões são validadas no servidor, com `requireAuth` + checks.
+- Sessões e usuários ficam no Postgres, via Drizzle.
+
+Para entender este domínio, leia: docs/context/tech/08-auth.md

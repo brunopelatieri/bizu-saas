@@ -17,7 +17,7 @@ const features = [
   {
     icon: "🔐",
     title: "Auth + dashboard prontos",
-    body: "Login com Supabase Auth e área autenticada client-side, sem expor dados sensíveis no HTML inicial.",
+    body: "Área autenticada client-side, sem expor dados sensíveis no HTML inicial.",
   },
   {
     icon: "🎨",

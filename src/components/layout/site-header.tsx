@@ -12,7 +12,6 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -27,7 +26,7 @@ function SiteHeaderAuth({
   onNavigate,
   className,
 }: SiteHeaderAuthProps) {
-  const { user, signOut } = useAuth();
+  const { user, available, signOut } = useAuth();
 
   function handleSignOut() {
     onNavigate?.();
@@ -49,7 +48,7 @@ function SiteHeaderAuth({
             Dashboard
           </Button>
         </Link>
-        {isSupabaseConfigured() ? (
+        {available ? (
           <Button
             variant="ghost"
             size="sm"

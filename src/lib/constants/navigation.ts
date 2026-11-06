@@ -1,7 +1,7 @@
 export const siteConfig = {
   name: "Bizu Starter",
   description:
-    "Ponto de partida para sites, portais e sistemas pequenos e médios, com login, dashboard, Supabase Auth e Drizzle.",
+    "Ponto de partida para sites, portais e sistemas pequenos e médios, com dashboard e Drizzle.",
   locale: "pt-BR",
   url: "https://bizu.bru.ia.br",
   logo: "/bizu_bru_ia.png",

@@ -14,12 +14,10 @@ nao sao SaaS, mas precisam de site publico, area de login e dashboard, com:
 
 - Landing page pronta e responsiva.
 - Blog com SSR e meta tags/Open Graph.
-- Area de login com Supabase Auth.
+- Area de login, ainda sem provedor de autenticacao.
 - Dashboard/admin inicial com layout, sidebar e rotas placeholder.
 - API Hono no mesmo processo Node do servidor SSR.
-- Drizzle ORM em qualquer Postgres: local, VPS ou o do Supabase.
-- Supabase apenas como servico auxiliar para Auth, Storage, Edge Functions e
-  Realtime broadcast/presence.
+- Drizzle ORM em qualquer Postgres.
 - Base visual shadcn/ui + Tailwind v4 com tema inspirado no `shadcn-admin`.
 - Deploy planejado para VPS propria com Docker e Portainer.
 
@@ -30,7 +28,7 @@ Node process unico: react-router-hono-server
   |
   |-- /api/*                    Hono API
   |     |-- GET  /api/health
-  |     |-- GET  /api/me        requireAuth -> profiles (Drizzle)
+  |     |-- GET  /api/me        requireAuth (sem provedor: recusa tudo)
   |     `-- POST /api/contact   rate limit + Zod -> Drizzle
   |
   |-- /                         React Router Framework Mode + SSR
@@ -41,7 +39,6 @@ Node process unico: react-router-hono-server
   |-- /blog/:slug               SSR + loader + meta Open Graph dinamica
   |
   |-- /login                    auth standalone, noindex
-  |-- /auth/callback            callback Supabase, noindex
   |
   `-- /dashboard/**             shell SSR sem loader de servidor;
                                 dados e gate de auth no cliente

@@ -16,7 +16,7 @@ O projeto esta bem posicionado como starter moderno e reutilizavel para projetos
 - Sistemas internos com dashboard.
 
 A base tecnica esta consistente: React Router Framework Mode com SSR, Hono no
-mesmo processo, Drizzle em qualquer Postgres, Supabase para Auth e servicos,
+mesmo processo, Drizzle em qualquer Postgres,
 Tailwind/shadcn como design system e Docker para VPS.
 
 SaaS multi-tenant com cobranca recorrente esta fora do escopo.

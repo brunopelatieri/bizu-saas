@@ -1,63 +1,38 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-import type { User } from "@supabase/supabase-js";
-import { getSupabase } from "@/lib/supabase/client";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
+import { createContext, useContext, type ReactNode } from "react";
+import type { AuthUser } from "@/lib/auth/types";
+import type { LoginInput, SignupInput } from "@/lib/schemas/auth";
 
 type AuthContextValue = {
-  user: User | null;
+  user: AuthUser | null;
   loading: boolean;
+  /** `false` enquanto não houver provedor de autenticação. */
+  available: boolean;
+  signIn: (values: LoginInput) => Promise<void>;
+  signUp: (values: SignupInput) => Promise<void>;
   signOut: () => Promise<void>;
+};
+
+async function unavailable(): Promise<never> {
+  throw new Error("Autenticação indisponível.");
+}
+
+/**
+ * Ponto único da autenticação no cliente. Sem provedor, ninguém está logado e o
+ * dashboard fica bloqueado. O novo provedor substitui este valor.
+ */
+const noProvider: AuthContextValue = {
+  user: null,
+  loading: false,
+  available: false,
+  signIn: unavailable,
+  signUp: unavailable,
+  signOut: async () => {},
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    if (!isSupabaseConfigured()) {
-      setLoading(false);
-      return;
-    }
-
-    const supabase = getSupabase();
-
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-      setLoading(false);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const value = useMemo<AuthContextValue>(
-    () => ({
-      user,
-      loading,
-      signOut: async () => {
-        if (!isSupabaseConfigured()) return;
-        await getSupabase().auth.signOut();
-      },
-    }),
-    [user, loading],
-  );
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={noProvider}>{children}</AuthContext.Provider>;
 }
 
 export function useAuth() {

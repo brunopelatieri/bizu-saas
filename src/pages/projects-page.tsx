@@ -30,7 +30,7 @@ const readyModules = [
   },
   {
     title: "Auth + dashboard",
-    body: "Login com Supabase Auth e área autenticada client-side, sem dados sensíveis no HTML inicial.",
+    body: "Área autenticada client-side, sem dados sensíveis no HTML inicial.",
   },
   {
     title: "Base de produto",
@@ -67,7 +67,7 @@ export function ProjectsPage() {
       <PageHero
         eyebrow="Projeto em destaque"
         title="Bizu Starter"
-        description="Ponto de partida para projetos pequenos e médios com site público, login e dashboard, usando Supabase Auth e Drizzle."
+        description="Ponto de partida para projetos pequenos e médios com site público e dashboard, usando Drizzle."
         actions={
           <>
             <a href={siteConfig.links.repo} target="_blank" rel="noreferrer noopener">
@@ -144,7 +144,7 @@ export function ProjectsPage() {
   |
   |-- /api/*              Hono API -> Drizzle -> Postgres
   |-- /, /sobre, /blog    rotas públicas com SSR e SEO
-  |-- /login              Supabase Auth
+  |-- /login              autenticação (provedor a definir)
   \`-- /dashboard/**       client-side, sem loader sensível no servidor`}
             </pre>
           </div>

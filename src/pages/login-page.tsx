@@ -2,11 +2,10 @@ import { Link, Navigate } from "react-router";
 import { Sparkles } from "lucide-react";
 import { AuthForm } from "@/components/auth/auth-form";
 import { SiteLogo } from "@/components/layout/site-logo";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { useAuth } from "@/providers/auth-provider";
 
 export function LoginPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, available } = useAuth();
 
   if (loading) {
     return (
@@ -46,7 +45,7 @@ export function LoginPage() {
           </h1>
           <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
             <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-            Entre ou crie sua conta para acessar o dashboard
+            Entre para acessar o dashboard
           </p>
         </header>
 
@@ -61,27 +60,15 @@ export function LoginPage() {
           />
 
           <div className="relative w-full min-w-0">
-            {!isSupabaseConfigured() ? (
+            {available ? (
+              <AuthForm />
+            ) : (
               <div className="w-full rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
-                <p className="font-medium text-amber-400">Supabase não configurado</p>
+                <p className="font-medium text-amber-400">Acesso indisponível</p>
                 <p className="mt-1 text-muted-foreground">
-                  Defina{" "}
-                  <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                    VITE_SUPABASE_URL
-                  </code>{" "}
-                  e{" "}
-                  <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                    VITE_SUPABASE_PUBLISHABLE_KEY
-                  </code>{" "}
-                  no{" "}
-                  <code className="rounded bg-muted px-1 py-0.5 text-xs">
-                    .env.local
-                  </code>
-                  .
+                  O login ainda não está habilitado neste ambiente.
                 </p>
               </div>
-            ) : (
-              <AuthForm />
             )}
           </div>
         </div>

@@ -57,7 +57,7 @@ Fora do escopo: SaaS multi-tenant, planos e cobrança recorrente.
 React Router v7 Framework Mode (SSR global)
   |
   |-- Rotas públicas com SSR: /, /sobre, /projetos, /contato, /blog, /blog/:slug
-  |-- Rotas auth standalone: /login, /auth/callback
+  |-- Rota auth standalone: /login
   `-- Dashboard client-only por convenção: /dashboard/**
 
 Hono API no mesmo processo:
@@ -65,8 +65,7 @@ Hono API no mesmo processo:
   `-- src/api/app.ts (/api/*)
 
 Dados:
-  |-- Drizzle ORM + postgres.js -> qualquer Postgres (local, VPS ou Supabase)
-  `-- Supabase para Auth, Storage, Edge Functions e Realtime (nunca supabase.from)
+  `-- Drizzle ORM + postgres.js -> qualquer Postgres
 ```
 
 <!-- ORIGEM: AI_CONTEXT.md L48-59 -->
@@ -74,8 +73,8 @@ Dados:
 
 - Não reintroduzir `src/App.tsx`, `src/main.tsx`, `index.html` ou `server/` antigo.
 - Não adicionar proxy `/api` no Vite; API e frontend compartilham origem.
-- Não usar `supabase.from()` para CRUD da aplicação.
-- Toda rota privada da API usa `requireAuth`; FKs de usuário apontam para `profiles.id`.
+- Toda rota privada da API usa `requireAuth`.
+- Autenticação ainda sem provedor: veja `tech/08-auth.md`.
 - Não colocar dados sensíveis do dashboard em `loader` server-side.
 - Use `meta` nativo do React Router para SEO/Open Graph.
 - Use loaders server-side para dados públicos indexáveis (blog, landing dinâmica).
@@ -93,7 +92,7 @@ Atualize este arquivo e `PROJECT_TECHNICAL_SPEC.md` quando mudar:
 - Stack ou dependências relevantes.
 - Deploy/Docker/Portainer.
 - Banco/schema.
-- Regras de uso de Supabase e de onde o Postgres pode rodar.
+- Regras de autenticação e de onde o Postgres pode rodar.
 - Estratégia de auth ou dashboard.
 - Convenções de IA.
 

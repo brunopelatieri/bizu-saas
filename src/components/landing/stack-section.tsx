@@ -13,7 +13,7 @@ const groups = [
   },
   {
     label: "Dados",
-    items: ["Drizzle ORM", "Postgres", "Supabase Auth/Storage"],
+    items: ["Drizzle ORM", "Postgres"],
   },
   {
     label: "Estado & Dados no cliente",

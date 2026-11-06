@@ -8,7 +8,6 @@ const stackBadges = [
   "React Router v7",
   "Hono",
   "Drizzle",
-  "Supabase",
   "Tailwind v4",
   "Docker",
 ];
@@ -39,7 +38,7 @@ export function HeroSection() {
         <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
           O <strong className="text-foreground">Bizu Starter</strong> é o ponto
           de partida para projetos pequenos e médios: site público, área de
-          login e dashboard, com Supabase Auth e Drizzle em qualquer Postgres.
+          login e dashboard, com Drizzle em qualquer Postgres.
           Sem a complexidade de um SaaS.
         </p>
 

@@ -1,8 +1,8 @@
 # Bizu Starter — Roteador de Contexto
 
 Ponto de partida full-stack para projetos pequenos e médios que **não são SaaS**,
-mas têm site público, área de login e dashboard. Usa Supabase Auth e Drizzle em
-qualquer Postgres, com **AI Software Engineering**: PRD/spec primeiro, contexto
+mas têm site público, área de login e dashboard. Usa Drizzle em qualquer Postgres,
+com **AI Software Engineering**: PRD/spec primeiro, contexto
 enxuto carregado sob demanda e decisões técnicas documentadas.
 
 ## Como carregar contexto
@@ -25,7 +25,7 @@ Fora do escopo: multi-tenant, planos e cobrança recorrente. Não adicione essas
 camadas sem spec aprovada: elas mudam o propósito do template.
 
 - Público com SSR: `/`, `/sobre`, `/projetos`, `/contato`, `/blog`, `/blog/:slug`.
-- Auth standalone: `/login`, `/auth/callback`.
+- Auth standalone: `/login`.
 - Área autenticada client-only: `/dashboard/**`.
 
 ## Regras inegociáveis
@@ -38,16 +38,14 @@ camadas sem spec aprovada: elas mudam o propósito do template.
 
 **Dados: Drizzle é a única camada de dados**
 - Dados da aplicação passam sempre pelo Drizzle (`src/db/`). O Postgres pode ser
-  local, em VPS ou o do Supabase: muda só a `DATABASE_URL`.
-- Usuários: `profiles` espelha o Supabase Auth; FKs apontam para `profiles.id`.
-- Tabela nova leva `.enableRLS()`, que fecha a Data API no Postgres do Supabase.
+  local ou em qualquer servidor: muda só a `DATABASE_URL`.
 - Mudança de schema é sempre migration Drizzle (`npm run db:generate`, `db:migrate`).
 - Loaders acessam o banco direto, sem volta HTTP interna.
 
-**Supabase: Auth e serviços, nunca acesso a dados**
-- Permitido: Auth, Storage, Edge Functions, Realtime broadcast/presence.
-- Proibido: `supabase.from()`, schema/migrations fora do Drizzle e `postgres_changes`.
-- Permissões são validadas no servidor, com `requireAuth` + checks, não por RLS.
+**Autenticação: ainda sem provedor**
+- Login e dashboard estão bloqueados. Veja `docs/context/tech/08-auth.md`.
+- Nunca abra o gate para contornar isso: a falha é fechada.
+- Permissões são validadas no servidor, com `requireAuth` + checks.
 
 **Segurança**
 - Toda rota privada da API usa `requireAuth` (`src/api/auth.ts`). O `ProtectedRoute`

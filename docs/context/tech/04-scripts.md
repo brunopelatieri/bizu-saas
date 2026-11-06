@@ -12,7 +12,7 @@
 | `npm run dev` | Inicia RR dev server com SSR + Hono + HMR |
 | `npm run build` | Gera `build/client` e `build/server` |
 | `npm run start` | Roda producao local: `node ./build/server/index.js` |
-| `npm run typecheck` | `react-router typegen && tsc` |
+| `npm run typecheck` | Gera os tipos de rota e verifica `tsconfig.app.json` e `tsconfig.node.json` |
 | `npm run lint` | Lint com Biome |
 | `npm test` | Testes com Vitest |
 | `npm run db:generate` | Gera migrations Drizzle |

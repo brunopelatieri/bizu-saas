@@ -1,6 +1,5 @@
 import { Link } from "react-router";
 import { ExternalLink, LogOut, Settings } from "lucide-react";
-import type { User } from "@supabase/supabase-js";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { AuthUser } from "@/lib/auth/types";
 import {
   getUserDisplayName,
   getUserInitials,
@@ -23,7 +23,7 @@ import {
 import { cn } from "@/lib/utils";
 
 type DashboardUserMenuProps = {
-  user: User | null;
+  user: AuthUser | null;
   collapsed?: boolean;
   onSignOut: () => void;
   className?: string;

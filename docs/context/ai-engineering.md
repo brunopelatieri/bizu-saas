@@ -81,5 +81,5 @@ Para as tarefas de código, siga `docs/context/receitas.md`.
 4. Crie um arquivo em `docs/context/` para cada domínio de negócio novo.
 5. Para cada domínio, crie rule com `paths:` e, se for grande, skill `ctx-<domínio>`.
 6. Registre os arquivos novos no INDEX e remova o que não se aplica.
-7. Escolha onde o Postgres roda: local, VPS ou Supabase. Só muda a `DATABASE_URL`.
+7. Escolha onde o Postgres roda. Só muda a `DATABASE_URL`.
 8. Comece a primeira feature por `/prd`.

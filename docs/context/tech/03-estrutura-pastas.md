@@ -29,12 +29,11 @@
 |   |   |-- layout/
 |   |   |-- projects/
 |   |   `-- ui/               shadcn/ui
-|   |-- db/                   Drizzle: schema, client e profiles
+|   |-- db/                   Drizzle: schema e client
 |   |-- lib/
 |   |   |-- api/              cliente da API com token da sessao
 |   |   |-- constants/
 |   |   |-- content/
-|   |   |-- supabase/
 |   |   `-- theme.ts
 |   |-- pages/                componentes de pagina reaproveitados por routes
 |   |-- providers/

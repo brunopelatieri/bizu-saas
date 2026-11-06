@@ -3,7 +3,7 @@
 - **Escopo:** Rules do Cursor, skill de landing page e mecanismo de contexto vivo.
 - **Specs relacionadas:** nenhuma citada
 - **Paths do código:** não declarado
-- **Nota:** Registro histórico. As rules `portal-*` foram substituídas pelas rules por domínio em `.claude/rules/` e `.cursor/rules/`; a arquitetura vigente está em `docs/context/core.md`.
+- **Nota:** Registro histórico, de quando o projeto usava Supabase. As rules `portal-*` foram substituídas pelas rules por domínio em `.claude/rules/` e `.cursor/rules/`; a arquitetura vigente está em `docs/context/core.md`.
 
 <!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L540-609 -->
 ## 13. Skills e Rules Implantadas

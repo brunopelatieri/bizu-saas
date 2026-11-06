@@ -65,12 +65,6 @@
 | Postgres 16 | Banco proprio da aplicacao |
 | dotenv | Carregamento de `.env.local` em desenvolvimento |
 
-### Auth, Storage e Servicos Externos
-
-| Ferramenta | Uso |
-|------------|-----|
-| Supabase JS | Auth, Storage, Edge Functions e Realtime auxiliar |
-
 Tabelas, graficos, datas e e-mail sao opcionais: veja `docs/context/receitas.md`.
 
 ### Qualidade
