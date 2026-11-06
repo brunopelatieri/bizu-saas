@@ -1,0 +1,156 @@
+# SPEC: SaaS Foundation (índice)
+
+- **Status:** rascunho
+- **PRD:** `docs/specs/saas-foundation/prd.md`
+- **Contexto carregado:** `core.md`, `status.md`, `tech/08-auth.md`, `tech/06-hono-api.md`,
+  `tech/07-banco-drizzle.md`, `tech/14-deploy.md`, `tech/16-bugs-riscos.md`,
+  `infra-deploy.md`, `receitas.md`, `ai-engineering.md`, além do código em `src/`.
+
+> A SPEC passou de 300 linhas e foi dividida por domínio. Este arquivo é o índice,
+> as decisões e as premissas. Abra só o arquivo do domínio que a fase toca.
+
+| Arquivo | Conteúdo |
+|---|---|
+| `spec-auth.md` | Better Auth em duas instâncias, cadastro, verificação de e-mail por nível, convites, senha, 2FA, personificação |
+| `spec-tenant-rbac.md` | Tenant, isolamento (`tenant_id` + RLS), identificação, catálogo de permissões e matriz por papel |
+| `spec-dados.md` | Modelo de dados completo, migrations, papéis do Postgres, seed |
+| `spec-billing.md` | Planos, trial, assinaturas, interface do módulo de pagamento, matriz de provedores, webhooks, reconciliação |
+| `spec-email-jobs.md` | E-mail transacional, provedores, entrega (SPF/DKIM/DMARC), Mailpit, jobs com pg-boss |
+| `spec-seguranca.md` | Modelo de ameaças, controles, CSRF, CSP, rate limit, segredos, LGPD, auditoria |
+| `spec-rotas-api.md` | Mapa de rotas das três áreas e contratos da API |
+| `spec-testes-operacao.md` | Plano de testes, variáveis de ambiente, tutorial do README, deploy, observabilidade, backups, repositório público |
+| `spec-plano.md` | Fases de implementação, dependências, verificação, modelo de LLM por fase, lista de atualização de contexto |
+
+## Onde entra
+
+- [x] Pública com SSR: landing reposicionada, `/precos`, `/legal/*`, páginas de auth.
+- [x] API Hono (`src/api/`): auth montado em `/api/auth/*` e `/api/portal/auth/*`,
+  rotas de negócio em `/api/*`, webhooks em `/api/webhooks/*`.
+- [x] Áreas client-only: `/app/**`, `/admin/**`, `/portal/**` (sem `loader` sensível).
+
+## Levantamento: existe, falta, remove
+
+**Existe e fica:** React Router 7 SSR com Hono em processo único; Drizzle +
+postgres.js; `requireAuth` com falha fechada (`src/api/auth.ts`); `rateLimit` em
+memória com `TRUSTED_PROXY_HOPS`; `logError` sem PII; `secureHeaders`; Zod
+compartilhado; `apiFetch`; TanStack Query; shadcn/ui; tema; Biome, Vitest, CI;
+Dockerfile multi-stage; `docker-compose.yml` com Postgres; `/api/contact`.
+
+**Existe e muda:** `verifyToken` e `noProvider` (pontos de integração) viram Better
+Auth; `AuthUser` ganha papel e tenant ativo; `/dashboard/**` vira `/app/**`;
+`rateLimit` ganha store em Postgres; `secureHeaders` ganha CSP com nonce; `.env.example`,
+`docker-compose.yml` (Mailpit, roles do Postgres), Dockerfile (migrations), CI
+(Postgres de serviço).
+
+**Falta:** tudo de auth real, tenant, RBAC, planos, billing, webhooks, e-mail,
+jobs, auditoria, LGPD, `/admin`, `/portal`, onboarding, seed, LICENSE/CONTRIBUTING/
+SECURITY/CHANGELOG, tutorial completo.
+
+**Remove:** posicionamento "não é SaaS" em `CLAUDE.md`, README, landing
+(`hero-section`, `faq-section`, `about-section`, `projects-page`), `core.md`,
+`ai-engineering.md`, `17-roadmap.md`, `18-conclusao.md`, `01-visao-geral.md`,
+`10-site-publico.md` e `.cursor/rules/ai-context-governance.mdc`; placeholders
+`/dashboard/projetos|arquivos|relatorios`; `src/lib/constants/projects.ts` como
+vitrine pessoal; stubs `AI_CONTEXT.md` e `PROJECT_TECHNICAL_SPEC.md`; migrations
+antigas de `profiles` ficam no histórico (não se apaga migration aplicada). A lista
+exata de arquivos está em `spec-plano.md`.
+
+## Decisões
+
+| Decisão | Motivo | Alternativas descartadas |
+|---|---|---|
+| **Better Auth 1.7.x** com `@better-auth/drizzle-adapter`, sessões no Postgres | Roda sobre o Drizzle já adotado; plugins oficiais de organização (papéis dinâmicos, convites), admin (personificação, ban), 2FA, magic link e OTP; rate limit com storage em banco; sem serviço externo | **Auth.js**: sem organizações nem 2FA nativos, foco em OAuth. **Lucia**: descontinuada como biblioteca, virou guia. **Clerk/Auth0/Supabase Auth**: hospedados, prendem o projeto e contrariam "tudo sobre Postgres". **Auth própria**: mais risco de erro em fluxo sensível e mais código para manter |
+| **Duas instâncias do Better Auth**: `auth` (plataforma e equipe) e `portalAuth` (clientes/leads), mesma biblioteca, tabelas e cookies distintos | Decisão do usuário: clientes separados. Reusar a biblioteca evita duplicar verificação, reset, 2FA e rate limit | Tabela única com flag `kind` (rejeitada pelo usuário); auth própria só para o portal (duplicaria código sensível) |
+| **Identidade do cliente é global por e-mail, vínculo por tenant** (`portal_user` + `customer`) | A tabela de usuário do Better Auth exige e-mail único; o vínculo `customer` por tenant permite o mesmo e-mail em vários tenants e isola os dados | Um `portal_user` por tenant (quebra a unicidade de e-mail do Better Auth); e-mail composto `tenant:email` (gambiarra) |
+| **Organização ativa na sessão + caminho**, um domínio por instalação | Decisão do usuário. Cookies simples, sem TLS wildcard, sem resolução de host no SSR | Subdomínio por tenant e `/t/:slug` (módulo futuro de white label) |
+| **`tenant_id` na aplicação + RLS no Postgres** com papel de runtime sem `BYPASSRLS` e `set_config('app.tenant_id')` por transação | Decisão do usuário. Query esquecida vira resultado vazio, não vazamento | Só aplicação (uma query vaza tudo); schema por tenant (migrations N vezes, pooling difícil) |
+| **Verificação por link com página de confirmação** (GET não consome; botão faz POST) + camada própria de uso único e invalidação | Exigência do PRD; resiste a scanners; Better Auth não armazena o token (JWT) nem invalida anteriores | OTP numérico puro (não é "link"); link que verifica no GET (scanner consome); reimplementar tudo (mais código) |
+| **Portal com magic link** de uso único e hash em banco (`storeToken: "hashed"`), senha opcional | Primeira entrada do lead sem senha; o clique prova o e-mail; cabe em "link de verificação" | Senha temporária por e-mail (insegura); OTP (mais atrito no celular) |
+| **Clique em convite não substitui verificação** para equipe; convite de cliente é magic link e verifica | Equipe acessa dados do tenant: regra única e auditável. Cliente: o próprio link mágico prova a posse | Convite valendo como verificação para equipe (dois caminhos de verificação) |
+| **Núcleo de billing próprio + módulos** por provedor em `src/lib/payments/providers/<id>/`; Stripe e Asaas primeiro | Estado da assinatura mora no Postgres; provedor só executa e notifica; módulo some ao apagar a pasta | Stripe Billing como fonte da verdade (prende); biblioteca de billing genérica (não cobre Pix/boleto BR) |
+| **Fluxo (b) é módulo futuro**, mas `tenant_payment_credential` e `PaymentContext.credentials` já existem na interface | Decisão do usuário; evita refazer a interface depois | Entregar (b) agora (dobra webhooks e onboarding de subcontas) |
+| **E-mail por interface `EmailProvider`**: SMTP (nodemailer) e Resend na primeira entrega | SMTP cobre Mailpit e qualquer provedor; Resend tem SDK simples e webhooks de bounce | Só SMTP (sem bounce estruturado); só Resend (sem Mailpit) |
+| **Jobs com pg-boss 12.x** no mesmo processo, com modo worker separado por env | Só Postgres, sem Redis; cron, retry com backoff, dead letter | Graphile Worker (sem cron nativo tão simples); BullMQ (Redis); setInterval (sem retry nem persistência) |
+| **Rate limit em Postgres** para rotas próprias e `rateLimit.storage: "database"` no Better Auth | Vale com mais de uma instância sem Redis | Memória (atual); Redis (serviço extra) |
+| **Auditoria em tabela própria** `audit_log`, sem PII em texto livre | Base para personificação, LGPD e suporte | Só logs (não consultáveis por tenant) |
+| **Personificação com consentimento** registrado em `impersonation_grant`, 1 h, banner, bloqueio de ações financeiras | Exigência do PRD; admin plugin dá o mecanismo, a política é nossa | Personificação livre pelo admin (sem consentimento) |
+| **Arquivos, notificações, white label, API pública**: módulos ou fase futura | Mantém o núcleo enxuto | Entregar tudo agora |
+| **Manter React Router 7.18** nesta entrega | Não misturar migração de framework com auth e billing | Migrar para RR8 junto |
+
+## Premissas registradas
+
+- Domínio único por instalação, HTTPS no reverse proxy, `TRUSTED_PROXY_HOPS=1`.
+- Trial padrão 14 dias no plano "Pro"; carência de inadimplência 7 dias; ambos em
+  `platform_setting` e editáveis em `/admin/configuracoes`.
+- Upgrade imediato com proração do provedor quando houver; downgrade e cancelamento
+  no fim do período, em todos os provedores.
+- Cadastro de cliente por auto-serviço no portal desligado por padrão (`tenant.settings.portal_self_signup`).
+- Proprietário é criado por seed ou `npx auth create-admin`, nunca por cadastro público.
+- 2FA obrigatório para papéis de plataforma quando `NODE_ENV=production`.
+- Idioma pt-BR, moeda BRL, timezone de exibição `America/Sao_Paulo`, banco em UTC.
+- Mercado Pago é o próximo módulo depois de Stripe e Asaas.
+- Templates de e-mail só por código nesta entrega.
+
+## Não verificado (marcar antes de implementar)
+
+- Better Auth: formato do token de verificação (JWT HS256) e opção
+  `emailVerification.expiresIn` (padrão 3600 s) vieram de fontes secundárias e da
+  página de opções; conferir no código-fonte ao implementar.
+- Better Auth: se `beforeEmailVerification(user, request)` expõe o token na `request`.
+  A SPEC não depende disso: usa middleware Hono antes do handler.
+- Better Auth: nome exato do campo adicionado à sessão pelo admin plugin
+  (`impersonatedBy` em fontes de terceiros).
+- Better Auth: se `send-verification-email` responde igual para e-mail inexistente.
+  A SPEC embrulha o endpoint em rota própria com resposta uniforme.
+- Drizzle Kit: geração de `pgPolicy` com papel próprio e `FORCE ROW LEVEL SECURITY`
+  (precisa migration customizada).
+- Stripe: Connect com contas conectadas brasileiras; `application_fee_amount`;
+  cartão no Brasil (assumido disponível); assinatura por boleto (listada como
+  "recurring ✓" mas "off-session ✗").
+- Asaas: trial em assinaturas (não há campo); header de idempotência (não há);
+  número e intervalo de retentativas de webhook; eventos de assinatura.
+- Mercado Pago: template exato do manifest do `x-signature`; `X-Idempotency-Key`;
+  campos de `POST /preapproval`; split em assinaturas.
+- Pagar.me: autenticação de webhook (nenhuma assinatura documentada); endpoint de
+  estorno; URL de sandbox (mesma base, chave de teste).
+- PagBank: eventos de webhook (nomes); idempotência na API de pedidos; trial.
+- pg-boss: 12.38.1 no npm hoje; exige Node ≥ 22.12 e Postgres ≥ 13 segundo o README.
+- Google/Yahoo: exigências de remetente (SPF, DKIM, DMARC, unsubscribe em marketing)
+  vieram de fontes de terceiros; conferir nas páginas oficiais ao configurar DNS.
+
+## Fontes consultadas
+
+- Better Auth: `/docs/concepts/email`, `/docs/concepts/users-accounts`,
+  `/docs/authentication/email-password`, `/docs/plugins/organization`, `/docs/plugins/admin`,
+  `/docs/plugins/2fa`, `/docs/plugins/email-otp`, `/docs/plugins/magic-link`,
+  `/docs/concepts/rate-limit`, `/docs/concepts/cookies`, `/docs/concepts/session-management`,
+  `/docs/adapters/drizzle`, `/docs/integrations/hono`, `/docs/concepts/database`,
+  `/docs/plugins/bearer`, `/docs/reference/options` em `https://better-auth.com`.
+- Drizzle RLS: `https://orm.drizzle.team/docs/rls`.
+- Stripe: `docs.stripe.com/payments/pix`, `/payments/boleto`, `/webhooks`,
+  `/billing/subscriptions/overview`, `/billing/subscriptions/webhooks`,
+  `/billing/subscriptions/pause-payment`, `/billing/subscriptions/cancel`,
+  `/billing/revenue-recovery/smart-retries`, `/connect`, `/connect/charges`,
+  `/api/idempotent_requests`, changelog `2026-04-22` (Pix recorrente).
+- Asaas: `docs.asaas.com/docs/autenticação-1`, `/docs/sandbox`, `/docs/o-que-pode-ser-testado`,
+  `/reference/criar-nova-assinatura`, `/docs/split-de-pagamentos`, `/docs/estornos`,
+  `/reference/estornar-cobranca`, `/docs/sobre-os-webhooks`, `/docs/webhook-para-cobrancas`,
+  `/docs/retries-e-idempotência`, changelog de obrigatoriedade do `authToken`.
+- Mercado Pago: `/developers/pt/docs/subscriptions/overview`,
+  `/checkout-pro-preferences/additional-content/notifications/webhooks`,
+  `/checkout-pro-preferences/how-tos/integrate-marketplace`,
+  `/checkout-api-orders/payment-management/refunds-cancellations`.
+- Pagar.me: `docs.pagar.me/reference/criar-pedido-2`, `/reference/assinaturas-1`,
+  `/reference/eventos-de-webhook-1`, `/docs/webhooks`, `/docs/chaves-de-acesso`.
+- PagBank: `developer.pagbank.com.br/reference/criar-pedido`, `/reference/cancelar-pagamento`,
+  `/reference/divisao-de-pagamento`, `/reference/criar-assinatura`,
+  `/reference/validacao-de-autenticidade`, `/reference/webhooks`,
+  `/docs/ambientes-disponiveis`, `/docs/token-de-autenticacao`,
+  `/docs/chaves-publicas-e-de-idempotencia`.
+- Verificação de e-mail e scanners: OWASP Forgot Password Cheat Sheet;
+  `docs.descope.com/flows/use-cases/email-scanner`; `flaviocopes.com/scanner-safe-double-opt-in`.
+- pg-boss: `github.com/timgit/pg-boss` (README). Mailpit: `github.com/axllent/mailpit`.
+- Versões no npm em 2026-11-05: better-auth 1.7.18, @better-auth/drizzle-adapter 1.7.18,
+  @better-auth/cli 1.4.21, pg-boss 12.38.1, drizzle-orm 0.45.4, hono 4.13.16,
+  nodemailer 10.3.1, resend 6.37.0, stripe 23.1.0, mercadopago 3.6.1, react-router 8.5.1
+  (projeto em 7.18.5).
