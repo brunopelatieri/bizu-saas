@@ -15,7 +15,11 @@
 | `/app/assinatura` | plano e estado, escolha de plano e método por capacidades, perfil de faturamento, cancelar, pausar, portal e faturas recentes |
 | `/app/assinatura/faturas` | histórico, com link para a fatura no provedor |
 | `/app/assinatura/retorno` | volta do checkout: consulta o estado local, nunca a query string |
+| `/app/auditoria` | log do tenant, com `audit:read`, filtros por ação e pessoa e paginação |
 | `/app/configuracoes` | organização, papéis personalizados (só owner) e troca de e-mail |
+| `/app/configuracoes/seguranca` | 2FA (QR, confirmar, códigos de backup, desativar); owner exige 2FA da equipe |
+| `/app/configuracoes/sessoes` | lista e encerra sessões |
+| `/app/configuracoes/suporte` | só owner: libera o suporte por 24 h, lista e revoga |
 
 `/admin/**` (proprietário e suporte da plataforma, `tech/22-admin.md`) reaproveita o mesmo
 shell com outro menu; `/portal/**` é client-only como elas, com layout e sessão próprios: `PortalLayout` e
@@ -27,10 +31,17 @@ shell com outro menu; `/portal/**` é client-only como elas, com layout e sessã
   topbar com hambúrguer e `Sheet` no mobile.
 - Shell e telas em `src/components/app/`. O seletor de tenant (`TenantSwitcher`) fica na
   sidebar e no menu mobile.
-- `AppLayout` espera `/api/me`: sem tenant, manda a `/app/onboarding`. É só o caminho da
-  interface; quem barra os dados é `requireTenant`.
+- `AppLayout` espera `/api/me`: sem tenant, manda a `/app/onboarding`; com
+  `security.tenantRequires2fa`, manda a `/app/configuracoes/seguranca`. É só o caminho da
+  interface; quem barra os dados é `requireTenant`. O `AdminLayout` faz o mesmo com
+  `platformRequires2fa`.
+- `ImpersonationBanner` fica no topo de `/app` enquanto `user.impersonatedBy` existir, e
+  `signOut()` encerra só a personificação. Ao personificar ou sair, a página recarrega: nenhum
+  estado do cliente passa de uma sessão à outra.
+- `SettingsNav` são as abas de `/app/configuracoes`; `TwoFactorCard` serve `/app` e `/admin`.
 - `useAuth()` expõe `tenant`, `tenants`, `permissions`, `billing`, `features`, `limits`,
-  `reloadAccount` e `switchTenant`.
+  `security`, `reloadAccount` e `switchTenant`. `signIn` devolve `{ twoFactor }`: com `true`, a
+  tela de login segue para `/2fa`.
 - `BillingBanner` (topo de `/app`) avisa do fim do trial, do pagamento pendente e do modo somente
   leitura, com link para `/app/assinatura`; só informa, a API é quem bloqueia. O cartão "Assinatura" da visão geral mostra o plano e os dias restantes.
 - `AppSidebar`, `AppNav` e `AppTopbar` recebem o menu por props (`nav`, `header`, `subtitle`); o

@@ -1,16 +1,22 @@
 import { Hono } from "hono";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { rateLimit } from "@/api/rate-limit";
+import {
+  createMemoryStore,
+  rateLimit,
+  type RateLimitStore,
+} from "@/api/rate-limit";
 
 function buildApp(limit = 2, maxKeys?: number) {
   const app = new Hono();
-  app.get("/", rateLimit({ limit, windowMs: 1000, maxKeys }), (c) => c.text("ok"));
+  app.get("/", rateLimit({ name: "teste", limit, windowMs: 1000, maxKeys }), (c) =>
+    c.text("ok"),
+  );
   return app;
 }
 
-function get(app: Hono, forwardedFor?: string, address = "192.0.2.1") {
+function get(app: Hono, forwardedFor?: string, address = "192.0.2.1", path = "/") {
   return app.request(
-    "/",
+    path,
     { headers: forwardedFor ? { "X-Forwarded-For": forwardedFor } : {} },
     { incoming: { socket: { remoteAddress: address } } },
   );
@@ -50,7 +56,7 @@ describe("rateLimit", () => {
   it("falha do servidor não consome a tentativa", async () => {
     const app = new Hono();
     let status: 200 | 500 = 500;
-    app.get("/", rateLimit({ limit: 1, windowMs: 1000 }), (c) =>
+    app.get("/", rateLimit({ name: "teste", limit: 1, windowMs: 1000 }), (c) =>
       c.text("resposta", status),
     );
 
@@ -98,6 +104,35 @@ describe("rateLimit", () => {
     vi.advanceTimersByTime(1001);
 
     expect((await get(app, "10.0.0.1")).status).toBe(200);
+  });
+
+  it("dois limites no mesmo store contam separados pelo nome", async () => {
+    const store = createMemoryStore();
+    const app = new Hono();
+    const options = { limit: 1, windowMs: 1000, store };
+    app.get("/a", rateLimit({ name: "a", ...options }), (c) => c.text("a"));
+    app.get("/b", rateLimit({ name: "b", ...options }), (c) => c.text("b"));
+
+    expect((await get(app, undefined, undefined, "/a")).status).toBe(200);
+    expect((await get(app, undefined, undefined, "/b")).status).toBe(200);
+    expect((await get(app, undefined, undefined, "/a")).status).toBe(429);
+  });
+
+  it("com o store fora do ar, a rota não abre", async () => {
+    const broken: RateLimitStore = {
+      hit: () => Promise.reject(new Error("sem banco")),
+      undo: () => Promise.resolve(),
+    };
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    const app = new Hono();
+    app.get(
+      "/",
+      rateLimit({ name: "x", limit: 1, windowMs: 1000, store: broken }),
+      (c) => c.text("ok"),
+    );
+
+    expect((await get(app)).status).toBe(503);
+    consoleError.mockRestore();
   });
 
   it("no limite de chaves, descarta a mais antiga sem zerar as demais", async () => {

@@ -168,21 +168,28 @@ Acao recomendada:
 - A correcao exige `@hono/node-server` 2, que depende de `react-router-hono-server` 4
   e React Router 8. Fazer como migracao propria, nao como ajuste pontual.
 
-### RISK-005 — Rate limit em memoria
+### RISK-005 — Rate limit em memoria (corrigido na fase 9)
 
-Estado atual:
+`RATE_LIMIT_STORE=postgres` guarda os contadores em `rate_limit_bucket`, e producao recusa
+`memory` na subida. Sobra o `failureLimit` dos webhooks, em memoria: com N instancias, o teto e N
+vezes o limite.
 
-- O limite de `/api/contact` vive na memoria do processo. A chave e o IP da conexao,
-  ou o de `X-Forwarded-For` quando `TRUSTED_PROXY_HOPS` esta definido.
+Atras de proxy e sem `TRUSTED_PROXY_HOPS`, todos ainda dividem o limite do IP do proxy: defina a
+variavel no deploy.
 
-Impacto:
+---
 
-- Atras de proxy e sem `TRUSTED_PROXY_HOPS`, todos dividem o limite do IP do proxy.
-- Com varias instancias, cada uma conta separadamente.
+### RISK-009 — Código TOTP reutilizável dentro da janela (risco aceito)
 
-Acao recomendada:
+O plugin aceita o mesmo código enquanto ele estiver na janela de 30 s (mais uma para trás e uma para
+frente) e não guarda o último usado. Quem captura a senha e um código ao vivo consegue entrar nesse
+intervalo. O limite de 3 por 10 s e o lockout seguem valendo. Resolver exige controle próprio do
+último contador, fora do plugin.
 
-- Definir `TRUSTED_PROXY_HOPS` no deploy. Ao escalar, usar um store compartilhado.
+### RISK-010 — Trocar `BETTER_AUTH_SECRET` invalida o 2FA (risco aceito)
+
+Segredo TOTP e códigos de backup são cifrados com ele. Rotacionar exige recriar o 2FA das contas, e o
+plugin não oferece rotação. O caminho manual está em `tech/26-seguranca.md`.
 
 ---
 

@@ -1,10 +1,10 @@
-import { adminClient } from "better-auth/client/plugins";
+import { adminClient, twoFactorClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
 /** Cliente do Better Auth no navegador. Mesma origem da API; nada aqui é segredo. */
 export const authClient = createAuthClient({
   basePath: "/api/auth",
-  plugins: [adminClient()],
+  plugins: [adminClient(), twoFactorClient()],
 });
 
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
@@ -17,6 +17,13 @@ const AUTH_ERROR_MESSAGES: Record<string, string> = {
   PASSWORD_TOO_LONG: "A senha é longa demais.",
   INVALID_TOKEN: "Link inválido ou expirado.",
   BANNED_USER: "Esta conta está suspensa. Fale com o suporte.",
+  INVALID_CODE: "Código incorreto. Tente de novo.",
+  INVALID_BACKUP_CODE: "Código de backup incorreto ou já usado.",
+  INVALID_TWO_FACTOR_COOKIE: "A verificação expirou. Entre de novo.",
+  TOO_MANY_ATTEMPTS_REQUEST_NEW_CODE: "Muitas tentativas. Entre de novo.",
+  ACCOUNT_TEMPORARILY_LOCKED:
+    "Muitas tentativas erradas. A conta fica bloqueada por 15 minutos.",
+  TOTP_ALREADY_ENABLED: "A verificação em duas etapas já está ativa.",
 };
 
 type AuthErrorBody = {

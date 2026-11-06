@@ -65,6 +65,16 @@ export async function sendChangeEmailApproval(
 }
 
 /** Na conclusão o usuário já tem o e-mail novo: o antigo vem do token consumido. */
+/** O link da última etapa da troca: o `/verify-email` é o mesmo do cadastro. */
+export function emailChangeCompleted(request: Request | undefined) {
+  const token = request && new URL(request.url).searchParams.get("token");
+  if (!token) return false;
+
+  return (
+    readVerificationClaims(token).requestType === "change-email-verification"
+  );
+}
+
 export async function sendChangeEmailDone(
   user: Recipient,
   request: Request | undefined,

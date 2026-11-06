@@ -19,9 +19,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { ImpersonationPolicy } from "@/lib/billing/constants";
 import { platformSettingsSchema } from "@/lib/schemas/admin";
 
 const AUTO = "auto";
+
+const POLICY_ITEMS: Array<{ value: ImpersonationPolicy; label: string }> = [
+  { value: "consent", label: "Só com autorização do proprietário" },
+  { value: "allow_without_consent", label: "Sem autorização (sempre auditado)" },
+];
 
 function SettingsForm({
   settings,
@@ -35,6 +41,7 @@ function SettingsForm({
   const [planId, setPlanId] = useState(settings.trialPlanId ?? AUTO);
   const [trialDays, setTrialDays] = useState(String(settings.trialDays));
   const [graceDays, setGraceDays] = useState(String(settings.graceDays));
+  const [policy, setPolicy] = useState(settings.impersonationPolicy);
   const save = useAdminMutation("Configurações salvas.");
 
   const items = [
@@ -54,6 +61,7 @@ function SettingsForm({
       trialPlanId: planId === AUTO ? null : planId,
       trialDays: Number(trialDays),
       graceDays: Number(graceDays),
+      impersonationPolicy: policy,
     });
 
     if (!parsed.success) {
@@ -84,6 +92,27 @@ function SettingsForm({
               </SelectTrigger>
               <SelectContent>
                 {items.map((item) => (
+                  <SelectItem key={item.value} value={item.value}>
+                    {item.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-1 text-sm">
+            <span>Acesso do suporte às organizações</span>
+            <Select
+              items={POLICY_ITEMS}
+              value={policy}
+              disabled={readOnly}
+              onValueChange={(next) => next && setPolicy(next)}
+            >
+              <SelectTrigger aria-label="Acesso do suporte">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {POLICY_ITEMS.map((item) => (
                   <SelectItem key={item.value} value={item.value}>
                     {item.label}
                   </SelectItem>

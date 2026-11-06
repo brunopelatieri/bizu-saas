@@ -73,8 +73,11 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
 
   async function onSubmit(values: LoginInput) {
     try {
-      await signIn(values);
-      navigate(nextPath);
+      const { twoFactor } = await signIn(values);
+
+      navigate(
+        twoFactor ? `/2fa?next=${encodeURIComponent(nextPath)}` : nextPath,
+      );
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Falha ao entrar. Tente novamente.",

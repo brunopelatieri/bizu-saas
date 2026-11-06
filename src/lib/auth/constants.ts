@@ -15,6 +15,9 @@ export const PORTAL_INVITE_TTL_SECONDS = 2 * 24 * 60 * 60;
 /** Cabeçalho interno com o IP resolvido pela API. Nunca confie no valor do cliente. */
 export const CLIENT_IP_HEADER = "x-bizu-client-ip";
 
+/** "Confiar neste dispositivo" no desafio de 2FA: 30 dias. */
+export const TRUST_DEVICE_SECONDS = 30 * 24 * 60 * 60;
+
 /** Validade do convite de equipe: 48 h. */
 export const INVITATION_TTL_SECONDS = 2 * 24 * 60 * 60;
 

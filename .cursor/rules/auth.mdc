@@ -1,6 +1,6 @@
 ---
 description: Autenticação com Better Auth, sessão em cookie e falha fechada
-globs: src/api/auth.ts,src/api/auth-ext.ts,src/api/portal.ts,src/api/portal-auth.ts,src/lib/portal/**,src/db/schema/portal-auth.ts,src/api/verification-guard.ts,src/lib/auth/**,src/lib/schemas/auth.ts,src/lib/email/templates/auth/**,src/db/schema/auth.ts,src/providers/auth-provider.tsx,src/components/auth/**,src/routes/auth/**,src/pages/login-page.tsx,src/pages/signup-page.tsx,src/pages/verify-email-page.tsx,src/pages/forgot-password-page.tsx,src/pages/reset-password-page.tsx
+globs: src/api/auth.ts,src/api/auth-ext.ts,src/api/portal.ts,src/api/portal-auth.ts,src/lib/portal/**,src/db/schema/portal-auth.ts,src/api/verification-guard.ts,src/lib/auth/**,src/lib/schemas/auth.ts,src/lib/email/templates/auth/**,src/db/schema/auth.ts,src/providers/auth-provider.tsx,src/components/auth/**,src/routes/auth/**,src/pages/login-page.tsx,src/pages/two-factor-page.tsx,src/pages/signup-page.tsx,src/pages/verify-email-page.tsx,src/pages/forgot-password-page.tsx,src/pages/reset-password-page.tsx
 alwaysApply: false
 ---
 
@@ -12,7 +12,9 @@ alwaysApply: false
 - Nenhum token é consumido em GET: a página renderiza e um botão faz a chamada. `/api/auth/verify-email` só aceita POST, atrás do `verificationGuard`.
 - Respostas de cadastro, reenvio, reset e troca de e-mail nunca revelam se um e-mail existe: mesmo status, corpo e cabeçalhos. Trabalho que depende da existência roda em `runInBackground`.
 - Login de conta não verificada responde o 401 de senha errada, byte a byte (`hideUnverified`, em todo o proxy): a tela não pode depender de `EMAIL_NOT_VERIFIED`.
-- `/send-verification-email`, `/request-password-reset`, personificação e toda escrita do plugin admin ficam em `disabledPaths`; use `auth.api.*` no servidor, atrás de `/api/admin/*`.
+- `/send-verification-email`, `/request-password-reset`, personificação, rotas de sessão (`/list-sessions`, `/revoke-*`), `/two-factor/send-otp`, `/two-factor/verify-otp` e toda escrita do plugin admin ficam em `disabledPaths`; use `auth.api.*` no servidor, atrás das rotas próprias.
+- Personificação passa só por `POST /api/admin/impersonate` e `/stop-impersonating` (`src/api/impersonation.ts`), com consentimento; mutação sensível nova usa `blockWhileImpersonating` e entra no `it.each` de `tests/db/impersonation.test.ts`. Em `/api/auth/*`, a sessão personificada só usa `get-session` e `sign-out`. O prazo dela é `session.impersonation_expires_at`, nunca `expires_at`, que o cliente consegue renovar. Guarda sobre sessão decide por `resolveSession`, não por `getSessionCookie`, que lê cookie repetido de outro jeito.
+- Papel de plataforma sem 2FA em produção responde 403 `PLATFORM_2FA_REQUIRED`; `tenant.settings.require_2fa` responde 403 `TENANT_2FA_REQUIRED`. Trocar `BETTER_AUTH_SECRET` invalida os 2FA ativos.
 - Não confie em `X-Forwarded-For`: o IP vem de `clientKey` (`TRUSTED_PROXY_HOPS`) e chega ao Better Auth em `x-bizu-client-ip`.
 - Rota nova em `/api/auth/*` confere `Origin` e não passa `c.req.raw` a `new Request()`; teste também em `tests/db/auth-http.test.ts`.
 - Use `AuthUser` (`src/lib/auth/types.ts`), sem expor tipos do Better Auth na interface.
@@ -22,4 +24,4 @@ alwaysApply: false
 - Permissões são validadas no servidor; o cliente só esconde botões.
 - Sessões e usuários ficam no Postgres, via Drizzle.
 
-Para entender este domínio, leia: docs/context/tech/08-auth.md e docs/context/tech/25-portal-clientes.md
+Para entender este domínio, leia: docs/context/tech/08-auth.md, docs/context/tech/25-portal-clientes.md e docs/context/tech/26-seguranca.md

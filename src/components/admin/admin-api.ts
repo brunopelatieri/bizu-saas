@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { apiFetch } from "@/lib/api/client";
+import type { ImpersonationPolicy } from "@/lib/billing/constants";
 import type { BillingState } from "@/lib/billing/state";
 import { useAuth } from "@/providers/auth-provider";
 
@@ -95,4 +96,5 @@ export type AdminSettings = {
   trialPlanId: string | null;
   trialDays: number;
   graceDays: number;
+  impersonationPolicy: ImpersonationPolicy;
 };

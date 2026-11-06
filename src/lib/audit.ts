@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
 import { logError } from "@/api/log";
 import { auditLog } from "@/db/schema";
@@ -6,10 +7,18 @@ import { type Tx, withPlatformScope, withTenant } from "@/db/rls";
 import { getEnv } from "@/lib/env";
 
 export type AuditAction =
+  | "auth.signed_up"
   | "auth.email_verified"
+  | "auth.email_changed"
   | "auth.password_reset"
+  | "auth.2fa_enabled"
+  | "auth.2fa_disabled"
+  | "auth.session_revoked"
   | "tenant.created"
   | "tenant.updated"
+  | "tenant.security_updated"
+  | "support.grant_created"
+  | "support.grant_revoked"
   | "member.invited"
   | "member.invitation_canceled"
   | "member.joined"
@@ -43,10 +52,16 @@ export type AuditAction =
   | "admin.subscription_canceled"
   | "admin.subscription_synced"
   | "admin.webhook_reprocessed"
-  | "admin.portal_sessions_revoked";
+  | "admin.portal_sessions_revoked"
+  | "platform.impersonation_requested"
+  | "platform.impersonation_started"
+  | "platform.impersonation_stopped"
+  | "platform.impersonation_blocked_action";
 
 export type AuditEntry = {
   actor: { type?: AuditActorType; id: string | null };
+  /** Padrão: quem personifica nesta requisição (`withImpersonator`). */
+  impersonatorId?: string;
   /** Sem tenant, o evento só aparece com `withPlatformScope`. */
   tenantId?: string | null;
   target?: { type: string; id: string };
@@ -62,6 +77,16 @@ export function hashIp(ip: string) {
     .digest("hex");
 }
 
+const impersonator = new AsyncLocalStorage<string>();
+
+/**
+ * `requireAuth` envolve a requisição personificada: tudo o que for auditado nela leva
+ * `impersonator_id` (auditoria dupla), sem cada rota precisar lembrar disso.
+ */
+export function withImpersonator<T>(id: string, fn: () => Promise<T>) {
+  return impersonator.run(id, fn);
+}
+
 function toRow(action: AuditAction, entry: AuditEntry) {
   const ip = entry.ip && entry.ip !== "unknown" ? entry.ip : null;
 
@@ -69,6 +94,7 @@ function toRow(action: AuditAction, entry: AuditEntry) {
     tenantId: entry.tenantId ?? null,
     actorType: entry.actor.type ?? ("user" as const),
     actorId: entry.actor.id,
+    impersonatorId: entry.impersonatorId ?? impersonator.getStore(),
     action,
     targetType: entry.target?.type,
     targetId: entry.target?.id,

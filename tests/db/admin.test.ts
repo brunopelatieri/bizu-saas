@@ -439,6 +439,7 @@ describe("configurações da plataforma", () => {
       trialPlanId: paidPlan.id,
       trialDays: 21,
       graceDays: 3,
+      impersonationPolicy: "consent",
     });
 
     // Sem trial, o plano padrão precisa ser gratuito.

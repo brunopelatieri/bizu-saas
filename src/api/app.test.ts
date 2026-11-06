@@ -127,7 +127,8 @@ describe("rotas privadas e headers", () => {
     const pageResponse = await api.request("/login");
 
     expect(apiResponse.headers.get("X-Content-Type-Options")).toBe("nosniff");
-    expect(pageResponse.headers.get("X-Frame-Options")).toBe("SAMEORIGIN");
+    expect(pageResponse.headers.get("X-Frame-Options")).toBe("DENY");
+    expect(pageResponse.headers.has("Content-Security-Policy-Report-Only")).toBe(true);
   });
 
   it("deixa o HSTS para o reverse proxy", async () => {

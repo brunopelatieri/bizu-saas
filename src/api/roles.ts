@@ -14,6 +14,7 @@ import {
   type TenantEnv,
   teamActor,
 } from "@/api/permissions";
+import { blockMutationsWhileImpersonating } from "@/api/impersonation";
 import { handleTenantError } from "@/api/tenant-errors";
 import { audit } from "@/lib/audit";
 import { toStatements } from "@/lib/auth/permissions";
@@ -41,6 +42,7 @@ rolesRoutes.use(
   authRateLimit,
   requireAuth,
   requireTenant,
+  blockMutationsWhileImpersonating,
 );
 
 // O catálogo não tem `role:read`: `role:*` é tudo ou nada.

@@ -53,7 +53,9 @@ A demo em `https://bizu.bru.ia.br` roda na Vercel a partir de outro repositório
 
 Somente listados; nenhum foi resolvido aqui.
 
-- **Rate limit:** fica em memória de um processo; veja RISK-005 em `tech/16-bugs-riscos.md`.
+- **Rate limit:** produção exige `RATE_LIMIT_STORE=postgres`; memória é recusada na subida
+  (`tech/26-seguranca.md`).
+- **CSP:** `CSP_REPORT_ONLY=true` só relata. Valide nas telas reais e mude para `false`.
 - **Dependências:** alertas moderados restantes; veja RISK-004 no mesmo arquivo.
 - **Autenticação:** Better Auth com sessão em cookie. Em produção, `APP_URL` com HTTPS, `BETTER_AUTH_SECRET` gerado e `TRUSTED_PROXY_HOPS=1`; sem isso, os limites por IP contam o proxy.
 - **Migrations:** o runtime não inclui `drizzle-kit` nem `drizzle/`; o serviço `migrate`

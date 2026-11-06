@@ -14,7 +14,7 @@ env:
   DATABASE_URL: postgresql://bizu_app:bizu_app@localhost:5432/bizu
   DIRECT_URL: postgresql://bizu_owner:bizu_owner@localhost:5432/bizu
   BETTER_AUTH_SECRET: ci-only-better-auth-secret-not-for-production
-  CREDENTIALS_ENCRYPTION_KEY: ci-only-credentials-encryption-key-not-prod
+  CREDENTIALS_ENCRYPTION_KEY: Y2ktb25seS1jcmVkZW50aWFscy1rZXktMzItYnl0ZXM=
   AUDIT_SALT: ci-only-audit-salt-not-for-production
   EMAIL_PROVIDER: memory
 

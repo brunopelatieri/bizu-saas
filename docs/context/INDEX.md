@@ -15,6 +15,7 @@ estão nas rules e no cabeçalho de cada arquivo.
 | Endpoint `/api/*`, `requireAuth` | `tech/06-hono-api.md` |
 | Schema, migration, query | `tech/07-banco-drizzle.md` |
 | Login, sessão, provedor de autenticação | `tech/08-auth.md` |
+| 2FA, sessões, personificação, CSP, CSRF, rate limit, criptografia de credenciais, leitura da auditoria | `tech/26-seguranca.md` |
 | Tenant, equipe, convite, papéis, permissões, auditoria | `tech/21-tenant-rbac.md` |
 | Admin da plataforma: `/admin`, `/api/admin/*`, suspender, banir, planos na tela | `tech/22-admin.md` |
 | Planos, preços, trial, limites, features, estado `read_only`, `checkLimit`, seed | `tech/23-billing-planos.md` |

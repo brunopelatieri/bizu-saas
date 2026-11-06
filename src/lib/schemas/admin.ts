@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  impersonationPolicies,
   paymentEventStatuses,
   paymentProviderIds,
   priceIntervals,
@@ -108,6 +109,7 @@ export const platformSettingsSchema = z
       .int("Use um número inteiro.")
       .min(0, "Use 0 ou mais.")
       .max(60, "No máximo 60 dias."),
+    impersonationPolicy: z.enum(impersonationPolicies),
   })
   .partial()
   .refine((value) => Object.keys(value).length > 0, "Nada para alterar.");
@@ -115,6 +117,12 @@ export type PlatformSettingsInput = z.infer<typeof platformSettingsSchema>;
 
 export const reasonSchema = z.object({
   reason: z.string().trim().max(200, "Motivo muito longo.").optional(),
+});
+
+export const impersonateSchema = z.object({
+  userId: z.uuid(),
+  tenantId: z.uuid(),
+  reason: z.string().trim().min(1).max(200).optional(),
 });
 
 export const changeTenantPlanSchema = z.object({ planId: z.uuid("Plano inválido.") });

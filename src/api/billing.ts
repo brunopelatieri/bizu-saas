@@ -14,6 +14,7 @@ import {
   requireTenant,
   type TenantEnv,
 } from "@/api/permissions";
+import { blockMutationsWhileImpersonating } from "@/api/impersonation";
 import { clientKey, rateLimit } from "@/api/rate-limit";
 import { handleTenantError } from "@/api/tenant-errors";
 import { audit } from "@/lib/audit";
@@ -50,13 +51,18 @@ billingRoutes.use(
   authRateLimit,
   requireAuth,
   requireTenant,
+  blockMutationsWhileImpersonating,
 );
 
 const canRead = requirePermission("billing", "read");
 const canManage = requirePermission("billing", "manage");
 
 /** Cada chamada dispara uma requisição paga em tempo no provedor. */
-const providerRateLimit = rateLimit({ limit: 10, windowMs: MINUTE });
+const providerRateLimit = rateLimit({
+  name: "billing-provider",
+  limit: 10,
+  windowMs: MINUTE,
+});
 
 const actorOf = (c: Context<TenantEnv>) => ({
   userId: c.get("user").id,

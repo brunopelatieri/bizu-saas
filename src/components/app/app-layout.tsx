@@ -8,6 +8,7 @@ import {
 import { AppNav } from "@/components/app/app-nav";
 import { AppTopbar } from "@/components/app/app-topbar";
 import { BillingBanner } from "@/components/app/billing-banner";
+import { ImpersonationBanner } from "@/components/app/impersonation-banner";
 import { TenantSwitcher } from "@/components/app/tenant-switcher";
 import {
   Sheet,
@@ -19,12 +20,15 @@ import {
 import { appTitleFromPath } from "@/lib/constants/app-nav";
 import { useAuth } from "@/providers/auth-provider";
 
+const TWO_FACTOR_PATH = "/app/configuracoes/seguranca";
+
 /**
  * Sem tenant, a pessoa vai ao onboarding. É só o caminho da interface: quem barra os
  * dados é `requireTenant`, na API.
  */
 export function AppLayout() {
-  const { tenant, accountLoading, accountError, reloadAccount } = useAuth();
+  const { tenant, security, accountLoading, accountError, reloadAccount } =
+    useAuth();
 
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -60,6 +64,11 @@ export function AppLayout() {
 
   if (!tenant) return <Navigate to="/app/onboarding" replace />;
 
+  // Só encurta o caminho: é `requireTenant` quem responde 403 `TENANT_2FA_REQUIRED`.
+  if (security.tenantRequires2fa && pathname !== TWO_FACTOR_PATH) {
+    return <Navigate to={TWO_FACTOR_PATH} replace />;
+  }
+
   return (
     <div className="flex h-svh overflow-hidden bg-background">
       <AppSidebar collapsed={collapsed} />
@@ -81,6 +90,7 @@ export function AppLayout() {
       </Sheet>
 
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        <ImpersonationBanner />
         <AppTopbar
           sidebarCollapsed={collapsed}
           onToggleSidebar={() => setCollapsed((value) => !value)}

@@ -34,6 +34,8 @@ export const portalUser = pgTable("portal_user", {
   email: text("email").notNull().unique(),
   emailVerified: boolean("email_verified").notNull().default(false),
   image: text("image"),
+  // Sem tela nesta fase: as rotas `/two-factor/*` do portal ficam fechadas.
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   phone: text("phone"),
   locale: text("locale"),
   ...timestamps,
@@ -85,6 +87,25 @@ export const portalAccount = pgTable(
       table.accountId,
     ),
   ],
+);
+
+/** Plugin `twoFactor` do portal, ainda desligado: só a tabela (`spec-auth.md`). */
+export const portalTwoFactor = pgTable(
+  "portal_two_factor",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => portalUser.id, { onDelete: "cascade" }),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    verified: boolean("verified").notNull().default(true),
+    failedVerificationCount: integer("failed_verification_count")
+      .notNull()
+      .default(0),
+    lockedUntil: timestamptz("locked_until"),
+  },
+  (table) => [uniqueIndex("portal_two_factor_user_id_idx").on(table.userId)],
 );
 
 /** Magic links, em hash (`storeToken: "hashed"`, `storeIdentifier: "hashed"`). */

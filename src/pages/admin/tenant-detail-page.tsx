@@ -1,5 +1,7 @@
+import { useMutation } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useParams } from "react-router";
+import { toast } from "sonner";
 import {
   type AdminPlan,
   useAdminMutation,
@@ -26,6 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { ApiError, apiFetch } from "@/lib/api/client";
 import type { BillingState } from "@/lib/billing/state";
 import { roleLabel } from "@/lib/auth/permissions";
 
@@ -41,8 +44,14 @@ type TenantDetail = {
   };
   subscription: { status: string; trialEndsAt: string | null; planId: string } | null;
   plan: { id: string; name: string; isFree: boolean } | null;
+  impersonation: {
+    allowed: boolean;
+    policy: string;
+    grantExpiresAt: string | null;
+  };
   members: Array<{
     id: string;
+    userId: string;
     name: string;
     email: string;
     role: string;
@@ -100,6 +109,51 @@ function PlanChanger({ detail, plans }: { detail: TenantDetail; plans: AdminPlan
         Trocar plano
       </Button>
     </div>
+  );
+}
+
+/**
+ * Sem consentimento, o mesmo POST vira o pedido ao owner, por isso o botão muda de nome. Dá
+ * certo: recarrega em `/app`, já na sessão da pessoa.
+ */
+function ImpersonateButton({
+  tenantId,
+  userId,
+  allowed,
+}: {
+  tenantId: string;
+  userId: string;
+  allowed: boolean;
+}) {
+  const impersonate = useMutation({
+    mutationFn: () =>
+      apiFetch("/api/admin/impersonate", {
+        method: "POST",
+        body: JSON.stringify({ userId, tenantId }),
+      }),
+    onSuccess: () => window.location.assign("/app"),
+    onError: (error) => {
+      if (
+        error instanceof ApiError &&
+        error.code === "IMPERSONATION_CONSENT_REQUIRED"
+      ) {
+        toast.info(error.message);
+        return;
+      }
+
+      toast.error(error.message);
+    },
+  });
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={impersonate.isPending}
+      onClick={() => impersonate.mutate()}
+    >
+      {allowed ? "Personificar" : "Pedir acesso"}
+    </Button>
   );
 }
 
@@ -194,6 +248,7 @@ export function AdminTenantDetailPage() {
                       <TableHead>Nome</TableHead>
                       <TableHead>E-mail</TableHead>
                       <TableHead>Papel</TableHead>
+                      <TableHead />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -207,6 +262,13 @@ export function AdminTenantDetailPage() {
                             .map((role) => roleLabel(role))
                             .join(", ")}
                           {member.banned ? " (banido)" : ""}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <ImpersonateButton
+                            tenantId={id}
+                            userId={member.userId}
+                            allowed={detail.impersonation.allowed}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}

@@ -17,7 +17,7 @@
 | 6 | Billing núcleo + Stripe | concluída; falta o checklist em sandbox real do Stripe |
 | 7 | Módulo Asaas | adiada: os provedores de pagamento seguem desligados (`PAYMENT_PROVIDERS` vazio) por decisão do usuário, e a fase 8 não depende dela |
 | 8 | Portal do cliente | concluída |
-| 9 | 2FA, personificação e segurança | pendente |
+| 9 | 2FA, personificação e segurança | concluída; `CSP_REPORT_ONLY` segue em `true` até validar em produção |
 | 10 | LGPD, arquivos e observabilidade | pendente |
 | 11 | Repositório público e README final | pendente |
 
@@ -77,14 +77,40 @@
 - `payment_event` fora do `maintenance.prune` (fase 10); `platform_setting.alert_email` não existe.
 - Reembolso sem tela: sai pelo painel do provedor e chega por webhook.
 - `consent_log` (fase 10) ainda não existe: o aceite de termos é exigido, mas não registrado.
-- `audit_log` grava, mas sem tela de leitura (`/app/auditoria`, `/admin/auditoria`).
+- `.env.local` antigo precisa de `CREDENTIALS_ENCRYPTION_KEY` em base64 de 32 bytes: o valor de exemplo anterior agora derruba a subida.
+- Portal com o plugin `twoFactor` e a tabela, sem tela; rotas fechadas até haver decisão por tenant.
+- `rotateCredentials()` é função, sem comando nem job: a spec fala em "rotação por job", e o fluxo (b) ainda não existe.
+- Exportação CSV da auditoria segue fora (feature `audit_export`).
+- Fontes vêm do Google Fonts: hospedá-las no app tiraria duas origens da CSP e o IP do visitante do caminho até o Google.
 - Teto de tenants por usuário (3) e de papéis personalizados (20) seguem constantes do plugin; `members`, `custom_roles` e `customers` usam o limite do plano (`tech/23-billing-planos.md`).
-- Overview do admin sem MRR e jobs mortos; sem `/admin/auditoria`, `/admin/jobs`.
-- Rate limit das rotas próprias em memória até a fase 9.
+- Overview do admin sem MRR e jobs mortos; sem `/admin/jobs`.
 - Evoluir blog estático para tabela Drizzle quando virar feature real.
 - Migrar para React Router 8 e `react-router-hono-server` 4 para zerar os alertas
   moderados restantes (`tech/16-bugs-riscos.md`), depois da entrega da spec.
 - Stack Portainer completa (`docker/compose.prod.yml`) na fase 11.
+
+## Desvios da spec na fase 9
+
+Detalhes em `tech/26-seguranca.md`.
+
+| Spec | Entregue | Motivo |
+|---|---|---|
+| `X-Frame-Options` substituído por `frame-ancestors` | Sai só com `CSP_REPORT_ONLY=false`; em report-only fica `DENY` | Report-only não bloqueia `frame-ancestors`: o padrão ficaria sem proteção contra iframe |
+| `hono/csrf` com `origin: APP_URL` | `hono/csrf` mais recusa de toda mutação com `Origin` estranho | `hono/csrf` ignora `application/json`, e o teste pede 403 em POST de outro site |
+| `style-src 'self' 'unsafe-inline'`, sem origem externa | Com `fonts.googleapis.com` e `font-src fonts.gstatic.com` | `src/root.tsx` carrega as fontes de lá |
+| CSP sem ajuste no Zod | `z.config({ jitless: true })` em `src/lib/zod-config.ts` | Achado do smoke: o Zod testa `new Function` e gera violação de `eval` em toda página com formulário |
+| Sessões por `listSessions`/`revokeSession` no cliente | `/api/me/sessions`, com as rotas do plugin fechadas | O plugin entrega os tokens ao navegador, exige sessão recente para listar e não audita |
+| Botão "Personificar" em `/admin/usuarios/:id` e `/admin/organizacoes/:id` | Em `/admin/tenants/:id`, por membro | Não há detalhe de usuário, a rota de tenants é `/admin/tenants`, e personificar precisa do tenant |
+| Botão só com grant ou política | Sem isso, o mesmo lugar mostra "Pedir acesso" | É por ele que nasce o e-mail `impersonation-requested` |
+| `POST /api/admin/impersonate { userId }` | Com `tenantId` e `reason` opcional | O consentimento é do tenant, e o e-mail pede o motivo |
+| Bloqueio em mutações de owner em `/api/team/*` | Toda mutação de `/api/team/*` e `/api/roles/*`, e aceite de convite | Convite e papel deixariam acesso para depois da personificação |
+| `DELETE /api/tenant` bloqueado | Bloqueio montado; a rota é da fase 10 e responde 404 fora da personificação | A rota nasce protegida |
+| `/api/me` com troca de e-mail e senha | Todo `/api/auth/*`, exceto `get-session` e `sign-out` | Lista do que passa: rota nova do plugin nasce fechada |
+| `CREDENTIALS_ENCRYPTION_KEY` de exemplo `change-me...` | Base64 válido de um texto `change-me...`, recusado em produção | A validação de 32 bytes reprovaria o exemplo antigo |
+| `RATE_LIMIT_STORE`: memória em dev | Produção **recusa** `memory` na subida | Com réplicas, o limite cairia em silêncio |
+| `impersonator_id` só nas ações `platform.*` | `AsyncLocalStorage` leva `impersonator_id` a todo `audit()` da requisição | Auditoria dupla sem depender de cada rota |
+| Personificação com 1 h do plugin (`impersonationSessionDuration`) | Mais `session.impersonation_expires_at`, conferida a cada requisição | Achado do security-review: apagar o cookie `dont_remember` renovava a sessão por 7 dias, além do grant |
+| `tenant_payment_credential` | Com `aad` `tenant:provider`, `created_at` e `updated_at` | Cifra copiada de outra linha falha na leitura |
 
 ## Desvios da spec na fase 8
 
@@ -125,5 +151,5 @@ Decisões registradas com o motivo. Detalhes em `tech/24-billing-cobranca.md`.
 | Sem rota de pausa | `POST /api/billing/pause` | A spec expõe "pausar" e não tinha rota |
 | Pausa sem regra de acesso | `paused` + `read_only`; retomar após o período pago cobra um ciclo novo | Achado do security-review: `pause_collection: void` anula as faturas e o plano seguiria de graça |
 | Upgrade imediato | Imediato, mas só com a diferença paga (`error_if_incomplete`) | Achado do security-review: cartão recusado daria o plano maior até o fim da carência |
-| Checkout `não personificado` | Sem a checagem | Personificação é da fase 9 |
+| Checkout `não personificado` | Sem a checagem | Personificação é da fase 9; desde ela, `blockMutationsWhileImpersonating` |
 

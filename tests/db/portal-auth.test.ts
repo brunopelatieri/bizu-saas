@@ -15,6 +15,7 @@ import {
 import {
   call,
   cleanUp,
+  comparableHeaders,
   connectOwner,
   createTenant,
   createUser,
@@ -506,7 +507,7 @@ describe("portal: autenticação", () => {
 
         return {
           status: response.status,
-          headers: Object.fromEntries(response.headers),
+          headers: comparableHeaders(response),
           body: await response.text(),
         };
       };

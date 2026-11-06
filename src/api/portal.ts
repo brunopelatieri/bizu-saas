@@ -66,7 +66,7 @@ const PORTAL_AUTH_PATHS = new Set([
 /** Só para quem chega depois de um GET: a página renderiza e o botão faz o POST. */
 const GET_NOT_ALLOWED = { error: "Use o botão da página do link." };
 
-const verifyRateLimit = rateLimit({ limit: 10, windowMs: MINUTE });
+const verifyRateLimit = rateLimit({ name: "portal-verify", limit: 10, windowMs: MINUTE });
 
 /**
  * `/api/portal/*`, a API de quem é cliente de um tenant. O tenant vem da sessão do portal:
@@ -167,7 +167,7 @@ portalRoutes.on(["GET", "POST"], `${PORTAL_AUTH_BASE_PATH}/*`, async (c) => {
 /** Só o que a tela de login mostra. Slug malformado é só algo que não existe. */
 portalRoutes.get(
   "/api/portal/auth-ext/org/:slug",
-  rateLimit({ limit: 30, windowMs: MINUTE }),
+  rateLimit({ name: "portal-org", limit: 30, windowMs: MINUTE }),
   async (c) => {
     const slug = slugSchema.safeParse(c.req.param("slug"));
     const tenant = slug.success ? await publicTenantInfo(slug.data) : null;
@@ -180,9 +180,9 @@ portalRoutes.get(
 
 portalRoutes.post(
   "/api/portal/auth-ext/magic-link",
-  rateLimit({ limit: 3, windowMs: 15 * MINUTE }),
+  rateLimit({ name: "portal-magic-link", limit: 3, windowMs: 15 * MINUTE }),
   zValidator("json", magicLinkRequestSchema, validationError),
-  createRateLimitByEmail(),
+  createRateLimitByEmail("portal-magic-link-by-email"),
   (c) => {
     const { email, org } = c.req.valid("json");
 
@@ -194,9 +194,9 @@ portalRoutes.post(
 
 portalRoutes.post(
   "/api/portal/auth-ext/sign-up",
-  rateLimit({ limit: 3, windowMs: 15 * MINUTE }),
+  rateLimit({ name: "portal-sign-up", limit: 3, windowMs: 15 * MINUTE }),
   zValidator("json", portalSignupSchema, validationError),
-  createRateLimitByEmail(),
+  createRateLimitByEmail("portal-sign-up-by-email"),
   (c) => {
     runInBackground(requestPortalSignup(c.req.valid("json")));
 
@@ -206,7 +206,7 @@ portalRoutes.post(
 
 portalRoutes.post(
   "/api/portal/auth-ext/set-password",
-  rateLimit({ limit: 5, windowMs: 15 * MINUTE }),
+  rateLimit({ name: "portal-set-password", limit: 5, windowMs: 15 * MINUTE }),
   requirePortalAuth,
   zValidator("json", setPasswordSchema, validationError),
   async (c) => {

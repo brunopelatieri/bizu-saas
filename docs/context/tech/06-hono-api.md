@@ -20,7 +20,13 @@ Rotas atuais:
 | * | `/api/billing/*` | Assinatura do owner, liberada em `read_only` (`tech/24-billing-cobranca.md`) |
 | GET | `/api/me` | Rota privada: `{ user, tenants, permissions, billing, features, limits }`; `billing` traz estado, plano, fim do trial e fim da carência do tenant ativo |
 | GET | `/api/me/invitations` | Convites abertos para o e-mail da sessão |
+| GET, POST, DELETE | `/api/me/sessions`, `/:id`, `/revoke-others` | Sessões da própria pessoa, com auditoria e sem token (`tech/26-seguranca.md`) |
 | GET, POST, PATCH | `/api/tenant`, `/api/tenant/active` | Criar (aplica plano padrão e trial), ler, editar e trocar o tenant ativo |
+| PATCH | `/api/tenant/security` | `require2fa`: só owner, que já precisa ter 2FA |
+| GET, POST, DELETE | `/api/tenant/support-grant`, `/:id` | Consentimento para o suporte, com `support:grant` |
+| GET | `/api/audit` | Log do tenant ativo, com `audit:read` |
+| POST | `/api/admin/impersonate`, `/api/admin/stop-impersonating` | Personificação com consentimento, fora de `adminRoutes` (`src/api/impersonation.ts`) |
+| POST | `/api/csp-report` | Relatório de CSP: 16 KB, sempre 204, sem URL completa no log |
 | GET, POST, PUT, PATCH | `/api/admin/*` | Plataforma: visão geral, tenants (suspender, trocar plano), planos e preços, configurações, usuários (banir; `?scope=portal` lista clientes e `POST /api/admin/portal-users/:id/revoke-sessions` derruba as sessões deles). Só `requirePlatform`; escrita só `platform_owner` (`tech/22-admin.md`) |
 | GET, POST, PATCH, DELETE | `/api/customers`, `/:id` | Clientes do tenant, com `customer:*`; `POST` passa por `assertWithinLimit(tenantId, "customers")`; fora do tenant responde 404; e-mail repetido responde 409 `CUSTOMER_EMAIL_TAKEN` |
 | POST | `/api/customers/:id/invite` | `customer:invite`: cria `portal_user`, promove a `active`, grava `invited_at` e envia `portal-invite`; 409 `CUSTOMER_BLOCKED` |
@@ -36,18 +42,24 @@ Rotas atuais:
 | POST | `/api/auth-ext/forgot-password` | Pedido de reset, sempre `{ ok: true }` |
 | GET, POST | `/api/auth/*` | Demais rotas do Better Auth; `/api/auth/organization/*` responde 404 |
 
+Ordem dos middlewares: `securityHeaders` (cabeçalhos e CSP com nonce) → `csrfGuard` → `rateLimit` →
+`requireAuth` → `requireTenant` ou `requirePlatform` → `requirePermission` →
+`blockWhileImpersonating` → `zValidator` → handler. Webhooks e `/api/csp-report` ficam antes do
+`csrfGuard`. Detalhes em `tech/26-seguranca.md`.
+
 Autenticacao:
 
 - `requireAuth` (`src/api/auth.ts`) le o cookie de sessao do Better Auth, consulta a
   sessao no banco e coloca `user`, `session` e `activeOrganizationId` no contexto.
 - Sem cookie ou com sessao invalida: 401. E-mail nao verificado: 403
   `EMAIL_NOT_VERIFIED`. Auth indisponivel: 503.
-- `requirePlatform()` vem depois de `requireAuth` e recusa com 403 `PLATFORM_FORBIDDEN` quem nao e da plataforma; `requirePlatform(["platform_owner"])` restringe as escritas de `/api/admin/*`.
+- `requirePlatform()` vem depois de `requireAuth` e recusa com 403 `PLATFORM_FORBIDDEN` quem nao e da plataforma; `requirePlatform(["platform_owner"])` restringe as escritas de `/api/admin/*`. Em producao, sem 2FA responde 403 `PLATFORM_2FA_REQUIRED`.
 - Rota de tenant: `requireAuth` + `requireTenant` + `requirePermission(recurso, acao)`
   (`src/api/permissions.ts`). Regras e tabela de rotas em `tech/21-tenant-rbac.md`.
 - Essas rotas nao importam `@/db`: o Biome recusa (`biome.json`), e os dados passam por
   `src/lib/tenant/`. Erros saem por `handleTenantError`.
-- Limite do plano recusado: 403 `PLAN_LIMIT_REACHED` (`assertWithinLimit`, `tech/23-billing-planos.md`). `requireTenant` responde 403 `TENANT_SUSPENDED` (suspenso ou `locked`) e 403 `TENANT_READ_ONLY` (mutação com `read_only`, exceto `/api/billing/*`).
+- Limite do plano recusado: 403 `PLAN_LIMIT_REACHED` (`assertWithinLimit`, `tech/23-billing-planos.md`). `requireTenant` responde 403 `TENANT_SUSPENDED` (suspenso ou `locked`), 403 `TENANT_READ_ONLY` (mutação com `read_only`, exceto `/api/billing/*`) e 403 `TENANT_2FA_REQUIRED` (`settings.require_2fa`, membro sem 2FA).
+- `rateLimit({ name, limit, windowMs })`: `name` é único por limite; sem o store, responde 503.
 - Id de rota usa `validId`: malformado responde 404 sem chegar ao banco.
 - Toda rota privada usa `authRateLimit` (60 por minuto) antes de `requireAuth`, porque
   cada sessao validada consulta o banco. O `ProtectedRoute` nao protege dados.

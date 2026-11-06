@@ -9,8 +9,8 @@
 Instância `auth`, para plataforma e equipe, com sessão em cookie no Postgres e o plugin
 `organization` (`tech/21-tenant-rbac.md`). Clientes e leads usam outra instância, `portalAuth`,
 com cookies, tabelas e segredo próprios (`tech/25-portal-clientes.md`): um cookie nunca vale
-pelo outro. Ainda não existem: 2FA e personificação (fase 9) e `consent_log` (fase 10); o
-aceite de termos é exigido, mas não registrado.
+pelo outro. 2FA, sessões e personificação estão em `tech/26-seguranca.md`. Ainda não existe
+`consent_log` (fase 10): o aceite de termos é exigido, mas não registrado.
 
 | Peça | Arquivo | Papel |
 |---|---|---|
@@ -33,17 +33,19 @@ aceite de termos é exigido, mas não registrado.
 | `POST /api/auth-ext/resend-verification` | `auth-ext.ts` | `{ ok: true }`; 3 por 15 min por IP, 3 por hora por e-mail |
 | `POST /api/auth-ext/forgot-password` | `auth-ext.ts` | `{ ok: true }`; 3 por 15 min por IP |
 | `/api/auth/organization/*` | `auth-ext.ts` | 404: as regras de tenant ficam nas rotas próprias; use `auth.api.*` |
+| `/api/auth/two-factor/*` | Better Auth | `enable`, `disable`, `get-totp-uri`, `verify-totp`, `verify-backup-code`, `generate-backup-codes` |
 | demais `/api/auth/*` | Better Auth | `sign-in/email`, `sign-out`, `reset-password`, `change-email`, `get-session`, leituras de `admin/*` |
 
 Desligados por HTTP em `disabledPaths`, disponíveis em `auth.api.*`:
-`/send-verification-email`, `/request-password-reset`, `/admin/impersonate-user`,
-`/admin/stop-impersonating` e toda escrita do plugin admin (`set-role`, `create-user`,
+`/send-verification-email`, `/request-password-reset`, `/list-sessions`, `/revoke-session`,
+`/revoke-sessions`, `/revoke-other-sessions`, `/two-factor/send-otp`, `/two-factor/verify-otp`,
+`/admin/impersonate-user`, `/admin/stop-impersonating` e toda escrita do plugin admin (`set-role`, `create-user`,
 `update-user`, `ban-user`, `unban-user`, `revoke-user-session`, `revoke-user-sessions`,
 `remove-user`, `set-user-password`). Ação sobre usuário passa por `/api/admin/*`, com
 `assertBannable` e auditoria. Continuam por HTTP só as leituras (`list-users`, `get-user`,
 `list-user-sessions`, `has-permission`), que exigem papel de plataforma. Atualizou o Better
-Auth e surgiu rota em `/admin/*`? O teste em `tests/db/auth.test.ts` falha até ela ser
-classificada.
+Auth e surgiu rota em `/admin/*` ou `/two-factor/*`? Os testes em `tests/db/auth.test.ts` e
+`tests/db/two-factor.test.ts` falham até ela ser classificada.
 
 ## Verificação de e-mail
 
@@ -104,15 +106,20 @@ quando `afterEmailVerification` roda o usuário já tem o novo.
   chamadas a `auth.api.*` passam `organizationId`.
 - Sessão nova abre no último tenant usado (`databaseHooks.session.create.before`).
 - `requirePlatform()` vem depois de `requireAuth`; passe `["platform_owner"]` nas rotas que
-  o suporte não pode usar. O 2FA obrigatório entra na fase 9.
+  o suporte não pode usar. Em produção, sem 2FA responde 403 `PLATFORM_2FA_REQUIRED`.
+- `AuthUser.twoFactorEnabled` e `impersonatedBy` vêm da sessão, e `/api/me` soma
+  `security: { tenantRequires2fa, platformRequires2fa }` para a interface levar à tela de ativar.
+- Sessão personificada só usa `/get-session` e `/sign-out` do Better Auth (`closedWhileImpersonating`).
 - Em `/api/auth/admin/*`, ninguém escreve por HTTP, nem `platform_owner`: o plugin não compara
   o papel do alvo. No servidor, `platform_support` também não tem `ban` nem `revoke`.
 
 ## Rate limit e IP
 
 - Better Auth, no banco (`rate_limit`): `/sign-in/email` e `/sign-up/email` 3 por 10 s,
-  `/reset-password` 5 por min, `/change-email` 3 por min. `/get-session` fica de fora.
-- Rotas próprias: `rateLimit` em memória até a fase 9 (`rate_limit_bucket`).
+  `/reset-password` 5 por min, `/change-email` 3 por min, `/two-factor/*` 3 por 10 s.
+  `/get-session` fica de fora.
+- Rotas próprias: `rateLimit`, em memória no desenvolvimento e em `rate_limit_bucket` com
+  `RATE_LIMIT_STORE=postgres`, obrigatório em produção.
 - `X-Forwarded-For` vem do cliente. `auth-ext.ts` resolve o IP com `TRUSTED_PROXY_HOPS` e
   sobrescreve `x-bizu-client-ip`, o único cabeçalho que o Better Auth lê.
 - O Better Auth só confere `Origin` quando há cookie. `sameOrigin` confere em todo
@@ -139,7 +146,8 @@ update "user" set role = 'platform_owner' where email = 'voce@empresa.com';
 - Handler novo em `/api/auth/*` passa por `forwardedHeaders` e remonta o `Request`, para
   mandar o IP resolvido. Teste em `tests/db/auth-http.test.ts`: `api.request()` entrega um
   `Request` nativo, e o servidor Node, um objeto próprio.
-- Verificação e reset gravam `auth.email_verified` e `auth.password_reset` em `audit_log`.
+- `audit_log` recebe `auth.signed_up`, `auth.email_verified`, `auth.email_changed`,
+  `auth.password_reset`, `auth.2fa_enabled`, `auth.2fa_disabled` e `auth.session_revoked`.
 - O log de requisições passa por `redactTokens` (`src/api/request-logger.ts`).
 - Schema do Better Auth é escrito à mão a partir de `getAuthTables`. `@better-auth/cli`
   1.4 não acompanha a 1.7 e traz Prisma e `better-sqlite3` como dependências.

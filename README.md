@@ -284,15 +284,20 @@ npm run start
 | `DATABASE_URL` | Conexão runtime (`bizu_app`) |
 | `DIRECT_URL` | Conexão do Drizzle Kit e do seed (`bizu_owner`) |
 | `BETTER_AUTH_SECRET` | Assinatura de tokens e cookies da autenticação |
-| `CREDENTIALS_ENCRYPTION_KEY` | Criptografia de credenciais de provedores por tenant |
+| `CREDENTIALS_ENCRYPTION_KEY` | Criptografia de credenciais de provedores por tenant; 32 bytes em base64 |
 | `AUDIT_SALT` | Hash de IP no log de auditoria |
 | `EMAIL_PROVIDER`, `EMAIL_FROM`, `SMTP_*` | Envio de e-mail; `smtp` com Mailpit no dev |
 | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | Com `EMAIL_PROVIDER=resend`; webhook em `/api/webhooks/email/resend` |
 | `JOBS_MODE` | `inline` (workers no servidor), `worker` (`node build/server/index.js --worker`) ou `off` (só enfileira) |
 | `PORT` | Porta do servidor único em produção |
 | `TRUSTED_PROXY_HOPS` | Reverse proxies na frente do app; use `1` atrás de um proxy |
+| `RATE_LIMIT_STORE` | `memory` em dev; `postgres` é obrigatório em produção, e `memory` derruba a subida |
+| `CSP_REPORT_ONLY` | `true` (padrão) só relata violações em `/api/csp-report`; `false` bloqueia. Valide em report-only antes de virar |
 
 A lista completa, com os módulos de pagamento, está em `.env.example`.
+
+Em produção, contas de plataforma (`platform_owner`, `platform_support`) só usam `/admin` com 2FA:
+no primeiro acesso, a tela de segurança pede a ativação. Vulnerabilidades: veja [SECURITY.md](SECURITY.md).
 
 ## Pagamentos
 

@@ -6,7 +6,7 @@ const base = {
   DATABASE_URL: "postgresql://bizu_app:bizu_app@localhost:15432/bizu",
   DIRECT_URL: "postgresql://bizu_owner:bizu_owner@localhost:15432/bizu",
   BETTER_AUTH_SECRET: "change-me-better-auth-secret-with-32-bytes",
-  CREDENTIALS_ENCRYPTION_KEY: "change-me-credentials-encryption-key-32-bytes",
+  CREDENTIALS_ENCRYPTION_KEY: "Y2hhbmdlLW1lLWNyZWRlbnRpYWxzLWtleS0zMmJ5dGU=",
   AUDIT_SALT: "change-me-audit-salt",
   SMTP_HOST: "localhost",
 };
@@ -69,8 +69,20 @@ describe("parseEnv", () => {
         "BETTER_AUTH_SECRET: use um valor gerado, não o exemplo do .env.example",
         "AUDIT_SALT: use um valor gerado, não o exemplo do .env.example",
         "EMAIL_PROVIDER: memory só serve para testes",
+        "RATE_LIMIT_STORE: use postgres em produção",
       ]),
     );
+  });
+
+  it("exige a chave de credenciais com 32 bytes em base64", () => {
+    const problems = problemsOf({
+      ...base,
+      CREDENTIALS_ENCRYPTION_KEY: "curta-demais-mas-com-mais-de-16",
+    });
+
+    expect(problems).toEqual([
+      "CREDENTIALS_ENCRYPTION_KEY: use 32 bytes em base64 (openssl rand -base64 32)",
+    ]);
   });
 
   it("aceita segredos gerados em produção", () => {
@@ -78,8 +90,9 @@ describe("parseEnv", () => {
       ...base,
       NODE_ENV: "production",
       BETTER_AUTH_SECRET: "u1Z9x2Qw8eRtYuIoPaSdFgHjKlZxCvBnM0987654321=",
-      CREDENTIALS_ENCRYPTION_KEY: "aB3dE6fG9hJ2kL5mN8pQ1rS4tU7vW0xYzA1bC2dE3f=",
+      CREDENTIALS_ENCRYPTION_KEY: "aB3dE6fG9hJ2kL5mN8pQ1rS4tU7vW0xYzA1bC2dE3fg=",
       AUDIT_SALT: "9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+      RATE_LIMIT_STORE: "postgres",
     });
 
     expect(env.NODE_ENV).toBe("production");

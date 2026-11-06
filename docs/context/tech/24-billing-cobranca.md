@@ -191,4 +191,3 @@ Em `tsx` (seed, worker em dev) o `import.meta.glob` não existe: `registry.ts` l
   boleto. Falta conferir em sandbox; a saída seria `pending_if_incomplete`, que não aceita `metadata`.
 - `platform_setting.alert_email` não existe: o alerta fica só no `/admin`.
 - `payment_event` ainda não entra no `maintenance.prune` (fase 10).
-- Checkout personificado só será bloqueado com a personificação (fase 9).

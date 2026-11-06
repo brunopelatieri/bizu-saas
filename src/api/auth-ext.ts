@@ -2,12 +2,16 @@ import { createHash } from "node:crypto";
 import { zValidator } from "@hono/zod-validator";
 import type { Context } from "hono";
 import { Hono } from "hono";
+import { createMiddleware } from "hono/factory";
 import {
   jsonBodyLimit,
   MINUTE,
   sameOrigin,
   validationError,
 } from "@/api/guards";
+import { resolveSession } from "@/api/auth";
+import { refuseImpersonated } from "@/api/impersonation";
+import { logError } from "@/api/log";
 import { clientKey, rateLimit } from "@/api/rate-limit";
 import {
   INVALID_LINK_MESSAGE,
@@ -72,7 +76,8 @@ function verificationStep(token: string): VerificationStep {
 const validEmail = zValidator("json", emailOnlySchema, validationError);
 
 /** Conta por e-mail, exista ele ou não: o 429 não revela nada. */
-export const createRateLimitByEmail = () => rateLimit({
+export const createRateLimitByEmail = (name: string) => rateLimit({
+  name,
   limit: 3,
   windowMs: 60 * MINUTE,
   key: async (c) => {
@@ -83,7 +88,7 @@ export const createRateLimitByEmail = () => rateLimit({
   },
 });
 
-const rateLimitByEmail = createRateLimitByEmail();
+const rateLimitByEmail = createRateLimitByEmail("resend-by-email");
 
 /**
  * Rotas de autenticação com regra própria, antes do handler do Better Auth.
@@ -101,7 +106,45 @@ const rateLimitByEmail = createRateLimitByEmail();
  */
 export const authRoutes = new Hono();
 
-authRoutes.use("/api/auth/*", jsonBodyLimit, sameOrigin);
+/** Do Better Auth, a sessão personificada só lê a si mesma e sai. */
+const OPEN_WHILE_IMPERSONATING = new Set([
+  "/api/auth/get-session",
+  "/api/auth/sign-out",
+]);
+
+/**
+ * Senha, e-mail, 2FA e o que vier em versões novas do plugin: lista do que passa, não do
+ * que é barrado. Falha fechada: sem saber quem é, a rota não abre.
+ */
+const closedWhileImpersonating = createMiddleware(async (c, next) => {
+  const { headers } = c.req.raw;
+
+  // Sem `getSessionCookie` aqui: com o cookie repetido, ele lê o último valor e o handler,
+  // o primeiro. Quem decide é `resolveSession`, que lê como o handler.
+  if (OPEN_WHILE_IMPERSONATING.has(c.req.path) || !headers.has("Cookie")) {
+    return next();
+  }
+
+  let resolved: Awaited<ReturnType<typeof resolveSession>>;
+
+  try {
+    resolved = await resolveSession(headers);
+  } catch (error) {
+    logError("Falha ao validar sessão", error);
+    return c.json({ error: "Autenticação indisponível." }, 503);
+  }
+
+  const impersonatedBy = resolved?.user.impersonatedBy;
+  if (!resolved || !impersonatedBy) return next();
+
+  return refuseImpersonated(c, {
+    impersonatedBy,
+    userId: resolved.user.id,
+    tenantId: resolved.activeOrganizationId,
+  });
+});
+
+authRoutes.use("/api/auth/*", jsonBodyLimit, sameOrigin, closedWhileImpersonating);
 authRoutes.use("/api/auth-ext/*", jsonBodyLimit, sameOrigin);
 
 authRoutes.post(
@@ -130,7 +173,7 @@ authRoutes.get("/api/auth/verify-email", (c) =>
 
 authRoutes.post(
   "/api/auth/verify-email",
-  rateLimit({ limit: 10, windowMs: MINUTE }),
+  rateLimit({ name: "verify-email", limit: 10, windowMs: MINUTE }),
   zValidator("json", verifyEmailSchema, validationError),
   verificationGuard,
   async (c) => {
@@ -175,7 +218,7 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
 
 authRoutes.post(
   "/api/auth-ext/resend-verification",
-  rateLimit({ limit: 3, windowMs: 15 * MINUTE }),
+  rateLimit({ name: "resend-verification", limit: 3, windowMs: 15 * MINUTE }),
   validEmail,
   rateLimitByEmail,
   (c) => {
@@ -191,7 +234,7 @@ authRoutes.post(
 
 authRoutes.post(
   "/api/auth-ext/forgot-password",
-  rateLimit({ limit: 3, windowMs: 15 * MINUTE }),
+  rateLimit({ name: "forgot-password", limit: 3, windowMs: 15 * MINUTE }),
   validEmail,
   (c) => {
     const { email } = c.req.valid("json");

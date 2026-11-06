@@ -148,6 +148,10 @@ export async function runSeed(password: string): Promise<SeedSummary> {
       { key: SETTING_KEYS.trialPlanId, value: pro?.id ?? null },
       { key: SETTING_KEYS.trialDays, value: SETTING_DEFAULTS.trialDays },
       { key: SETTING_KEYS.graceDays, value: SETTING_DEFAULTS.graceDays },
+      {
+        key: SETTING_KEYS.impersonationPolicy,
+        value: SETTING_DEFAULTS.impersonationPolicy,
+      },
     ])
     .onConflictDoNothing({ target: platformSetting.key });
 

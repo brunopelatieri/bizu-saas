@@ -5,6 +5,7 @@ import { logError } from "@/api/log";
 import { clientKey } from "@/api/rate-limit";
 import {
   type Action,
+  isOwner,
   permissionsOf,
   type Resource,
   type RoleCatalog,
@@ -23,6 +24,12 @@ export type TenantEnv = AuthEnv & {
 
 const MUTATIONS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+/**
+ * Por `/api/billing/` o tenant volta a pagar; por `support-grant` o owner libera e, acima de
+ * tudo, revoga o suporte: inadimplência não pode tirar dele esse controle.
+ */
+const OPEN_WHEN_READ_ONLY = ["/api/billing/", "/api/tenant/support-grant"];
+
 /** Recusa quem não pode usar agora o tenant ativo da sessão. */
 export function refusal(
   c: Context,
@@ -35,12 +42,10 @@ export function refusal(
     );
   }
 
-  const billingRoute = c.req.path.startsWith("/api/billing/");
-
   if (
     tenant.accessMode === "read_only" &&
     MUTATIONS.has(c.req.method) &&
-    !billingRoute
+    !OPEN_WHEN_READ_ONLY.some((prefix) => c.req.path.startsWith(prefix))
   ) {
     return c.json(
       {
@@ -81,6 +86,16 @@ export const requireTenant = createMiddleware<TenantEnv>(async (c, next) => {
   const refused = refusal(c, tenant);
   if (refused) return refused;
 
+  if (tenant.require2fa && !c.get("user").twoFactorEnabled) {
+    return c.json(
+      {
+        error: "Esta organização exige verificação em duas etapas.",
+        code: "TENANT_2FA_REQUIRED",
+      },
+      403,
+    );
+  }
+
   c.set("tenant", tenant);
   c.set("roleCatalog", catalog);
   c.set("permissions", permissionsOf(catalog, tenant.role));
@@ -111,6 +126,21 @@ export function requirePermission<R extends Resource>(
     await next();
   });
 }
+
+/** Vem depois de `requireTenant`. Para o que nem um papel personalizado pode receber. */
+export const requireOwner = createMiddleware<TenantEnv>(async (c, next) => {
+  if (!isOwner(c.get("tenant").role)) {
+    return c.json(
+      {
+        error: "Só o proprietário pode fazer isso.",
+        code: "PERMISSION_DENIED",
+      },
+      403,
+    );
+  }
+
+  await next();
+});
 
 export function teamActor(c: Context<TenantEnv>): TeamActor {
   return {

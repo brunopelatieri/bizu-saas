@@ -44,7 +44,11 @@ customerRoutes.use(
 );
 
 /** O convite dispara e-mail: o limite segura quem usaria o app para enviar spam. */
-const inviteRateLimit = rateLimit({ limit: 20, windowMs: 10 * MINUTE });
+const inviteRateLimit = rateLimit({
+  name: "customer-invite",
+  limit: 20,
+  windowMs: 10 * MINUTE,
+});
 
 customerRoutes.get(
   "/api/customers",

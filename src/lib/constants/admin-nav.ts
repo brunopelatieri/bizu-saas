@@ -3,7 +3,9 @@ import {
   CreditCard,
   LayoutDashboard,
   Receipt,
+  ScrollText,
   Settings,
+  ShieldCheck,
   Users,
   Webhook,
 } from "lucide-react";
@@ -17,10 +19,12 @@ export const adminMainNav: AppNavItem[] = [
   { href: "/admin/planos", label: "Planos", icon: CreditCard },
   { href: "/admin/assinaturas", label: "Assinaturas", icon: Receipt },
   { href: "/admin/webhooks", label: "Webhooks", icon: Webhook },
+  { href: "/admin/auditoria", label: "Auditoria", icon: ScrollText },
 ];
 
 export const adminBottomNav: AppNavItem[] = [
-  { href: "/admin/configuracoes", label: "Configurações", icon: Settings },
+  { href: "/admin/configuracoes/seguranca", label: "Segurança", icon: ShieldCheck },
+  { href: "/admin/configuracoes", label: "Configurações", icon: Settings, end: true },
 ];
 
 const adminTitles: Record<string, string> = {
@@ -30,7 +34,9 @@ const adminTitles: Record<string, string> = {
   "/admin/planos": "Planos",
   "/admin/assinaturas": "Assinaturas",
   "/admin/webhooks": "Webhooks",
+  "/admin/auditoria": "Auditoria",
   "/admin/configuracoes": "Configurações da plataforma",
+  "/admin/configuracoes/seguranca": "Segurança",
 };
 
 export function adminTitleFromPath(pathname: string): string {

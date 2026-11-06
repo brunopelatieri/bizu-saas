@@ -16,7 +16,9 @@ paths:
 - Rota de tenant soma `requireTenant` + `requirePermission(recurso, ação)` (`src/api/permissions.ts`), `validId` nos ids e `handleTenantError`; recurso de outro tenant responde 404.
 - Rota do portal usa `authRateLimit` + `requirePortalAuth` e, com dado de tenant, `requirePortalTenant`; o tenant vem de `c.get("customer")`, nunca da requisição (`tech/25-portal-clientes.md`).
 - Rota com DELETE ou POST sem corpo é testada em `tests/db/tenant-http.test.ts`: `api.request()` não passa pelo `bodyLimit` do servidor Node.
-- Rota pública que grava dados usa `rateLimit` e `bodyLimit`.
+- Rota pública que grava dados usa `rateLimit` e `bodyLimit`. `rateLimit` exige `name` único: no store compartilhado (`RATE_LIMIT_STORE=postgres`), é ele que separa os contadores.
+- Ordem: `securityHeaders` → `csrfGuard` → `rateLimit` → `requireAuth` → `requireTenant`/`requirePlatform` → `requirePermission` → `blockWhileImpersonating` → `zValidator`. Rota que não vem de página do app, como webhook, fica antes do `csrfGuard` em `app.ts` e se autentica por conta própria.
+- Mutação sensível (dinheiro, propriedade, papéis, credenciais) usa `blockWhileImpersonating`. Rota nova que quebre a CSP pede origem em `cspDirectives` (`src/api/security.ts`), com o motivo em `tech/26-seguranca.md`.
 - Erro interno vai para `logError`, nunca para `console.error` direto: mensagens do Drizzle trazem dados pessoais.
 - O cliente recebe mensagem genérica.
 - SDKs com segredo, como e-mail, ficam no servidor, nunca em componentes React.

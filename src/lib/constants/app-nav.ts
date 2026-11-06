@@ -2,6 +2,7 @@ import type { LucideIcon } from "lucide-react";
 import {
   CreditCard,
   LayoutDashboard,
+  ScrollText,
   Settings,
   UserCog,
   Users,
@@ -33,6 +34,12 @@ export const appMainNav: AppNavItem[] = [
     icon: CreditCard,
     permission: "billing:read",
   },
+  {
+    href: "/app/auditoria",
+    label: "Auditoria",
+    icon: ScrollText,
+    permission: "audit:read",
+  },
 ];
 
 export const appBottomNav: AppNavItem[] = [
@@ -46,7 +53,11 @@ export const appTitles: Record<string, string> = {
   "/app/assinatura": "Assinatura",
   "/app/assinatura/faturas": "Faturas",
   "/app/assinatura/retorno": "Pagamento",
+  "/app/auditoria": "Auditoria",
   "/app/configuracoes": "Configurações",
+  "/app/configuracoes/seguranca": "Segurança",
+  "/app/configuracoes/sessoes": "Sessões",
+  "/app/configuracoes/suporte": "Acesso do suporte",
 };
 
 export function appTitleFromPath(pathname: string): string {
