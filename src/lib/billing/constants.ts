@@ -16,6 +16,40 @@ export type PaymentProviderId = (typeof paymentProviderIds)[number];
 export const priceIntervals = ["month", "year"] as const;
 export type PriceInterval = (typeof priceIntervals)[number];
 
+export const paymentMethods = ["pix", "boleto", "card"] as const;
+export type PaymentMethod = (typeof paymentMethods)[number];
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  pix: "Pix",
+  boleto: "Boleto",
+  card: "Cartão",
+};
+
+export const invoiceStatuses = [
+  "open",
+  "paid",
+  "failed",
+  "refunded",
+  "void",
+] as const;
+export type InvoiceStatus = (typeof invoiceStatuses)[number];
+
+export const INVOICE_STATUS_LABELS: Record<InvoiceStatus, string> = {
+  open: "Em aberto",
+  paid: "Paga",
+  failed: "Falhou",
+  refunded: "Reembolsada",
+  void: "Cancelada",
+};
+
+export const paymentEventStatuses = [
+  "pending",
+  "processed",
+  "ignored",
+  "failed",
+  "duplicate",
+] as const;
+
 export const PROVIDER_LABELS: Record<PaymentProviderId, string> = {
   stripe: "Stripe",
   asaas: "Asaas",
