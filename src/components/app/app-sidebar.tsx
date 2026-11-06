@@ -1,7 +1,8 @@
 import { Link } from "react-router";
 import { SiteLogo } from "@/components/layout/site-logo";
-import { DashboardNav } from "@/components/layout/dashboard-nav";
-import { DashboardUserMenu } from "@/components/layout/dashboard-user-menu";
+import { AppNav } from "@/components/app/app-nav";
+import { AppUserMenu } from "@/components/app/app-user-menu";
+import { TenantSwitcher } from "@/components/app/tenant-switcher";
 import { siteConfig } from "@/lib/constants/navigation";
 import { useAuth } from "@/providers/auth-provider";
 import { cn } from "@/lib/utils";
@@ -11,7 +12,7 @@ type SidebarProps = {
   className?: string;
 };
 
-export function DashboardSidebar({ collapsed = false, className }: SidebarProps) {
+export function AppSidebar({ collapsed = false, className }: SidebarProps) {
   const { user, signOut } = useAuth();
 
   return (
@@ -34,10 +35,14 @@ export function DashboardSidebar({ collapsed = false, className }: SidebarProps)
         )}
       </div>
 
-      <DashboardNav collapsed={collapsed} />
+      <div className="border-b border-border p-3">
+        <TenantSwitcher collapsed={collapsed} />
+      </div>
+
+      <AppNav collapsed={collapsed} />
 
       <div className="border-t border-border p-3">
-        <DashboardUserMenu
+        <AppUserMenu
           user={user}
           collapsed={collapsed}
           onSignOut={() => void signOut()}
@@ -47,7 +52,7 @@ export function DashboardSidebar({ collapsed = false, className }: SidebarProps)
   );
 }
 
-export function DashboardMobileNavHeader() {
+export function AppMobileNavHeader() {
   return (
     <div className="border-b border-border px-4 py-4">
       <SiteLogo size="sm" asLink={false} />
@@ -55,7 +60,7 @@ export function DashboardMobileNavHeader() {
   );
 }
 
-export function DashboardMobileNavFooter({
+export function AppMobileNavFooter({
   onNavigate,
 }: {
   onNavigate?: () => void;
@@ -64,7 +69,7 @@ export function DashboardMobileNavFooter({
 
   return (
     <div className="border-t border-border p-4">
-      <DashboardUserMenu
+      <AppUserMenu
         user={user}
         collapsed={false}
         onSignOut={() => {

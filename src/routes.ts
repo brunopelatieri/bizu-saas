@@ -27,6 +27,7 @@ export default [
   route("verificar-email", "routes/auth/verify-email.tsx"),
   route("esqueci-senha", "routes/auth/forgot-password.tsx"),
   route("redefinir-senha", "routes/auth/reset-password.tsx"),
+  route("convite/:id", "routes/auth/invite.tsx"),
 
   // ---------------------------------------------------------------------------
   // Área do tenant (owner e equipe) — client-only (SEM loader de servidor).
@@ -35,10 +36,11 @@ export default [
   // (cliente/lead) entram nas fases seguintes da spec saas-foundation.
   // ---------------------------------------------------------------------------
   layout("components/auth/protected-route.tsx", [
-    route("app", "components/layout/dashboard-layout.tsx", [
+    route("app/onboarding", "routes/app.onboarding.tsx"),
+    route("app", "components/app/app-layout.tsx", [
       index("routes/app.tsx"),
       route("clientes", "routes/app.coming-soon.tsx", { id: "app-clientes" }),
-      route("equipe", "routes/app.coming-soon.tsx", { id: "app-equipe" }),
+      route("equipe", "routes/app.team.tsx"),
       route("assinatura", "routes/app.coming-soon.tsx", {
         id: "app-assinatura",
       }),

@@ -1,0 +1,41 @@
+import type { Permission, Resource } from "@/lib/auth/permissions";
+
+export const RESOURCE_LABELS: Record<Resource, string> = {
+  organization: "Organização",
+  member: "Membros",
+  invitation: "Convites",
+  role: "Papéis",
+  billing: "Assinatura",
+  customer: "Clientes",
+  settings: "Configurações",
+  audit: "Auditoria",
+  file: "Arquivos",
+  support: "Suporte",
+};
+
+export const PERMISSION_LABELS: Record<Permission, string> = {
+  "organization:update": "Editar organização",
+  "organization:delete": "Excluir organização",
+  "member:create": "Adicionar membros",
+  "member:update": "Trocar papel de membros",
+  "member:delete": "Remover membros",
+  "invitation:create": "Enviar convites",
+  "invitation:cancel": "Revogar convites",
+  "role:create": "Criar papéis",
+  "role:update": "Editar papéis",
+  "role:delete": "Excluir papéis",
+  "billing:read": "Ver assinatura e faturas",
+  "billing:manage": "Gerir assinatura",
+  "customer:read": "Ver clientes",
+  "customer:create": "Criar clientes",
+  "customer:update": "Editar clientes",
+  "customer:delete": "Excluir clientes",
+  "customer:invite": "Enviar acesso ao portal",
+  "settings:read": "Ver configurações",
+  "settings:update": "Editar configurações",
+  "audit:read": "Ver auditoria",
+  "file:read": "Ver arquivos",
+  "file:upload": "Enviar arquivos",
+  "file:delete": "Excluir arquivos",
+  "support:grant": "Autorizar acesso do suporte",
+};

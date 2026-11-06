@@ -57,6 +57,9 @@ export default workerOnly
   : await createHonoServer({
       // O logger padrão grava `?token=` das páginas de verificação e reset.
       defaultLogger: false,
+      // O `bodyLimit` do Hono remonta a `Request` quando não há `Content-Length`, como
+      // em todo DELETE do navegador. Sem isto, responde 500 (`tests/db/tenant-http.test.ts`).
+      overrideGlobalObjects: true,
       configure(server) {
         server.use("*", requestLogger);
         // Rotas de negócio (/api/*) são resolvidas antes do handler SSR do RR7.

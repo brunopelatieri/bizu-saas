@@ -1,5 +1,8 @@
 import type { MetaFunction } from "react-router";
+import { OrganizationCard } from "@/components/app/organization-card";
+import { RolesCard } from "@/components/app/roles-card";
 import { ChangeEmailCard } from "@/components/auth/change-email-card";
+import { Can } from "@/components/auth/can";
 
 export const meta: MetaFunction = () => [
   { title: "Configurações — Bizu SaaS" },
@@ -12,6 +15,10 @@ export default function Settings() {
       <h1 className="text-2xl font-bold tracking-tight text-foreground">
         Configurações
       </h1>
+      <OrganizationCard />
+      <Can resource="role" action="create">
+        <RolesCard />
+      </Can>
       <ChangeEmailCard />
     </div>
   );

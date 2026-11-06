@@ -1,12 +1,13 @@
 import { NavLink } from "react-router";
 import {
-  dashboardBottomNav,
-  dashboardMainNav,
-  type DashboardNavItem,
-} from "@/lib/constants/dashboard-nav";
+  appBottomNav,
+  appMainNav,
+  type AppNavItem,
+} from "@/lib/constants/app-nav";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/providers/auth-provider";
 
-type DashboardNavProps = {
+type AppNavProps = {
   collapsed?: boolean;
   onNavigate?: () => void;
   className?: string;
@@ -17,7 +18,7 @@ function NavItem({
   collapsed,
   onNavigate,
 }: {
-  item: DashboardNavItem;
+  item: AppNavItem;
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {
@@ -43,15 +44,19 @@ function NavItem({
   );
 }
 
-export function DashboardNav({
+export function AppNav({
   collapsed = false,
   onNavigate,
   className,
-}: DashboardNavProps) {
+}: AppNavProps) {
+  const { permissions } = useAuth();
+  const allowed = (item: AppNavItem) =>
+    !item.permission || permissions.includes(item.permission);
+
   return (
     <div className={cn("flex flex-1 flex-col", className)}>
       <nav className="flex-1 space-y-1 overflow-y-auto p-3">
-        {dashboardMainNav.map((item) => (
+        {appMainNav.filter(allowed).map((item) => (
           <NavItem
             key={item.href}
             item={item}
@@ -62,7 +67,7 @@ export function DashboardNav({
       </nav>
 
       <div className="space-y-1 border-t border-border p-3">
-        {dashboardBottomNav.map((item) => (
+        {appBottomNav.filter(allowed).map((item) => (
           <NavItem
             key={item.href}
             item={item}

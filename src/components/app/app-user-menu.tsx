@@ -22,19 +22,19 @@ import {
 } from "@/lib/auth/user-display";
 import { cn } from "@/lib/utils";
 
-type DashboardUserMenuProps = {
+type AppUserMenuProps = {
   user: AuthUser | null;
   collapsed?: boolean;
   onSignOut: () => void;
   className?: string;
 };
 
-export function DashboardUserMenu({
+export function AppUserMenu({
   user,
   collapsed = false,
   onSignOut,
   className,
-}: DashboardUserMenuProps) {
+}: AppUserMenuProps) {
   const displayName = getUserDisplayName(user);
   const initials = getUserInitials(user);
   const email = user?.email ?? "";

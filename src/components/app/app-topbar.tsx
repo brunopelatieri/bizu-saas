@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { Menu, PanelLeftClose } from "lucide-react";
-import { DashboardUserMenu } from "@/components/layout/dashboard-user-menu";
+import { AppUserMenu } from "@/components/app/app-user-menu";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useAuth } from "@/providers/auth-provider";
@@ -14,14 +14,14 @@ type TopbarProps = {
   className?: string;
 };
 
-export function DashboardTopbar({
+export function AppTopbar({
   sidebarCollapsed,
   onToggleSidebar,
   onOpenMobileNav,
   title = "Dashboard",
   className,
 }: TopbarProps) {
-  const { user, signOut } = useAuth();
+  const { user, tenant, signOut } = useAuth();
 
   return (
     <header
@@ -58,7 +58,7 @@ export function DashboardTopbar({
         <div className="min-w-0">
           <p className="truncate text-sm font-medium text-foreground">{title}</p>
           <p className="hidden text-xs text-muted-foreground sm:block">
-            Área autenticada
+            {tenant?.name}
           </p>
         </div>
       </div>
@@ -74,7 +74,7 @@ export function DashboardTopbar({
         <ThemeToggle />
 
         <div className="hidden lg:block">
-          <DashboardUserMenu
+          <AppUserMenu
             user={user}
             collapsed
             onSignOut={() => void signOut()}
