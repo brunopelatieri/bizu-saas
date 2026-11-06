@@ -2,6 +2,7 @@ import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { plan, planPrice } from "@/db/schema";
 import type { PriceInterval } from "@/lib/billing/constants";
+import { isPriceUsable } from "@/lib/payments/registry";
 
 /** O que `/precos` mostra de um plano. Nada de ids de provedor nem de uso interno. */
 export type PublicPlan = {
@@ -11,13 +12,14 @@ export type PublicPlan = {
   isFree: boolean;
   limits: Record<string, number>;
   features: string[];
-  /** Menor valor ativo por intervalo, em centavos. */
+  /** Menor valor que dá para comprar, por intervalo, em centavos. */
   prices: Partial<Record<PriceInterval, { amountCents: number; currency: string }>>;
 };
 
 /**
  * Planos ativos para a página pública. `plan` e `plan_price` são tabelas da plataforma
- * (sem RLS e sem dado pessoal): o loader lê direto, sem volta HTTP.
+ * (sem RLS e sem dado pessoal): o loader lê direto, sem volta HTTP. Só entram preços
+ * compráveis, como no checkout: fora de `PAYMENT_PROVIDERS`, o plano fica "Preço em breve".
  */
 export async function listPublicPlans(): Promise<PublicPlan[]> {
   const db = getDb();
@@ -32,7 +34,9 @@ export async function listPublicPlans(): Promise<PublicPlan[]> {
     .where(eq(planPrice.active, true));
 
   return plans.map((row) => {
-    const own = prices.filter(({ planId }) => planId === row.id);
+    const own = prices.filter(
+      (price) => price.planId === row.id && isPriceUsable(price),
+    );
     const cheapest: PublicPlan["prices"] = {};
 
     for (const price of own) {

@@ -42,13 +42,23 @@ function createAuth() {
     database: drizzleAdapter(getDb(), { provider: "pg", schema }),
 
     // Sem rota HTTP: reenvio e reset passam por /api/auth-ext (resposta uniforme e
-    // limite por e-mail); personificação, pela política de consentimento da fase 9.
-    // `auth.api.*` continua disponível no servidor.
+    // limite por e-mail); personificação, pela política de consentimento da fase 9;
+    // escrita sobre usuários, por /api/admin/*, com as regras e a auditoria de lá (o plugin
+    // não compara o papel do alvo). `auth.api.*` continua disponível no servidor.
     disabledPaths: [
       "/send-verification-email",
       "/request-password-reset",
       "/admin/impersonate-user",
       "/admin/stop-impersonating",
+      "/admin/set-role",
+      "/admin/create-user",
+      "/admin/update-user",
+      "/admin/ban-user",
+      "/admin/unban-user",
+      "/admin/revoke-user-session",
+      "/admin/revoke-user-sessions",
+      "/admin/remove-user",
+      "/admin/set-user-password",
     ],
 
     emailAndPassword: {

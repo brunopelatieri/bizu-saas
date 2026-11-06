@@ -12,6 +12,7 @@ import {
 } from "vitest";
 import { api } from "@/api/app";
 import { waitForBackgroundTasks } from "@/lib/auth/background";
+import { getAuth } from "@/lib/auth/server";
 import { hashToken } from "@/lib/auth/verification-issue";
 import { createMemoryProvider } from "@/lib/email/providers/memory";
 import { setEmailProviderForTests } from "@/lib/email/send";
@@ -793,6 +794,106 @@ describe("autenticação", () => {
       expect(await templatesSentTo(email)).toEqual([]);
     });
 
+    const ADMIN_WRITE_PATHS = [
+      "/admin/set-role",
+      "/admin/create-user",
+      "/admin/update-user",
+      "/admin/ban-user",
+      "/admin/unban-user",
+      "/admin/revoke-user-session",
+      "/admin/revoke-user-sessions",
+      "/admin/remove-user",
+      "/admin/set-user-password",
+    ];
+    const ADMIN_READ_PATHS = [
+      "/admin/get-user",
+      "/admin/has-permission",
+      "/admin/list-user-sessions",
+      "/admin/list-users",
+    ];
+    const ADMIN_IMPERSONATION_PATHS = [
+      "/admin/impersonate-user",
+      "/admin/stop-impersonating",
+    ];
+
+    async function platformOwnerAndTarget() {
+      const actor = await verifiedUser();
+      const target = await verifiedUser();
+      await owner`
+        update "user" set role = 'platform_owner' where email = ${actor.email}
+      `;
+      const [row] = await owner<{ id: string }[]>`
+        select id from "user" where email = ${target.email}
+      `;
+
+      return { cookie: actor.cookie, target, targetId: row?.id as string };
+    }
+
+    const targetState = async (id: string) => {
+      const [row] = await owner`
+        select role, banned, name from "user" where id = ${id}
+      `;
+      return row;
+    };
+
+    it("toda rota do plugin admin está classificada, e a de escrita fechada", () => {
+      const auth = getAuth();
+      const plugin = Object.values(auth.api).flatMap((endpoint) => {
+        const { path } = endpoint as { path?: string };
+        return path?.startsWith("/admin/") ? [path] : [];
+      });
+
+      expect([...plugin].sort()).toEqual(
+        [...ADMIN_WRITE_PATHS, ...ADMIN_READ_PATHS, ...ADMIN_IMPERSONATION_PATHS].sort(),
+      );
+      expect(auth.options.disabledPaths).toEqual(
+        expect.arrayContaining([...ADMIN_WRITE_PATHS, ...ADMIN_IMPERSONATION_PATHS]),
+      );
+    });
+
+    it.each(ADMIN_WRITE_PATHS)(
+      "%s não existe por HTTP, nem para o proprietário",
+      async (path) => {
+        const { cookie, target, targetId } = await platformOwnerAndTarget();
+        const before = await targetState(targetId);
+
+        const response = await post(
+          `/api/auth${path}`,
+          {
+            userId: targetId,
+            role: "platform_owner",
+            newPassword: "senha-trocada-123",
+            data: { name: "Alterado" },
+            email: newEmail(),
+            password: "senha-trocada-123",
+            name: "Criado",
+            sessionToken: "x",
+          },
+          { cookie },
+        );
+
+        expect(response.status).toBe(404);
+        expect(await targetState(targetId)).toEqual(before);
+        expect((await get("/api/me", { cookie: target.cookie })).status).toBe(200);
+      },
+    );
+
+    it.each([
+      "/api/auth/admin/ban-user/",
+      "/api/auth/admin//ban-user",
+      "/api/auth//admin/ban-user",
+      "/api/auth/ADMIN/BAN-USER",
+      "/api/auth/admin/ban%2Duser",
+      "/api/auth/admin%2Fban-user",
+    ])("variante de caminho não reabre %s", async (path) => {
+      const { cookie, targetId } = await platformOwnerAndTarget();
+
+      const response = await post(path, { userId: targetId }, { cookie });
+
+      expect(response.ok).toBe(false);
+      expect((await targetState(targetId))?.banned).toBe(false);
+    });
+
     it("suporte lê usuários, mas não bane nem revoga sessões", async () => {
       const target = await verifiedUser();
       const support = await verifiedUser();
@@ -817,8 +918,8 @@ describe("autenticação", () => {
       );
 
       expect(list.status).toBe(200);
-      expect(ban.status).toBe(403);
-      expect(revoke.status).toBe(403);
+      expect(ban.status).toBe(404);
+      expect(revoke.status).toBe(404);
       expect((await get("/api/me", { cookie: target.cookie })).status).toBe(200);
     });
 

@@ -928,6 +928,51 @@ describe("admin", () => {
     expect((await bodyOf(response)).code).toBe("PROVIDER_SUBSCRIPTION_ACTIVE");
   });
 
+  it("unpaid ainda é assinatura viva: não troca o plano", async () => {
+    const platformOwner = await makePlatformUser(owner, "platform_owner");
+    await updateSubscription(owner, tenantId, { status: "unpaid" });
+
+    const response = await call("PUT", `/api/admin/tenants/${tenantId}/plan`, {
+      cookie: platformOwner.cookie,
+      body: { planId: pro.id },
+    });
+
+    expect(response.status).toBe(409);
+    expect((await bodyOf(response)).code).toBe("PROVIDER_SUBSCRIPTION_ACTIVE");
+  });
+
+  it("encerrada, ir para o gratuito larga o provedor e a reconciliação não desfaz", async () => {
+    const platformOwner = await makePlatformUser(owner, "platform_owner");
+    // Inativo: o resto do arquivo conta com nenhum plano gratuito na oferta.
+    const free = await createPlanRow(owner, { isFree: true });
+    await owner`update plan set active = false where id = ${free.id}`;
+    await updateSubscription(owner, tenantId, {
+      status: "canceled",
+      cancel_at_period_end: true,
+      current_period_end: inDays(-1),
+    });
+    await owner`update organization set access_mode = 'read_only' where id = ${tenantId}`;
+
+    const response = await call("PUT", `/api/admin/tenants/${tenantId}/plan`, {
+      cookie: platformOwner.cookie,
+      body: { planId: free.id },
+    });
+    expect(response.status).toBe(200);
+
+    expect(await subscriptionState(owner, tenantId)).toMatchObject({
+      status: "active",
+      provider_subscription_ref: null,
+      cancel_at_period_end: false,
+    });
+
+    await runBillingPeriodEnd(new Date(), { tenantIds: [tenantId] });
+    await runBillingReconcile(new Date(), { tenantIds: [tenantId] });
+
+    expect((await subscriptionState(owner, tenantId)).status).toBe("active");
+    expect(await accessModeOf(owner, tenantId)).toBe("full");
+    expect(stub.calls.fetchSubscription).toBeUndefined();
+  });
+
   it("a visão geral conta webhooks que falharam", async () => {
     const platformOwner = await makePlatformUser(owner, "platform_owner");
     const failing = createStubProvider({

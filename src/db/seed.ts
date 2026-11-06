@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { config } from "dotenv";
 import { pathToFileURL } from "node:url";
+import { logError } from "@/api/log";
 
 /**
  * `npm run db:seed`: dados de desenvolvimento. Idempotente: roda quantas vezes quiser e
@@ -66,6 +67,9 @@ export const SEED_CUSTOMERS = {
   lead: { email: "lead@cliente.local", name: "Lia Lead" },
 } as const;
 
+/** O valor de `.env.example`: público, serve só para desenvolvimento. */
+const EXAMPLE_PASSWORD = "Bizu-seed-2026!";
+
 export function assertSeedAllowed(env: Record<string, string | undefined>) {
   if (env.NODE_ENV === "production" && env.SEED_ALLOW_PRODUCTION !== "1") {
     throw new Error(
@@ -78,6 +82,10 @@ export function assertSeedAllowed(env: Record<string, string | undefined>) {
     throw new Error(
       "Defina SEED_PASSWORD (mínimo de 10 caracteres) em .env.local.",
     );
+  }
+
+  if (env.NODE_ENV === "production" && password === EXAMPLE_PASSWORD) {
+    throw new Error("Em produção, SEED_PASSWORD não pode ser o valor de .env.example.");
   }
 
   return password;
@@ -143,16 +151,24 @@ export async function runSeed(password: string): Promise<SeedSummary> {
     ])
     .onConflictDoNothing({ target: platformSetting.key });
 
-  // Usuários: contas verificadas; quem já existe só tem o papel conferido.
+  // Usuários: contas verificadas; quem já existe só tem o papel conferido. Conta sem e-mail
+  // confirmado veio do cadastro público, com a senha de quem cadastrou: promovê-la daria o
+  // papel a essa pessoa.
   const ids = new Map<string, string>();
   for (const { email, name, role } of Object.values(SEED_USERS)) {
-    const [found] = await db.select({ id: user.id }).from(user).where(eq(user.email, email));
+    const [found] = await db
+      .select({ id: user.id, emailVerified: user.emailVerified })
+      .from(user)
+      .where(eq(user.email, email));
+
+    if (found && !found.emailVerified) {
+      throw new Error(
+        `${email} já existe sem e-mail confirmado. Apague essa conta antes de rodar o seed.`,
+      );
+    }
 
     if (found) {
-      await db
-        .update(user)
-        .set({ role, emailVerified: true })
-        .where(eq(user.id, found.id));
+      await db.update(user).set({ role }).where(eq(user.id, found.id));
       ids.set(email, found.id);
       continue;
     }
@@ -232,6 +248,8 @@ export async function runSeed(password: string): Promise<SeedSummary> {
   await startTrial(beta.id);
 
   // Portal: Júlia com senha e e-mail verificado; a lead, sem identidade, à espera do convite.
+  // Como na equipe, identidade sem e-mail confirmado veio do autocadastro, com a senha de
+  // quem cadastrou: ligá-la a um cliente ativo daria o acesso a essa pessoa.
   const { julia, lead } = SEED_CUSTOMERS;
 
   await db
@@ -240,10 +258,15 @@ export async function runSeed(password: string): Promise<SeedSummary> {
     .onConflictDoNothing({ target: portalUser.email });
 
   const [juliaUser] = await db
-    .select({ id: portalUser.id })
+    .select({ id: portalUser.id, emailVerified: portalUser.emailVerified })
     .from(portalUser)
     .where(eq(portalUser.email, julia.email));
   if (!juliaUser) throw new Error("cliente julia não foi criada");
+  if (!juliaUser.emailVerified) {
+    throw new Error(
+      `${julia.email} já existe no portal sem e-mail confirmado. Apague essa conta antes de rodar o seed.`,
+    );
+  }
 
   await db
     .insert(portalAccount)
@@ -297,9 +320,7 @@ async function main() {
     );
     process.exit(0);
   } catch (error) {
-    console.error(
-      `Falha no seed: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    logError("Falha no seed", error);
     process.exit(1);
   }
 }

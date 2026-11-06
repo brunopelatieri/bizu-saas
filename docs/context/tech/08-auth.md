@@ -33,11 +33,17 @@ aceite de termos é exigido, mas não registrado.
 | `POST /api/auth-ext/resend-verification` | `auth-ext.ts` | `{ ok: true }`; 3 por 15 min por IP, 3 por hora por e-mail |
 | `POST /api/auth-ext/forgot-password` | `auth-ext.ts` | `{ ok: true }`; 3 por 15 min por IP |
 | `/api/auth/organization/*` | `auth-ext.ts` | 404: as regras de tenant ficam nas rotas próprias; use `auth.api.*` |
-| demais `/api/auth/*` | Better Auth | `sign-in/email`, `sign-out`, `reset-password`, `change-email`, `get-session`, `admin/*` |
+| demais `/api/auth/*` | Better Auth | `sign-in/email`, `sign-out`, `reset-password`, `change-email`, `get-session`, leituras de `admin/*` |
 
 Desligados por HTTP em `disabledPaths`, disponíveis em `auth.api.*`:
-`/send-verification-email`, `/request-password-reset`, `/admin/impersonate-user` e
-`/admin/stop-impersonating`.
+`/send-verification-email`, `/request-password-reset`, `/admin/impersonate-user`,
+`/admin/stop-impersonating` e toda escrita do plugin admin (`set-role`, `create-user`,
+`update-user`, `ban-user`, `unban-user`, `revoke-user-session`, `revoke-user-sessions`,
+`remove-user`, `set-user-password`). Ação sobre usuário passa por `/api/admin/*`, com
+`assertBannable` e auditoria. Continuam por HTTP só as leituras (`list-users`, `get-user`,
+`list-user-sessions`, `has-permission`), que exigem papel de plataforma. Atualizou o Better
+Auth e surgiu rota em `/admin/*`? O teste em `tests/db/auth.test.ts` falha até ela ser
+classificada.
 
 ## Verificação de e-mail
 
@@ -99,8 +105,8 @@ quando `afterEmailVerification` roda o usuário já tem o novo.
 - Sessão nova abre no último tenant usado (`databaseHooks.session.create.before`).
 - `requirePlatform()` vem depois de `requireAuth`; passe `["platform_owner"]` nas rotas que
   o suporte não pode usar. O 2FA obrigatório entra na fase 9.
-- `platform_support` só lê em `/api/auth/admin/*`: o plugin não compara o papel do alvo, e
-  `ban` ou `revoke` permitiriam derrubar o proprietário.
+- Em `/api/auth/admin/*`, ninguém escreve por HTTP, nem `platform_owner`: o plugin não compara
+  o papel do alvo. No servidor, `platform_support` também não tem `ban` nem `revoke`.
 
 ## Rate limit e IP
 

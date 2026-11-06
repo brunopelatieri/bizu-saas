@@ -12,7 +12,7 @@ import {
 import { dueDunningNotice, type DunningNotice } from "@/lib/billing/dunning";
 import { requeueStuckEvents } from "@/lib/billing/inbox";
 import { latestUnpaidInvoice } from "@/lib/billing/invoices";
-import { claimNotice, releaseNotice } from "@/lib/billing/notices";
+import { claimNotice, releaseNotice, reserveNotice } from "@/lib/billing/notices";
 import { listTenantOwners, notifyOwners } from "@/lib/billing/notify";
 import { type ReconcileTarget, syncSubscription } from "@/lib/billing/reconcile";
 import { loadSettings } from "@/lib/billing/settings";
@@ -64,14 +64,19 @@ async function sendNotice(candidate: Candidate, notice: TrialNotice) {
   }
 }
 
-/** Passa o trial vencido para `expired` e o tenant para `read_only`. */
+/**
+ * Passa o trial vencido para `expired`, o tenant para `read_only` e avisa, tudo na mesma
+ * transação: depois de `expired` a assinatura sai da lista do job, então um aviso que
+ * falhasse fora daqui não voltaria nunca. Se o envio falha, a transição volta junto e a
+ * próxima tentativa refaz os dois. `null`: o trial não estava mais para expirar.
+ */
 async function expireTrial(candidate: Candidate, now: Date) {
   return withTenant(candidate.tenantId, async (tx) => {
     const row = await lockSubscription(tx, candidate.subscriptionId);
-    if (!row) return false;
+    if (!row) return null;
 
     const decision = transition(snapshotOf(row), { type: "trial.expired" }, now);
-    if (decision.outcome === "ignored") return false;
+    if (decision.outcome === "ignored") return null;
 
     await applyDecision(tx, row, decision, { source: "job" });
     await auditInTransaction(tx, "billing.trial_expired", {
@@ -80,7 +85,16 @@ async function expireTrial(candidate: Candidate, now: Date) {
       target: { type: "subscription", id: candidate.subscriptionId },
     });
 
-    return true;
+    const notified = await reserveNotice(
+      tx,
+      candidate.subscriptionId,
+      "trialNotices",
+      "expired",
+      now,
+    );
+    if (notified) await sendNotice(candidate, "expired");
+
+    return { notified };
   });
 }
 
@@ -143,8 +157,14 @@ export async function runBillingTrial(
     if (!notice) continue;
 
     try {
-      if (notice === "expired" && (await expireTrial(candidate, now))) {
-        result.expired += 1;
+      if (notice === "expired") {
+        const expired = await expireTrial(candidate, now);
+
+        if (expired) {
+          result.expired += 1;
+          if (expired.notified) result.notices.expired += 1;
+        }
+        continue;
       }
 
       if (!(await claimNotice(candidate, "trialNotices", notice, now))) continue;

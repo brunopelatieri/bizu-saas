@@ -233,9 +233,9 @@ describe("clientes", () => {
         limits: { customers: 2 },
       });
 
-      // Sem plano ativo, como em banco sem seed, o tenant nasce sem assinatura.
       await owner.begin(async (tx) => {
         await tx`select set_config('app.bypass_tenant', 'on', true)`;
+        // Em banco sem planos, o tenant nasce sem assinatura.
         await tx`
           insert into subscription (tenant_id, plan_id, status)
           values (${id}, ${plan.id}, 'active')

@@ -18,6 +18,7 @@ import { handleTenantError } from "@/api/tenant-errors";
 import { audit } from "@/lib/audit";
 import { toStatements } from "@/lib/auth/permissions";
 import { getAuth } from "@/lib/auth/server";
+import { assertWithinLimit } from "@/lib/billing/limits";
 import { roleSchema, updateRoleSchema } from "@/lib/schemas/roles";
 import { ROLE_IN_USE } from "@/lib/tenant/errors";
 import {
@@ -55,6 +56,8 @@ rolesRoutes.post(
     const { name, description, permissions } = c.req.valid("json");
     const { id: organizationId } = c.get("tenant");
     const actor = teamActor(c);
+
+    await assertWithinLimit(organizationId, "custom_roles");
 
     const { roleData } = await getAuth().api.createOrgRole({
       headers: c.req.raw.headers,

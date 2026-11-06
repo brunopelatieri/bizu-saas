@@ -12,7 +12,7 @@ alwaysApply: false
 - Nenhum token é consumido em GET: a página renderiza e um botão faz a chamada. `/api/auth/verify-email` só aceita POST, atrás do `verificationGuard`.
 - Respostas de cadastro, reenvio, reset e troca de e-mail nunca revelam se um e-mail existe: mesmo status, corpo e cabeçalhos. Trabalho que depende da existência roda em `runInBackground`.
 - Login de conta não verificada responde o 401 de senha errada, byte a byte (`hideUnverified`, em todo o proxy): a tela não pode depender de `EMAIL_NOT_VERIFIED`.
-- `/send-verification-email`, `/request-password-reset` e personificação ficam em `disabledPaths`; use `auth.api.*` no servidor.
+- `/send-verification-email`, `/request-password-reset`, personificação e toda escrita do plugin admin ficam em `disabledPaths`; use `auth.api.*` no servidor, atrás de `/api/admin/*`.
 - Não confie em `X-Forwarded-For`: o IP vem de `clientKey` (`TRUSTED_PROXY_HOPS`) e chega ao Better Auth em `x-bizu-client-ip`.
 - Rota nova em `/api/auth/*` confere `Origin` e não passa `c.req.raw` a `new Request()`; teste também em `tests/db/auth-http.test.ts`.
 - Use `AuthUser` (`src/lib/auth/types.ts`), sem expor tipos do Better Auth na interface.

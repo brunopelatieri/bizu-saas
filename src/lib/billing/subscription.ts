@@ -131,9 +131,11 @@ export async function startTrial(tenantId: string, now = new Date()) {
 
 /**
  * Troca o plano de um tenant (proprietário, em `/admin`). Plano gratuito encerra o
- * trial e devolve o acesso total; plano pago mantém o estado e o trial como estavam.
- * Quem tem assinatura viva no provedor precisa ser cancelado antes: trocar só aqui
- * deixaria a cobrança correndo por um plano que o tenant não tem mais.
+ * trial, devolve o acesso total e larga o vínculo com o provedor, como `endSubscription`:
+ * sem isso, a reconciliação e o fim de período desfariam a troca. Plano pago mantém o
+ * estado e o trial como estavam. Quem tem assinatura viva no provedor (`unpaid` ainda é
+ * viva) precisa ser cancelado antes: trocar só aqui deixaria a cobrança correndo por um
+ * plano que o tenant não tem mais.
  */
 export async function changeTenantPlan(
   tenantId: string,
@@ -174,7 +176,7 @@ export async function changeTenantPlan(
 
     if (
       current.providerSubscriptionRef &&
-      ["active", "past_due", "trialing", "paused"].includes(current.status)
+      ["active", "past_due", "unpaid", "trialing", "paused"].includes(current.status)
     ) {
       throw new TenantRuleError(
         409,
@@ -192,6 +194,14 @@ export async function changeTenantPlan(
         planPriceId: null,
         status: next,
         trialEndsAt: toFree ? null : current.trialEndsAt,
+        ...(toFree
+          ? {
+              providerSubscriptionRef: null,
+              cancelAtPeriodEnd: false,
+              graceUntil: null,
+              pendingPlanId: null,
+            }
+          : {}),
       })
       .where(eq(subscription.id, current.id))
       .returning();
