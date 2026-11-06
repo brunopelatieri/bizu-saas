@@ -2,7 +2,7 @@
 
 - **Escopo:** Layout, rotas e estado atual da área autenticada do owner e da equipe.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`, `spec-tenant-rbac.md`
-- **Paths do código:** `src/components/layout/dashboard-layout.tsx`, `src/components/layout/dashboard-nav.tsx`, `src/components/layout/dashboard-sidebar.tsx`, `src/components/layout/dashboard-topbar.tsx`, `src/components/layout/dashboard-user-menu.tsx`, `src/lib/constants/dashboard-nav.ts`, `src/pages/dashboard-page.tsx`, `src/routes/app.coming-soon.tsx`, `src/routes/app.tsx`
+- **Paths do código:** `src/components/layout/dashboard-layout.tsx`, `src/components/layout/dashboard-nav.tsx`, `src/components/layout/dashboard-sidebar.tsx`, `src/components/layout/dashboard-topbar.tsx`, `src/components/layout/dashboard-user-menu.tsx`, `src/lib/constants/dashboard-nav.ts`, `src/pages/dashboard-page.tsx`, `src/routes/app.coming-soon.tsx`, `src/routes/app.tsx`, `src/routes/app.settings.tsx`
 
 ## Rotas
 
@@ -12,7 +12,7 @@
 | `/app/clientes` | em breve (fase 8) |
 | `/app/equipe` | em breve (fase 4) |
 | `/app/assinatura` | em breve (fase 6) |
-| `/app/configuracoes` | em breve (fase 4) |
+| `/app/configuracoes` | troca de e-mail (`ChangeEmailCard`); demais seções a partir da fase 4 |
 
 `/admin/**` (fase 5) e `/portal/**` (fase 8) seguem o mesmo modelo, com navegação
 própria.

@@ -58,6 +58,7 @@
 | Ferramenta | Uso |
 |------------|-----|
 | Hono | API HTTP em `src/api/app.ts` |
+| Better Auth | Autenticação, com `@better-auth/drizzle-adapter` (`src/lib/auth/server.ts`) |
 | `@hono/zod-validator` | Validacao Zod nas rotas Hono |
 | Drizzle ORM | ORM tipado para Postgres |
 | Drizzle Kit | Migrations, generate, studio |

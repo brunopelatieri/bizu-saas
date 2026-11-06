@@ -9,7 +9,7 @@
 Starter full-stack opinativo para SaaS, com:
 
 - Landing page, página de preços (fase 5) e blog com SSR e Open Graph.
-- Autenticação própria sobre Postgres (Better Auth, fase 2), com verificação de e-mail.
+- Autenticação própria sobre Postgres (Better Auth), com verificação de e-mail.
 - Multi-tenant com RLS, papéis por tenant e portal do cliente.
 - Planos, trial, assinaturas e pagamentos em módulos.
 - API Hono no mesmo processo Node do servidor SSR.
@@ -24,7 +24,7 @@ Node process único: react-router-hono-server
   |
   |-- /api/*                    Hono API
   |     |-- GET  /api/health
-  |     |-- GET  /api/me        requireAuth (sem provedor: recusa tudo)
+  |     |-- GET  /api/me        requireAuth (sessão do Better Auth)
   |     `-- POST /api/contact   rate limit + Zod -> Drizzle
   |
   |-- /                         React Router Framework Mode + SSR

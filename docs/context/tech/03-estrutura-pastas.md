@@ -18,7 +18,7 @@
 |   `-- specs/                templates de PRD/SPEC e specs de features
 |-- drizzle/                  migrations Drizzle
 |-- src/
-|   |-- api/                  Hono API (/api/*): app, auth, rate limit, log
+|   |-- api/                  Hono API (/api/*): app, auth, auth-ext, rate limit, log
 |   |-- components/
 |   |   |-- auth/
 |   |   |-- contact/
@@ -53,5 +53,8 @@
 `-- vitest.db.config.ts       npm run test:db
 ```
 
-Pastas previstas pelas fases seguintes: `src/lib/auth/`, `src/lib/billing/`,
-`src/lib/payments/providers/<id>/`, `src/jobs/`, `src/db/schema/`, `docker/compose.prod.yml`.
+Autenticação: `src/lib/auth/` (servidor, cliente, e-mails, papéis), `src/routes/auth/` e
+`src/lib/email/templates/auth/`. Schema por domínio em `src/db/schema/`.
+
+Pastas previstas pelas fases seguintes: `src/lib/billing/`,
+`src/lib/payments/providers/<id>/`, `src/jobs/`, `docker/compose.prod.yml`.

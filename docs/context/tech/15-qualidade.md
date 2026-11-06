@@ -7,6 +7,10 @@
 
 ## 15. Qualidade e Validacao
 
+Autenticacao: `npm test` cobre `requireAuth`, `requirePlatform`, `verificationGuard`,
+schemas e templates sem banco; `npm run test:db` cobre os fluxos em `tests/db/auth.test.ts`
+e, sobre o servidor Node, em `tests/db/auth-http.test.ts`.
+
 Verificacoes recentes realizadas:
 
 - `npm run typecheck` passou.

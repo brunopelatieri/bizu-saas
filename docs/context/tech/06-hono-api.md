@@ -2,7 +2,7 @@
 
 - **Escopo:** Rotas `/api/*`, validação Zod e montagem no servidor único.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`
-- **Paths do código:** `src/api/auth.ts`, `src/api/rate-limit.ts`, `src/api/log.ts`, `src/api/app.ts`, `src/components/contact/contact-form.tsx`, `src/lib/schemas/contact.ts`, `src/server.ts`
+- **Paths do código:** `src/api/auth.ts`, `src/api/auth-ext.ts`, `src/api/verification-guard.ts`, `src/api/rate-limit.ts`, `src/api/request-logger.ts`, `src/api/log.ts`, `src/api/app.ts`, `src/components/contact/contact-form.tsx`, `src/lib/schemas/contact.ts`, `src/server.ts`
 
 
 ## 6. Hono API
@@ -14,19 +14,26 @@ Rotas atuais:
 | Metodo | Rota | Funcao |
 |--------|------|--------|
 | GET | `/api/health` | Healthcheck |
-| GET | `/api/me` | Rota privada: retorna o usuario autenticado |
+| GET | `/api/me` | Rota privada: `{ user, tenants, features, limits }` |
 | POST | `/api/contact` | Persiste mensagem em `contact_messages` |
+| POST | `/api/auth/sign-up/email` | Cadastro, com `signupSchema` e corpo uniforme |
+| POST | `/api/auth/verify-email` | Consome o link, atras do `verificationGuard` |
+| POST | `/api/auth-ext/resend-verification` | Reenvio, sempre `{ ok: true }` |
+| POST | `/api/auth-ext/forgot-password` | Pedido de reset, sempre `{ ok: true }` |
+| GET, POST | `/api/auth/*` | Demais rotas do Better Auth |
 
 Autenticacao:
 
-- `requireAuth` (`src/api/auth.ts`) exige `Authorization: Bearer <access_token>`,
-  valida o token em `verifyToken` e coloca o usuario em `c.get("user")`.
-- Ainda nao ha provedor: `verifyToken` sempre falha, e rotas privadas respondem 503.
-- Sem token ou com token invalido: 401. Auth indisponivel ou limitando (429, 5xx): 503.
+- `requireAuth` (`src/api/auth.ts`) le o cookie de sessao do Better Auth, consulta a
+  sessao no banco e coloca `user`, `session` e `activeOrganizationId` no contexto.
+- Sem cookie ou com sessao invalida: 401. E-mail nao verificado: 403
+  `EMAIL_NOT_VERIFIED`. Auth indisponivel: 503.
+- `requirePlatform()` vem depois de `requireAuth` e recusa com 403 quem nao e da plataforma.
 - Toda rota privada usa `authRateLimit` (60 por minuto) antes de `requireAuth`, porque
-  cada token validado pode consultar o provedor. O `ProtectedRoute` nao protege dados.
-- No cliente, use `apiFetch` (`src/lib/api/client.ts`), que padroniza os erros. O envio do
-  token entra junto com o provedor.
+  cada sessao validada consulta o banco. O `ProtectedRoute` nao protege dados.
+- No cliente, use `apiFetch` (`src/lib/api/client.ts`): envia cookies, padroniza erros em
+  `ApiError` (com `code`) e, com 401 em `/app`, encerra a sessao e vai ao login.
+- Detalhes do fluxo: `docs/context/tech/08-auth.md`.
 
 Protecoes:
 
@@ -36,6 +43,11 @@ Protecoes:
 - O rate limit usa o IP da conexao. Atras de proxies, defina `TRUSTED_PROXY_HOPS`
   com a quantidade deles; sem isso, todos os clientes dividem o IP do proxy.
 - O limite fica em memoria: com varias instancias, use um store compartilhado.
+- `rateLimit({ key })` conta por outra chave; `/api/auth-ext/resend-verification` usa o
+  hash do e-mail.
+- `/api/auth/*` e `/api/auth-ext/*` usam `bodyLimit` de 16 KB e `sameOrigin`.
+- O log de requisicoes e `requestLogger` (`src/api/request-logger.ts`), que mascara
+  `?token=`. O logger padrao do `react-router-hono-server` fica desligado.
 - Respostas 5xx nao consomem tentativa; erros de validacao, sim.
 - `logError` (`src/api/log.ts`) remove os parametros de query e credenciais de URL, e
   mantem o diagnostico dos demais erros. O cliente recebe mensagem generica.

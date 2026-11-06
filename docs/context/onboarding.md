@@ -33,4 +33,5 @@ npm run dev
   troque `DATABASE_URL` e `DIRECT_URL`.
 - Testes: `npm test` roda sem banco; `npm run test:db` exige o Postgres do Docker com as
   migrations aplicadas.
-- Login e áreas autenticadas ficam bloqueados até a fase 2: veja `tech/08-auth.md`.
+- Para testar login: cadastre-se em `/cadastro`, abra o Mailpit em `http://localhost:8025` e
+  confirme pelo link. Primeiro proprietário e demais detalhes em `tech/08-auth.md`.

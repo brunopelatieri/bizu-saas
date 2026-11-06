@@ -2,11 +2,13 @@
 
 - **Escopo:** Schema, papéis do Postgres, variáveis e uso do Drizzle em qualquer Postgres.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-dados.md`, `spec-tenant-rbac.md`
-- **Paths do código:** `src/db/index.ts`, `src/db/schema.ts`, `drizzle.config.ts`, `docker/postgres/init.sql`, `tests/db/`
+- **Paths do código:** `src/db/index.ts`, `src/db/schema.ts`, `src/db/schema/`, `drizzle.config.ts`, `docker/postgres/init.sql`, `tests/db/`
 
 ## Arquivos
 
-- `src/db/schema.ts`: schema Drizzle (a fase 4 divide em `src/db/schema/<domínio>.ts`).
+- `src/db/schema/<domínio>.ts`: um arquivo por domínio (`auth.ts`, `contact.ts`).
+- `src/db/schema.ts`: reexporta os domínios. `drizzle.config.ts` e o adapter do Better
+  Auth leem este arquivo, então domínio novo entra aqui.
 - `src/db/index.ts`: `getDb()`, conexão de runtime com `DATABASE_URL` lida de `getEnv()`.
 - `drizzle.config.ts`: usa `DIRECT_URL` (fallback `DATABASE_URL`).
 - `drizzle/`: migrations geradas; `npm run db:generate` e `npm run db:migrate`.
@@ -15,6 +17,13 @@
 Schema atual:
 
 ```text
+user                      Better Auth; role, banned e ban_* (plugin admin), phone, locale
+session                   token unique, user_id, expires_at, impersonated_by
+account                   provider_id = credential guarda a senha
+verification              tokens de reset, em hash
+rate_limit                key unique, count, last_request (rate limit do Better Auth)
+email_verification_issue  user_id PK, token_hash unique, kind (verify, change), issued_at
+
 contact_messages
   id uuid primary key defaultRandom
   name text not null
@@ -22,6 +31,10 @@ contact_messages
   message text not null
   created_at timestamp with timezone default now
 ```
+
+Tabelas do Better Auth usam `uuid` e `timestamptz` e seguem `getAuthTables`, com o nome de
+modelo como chave do export (`rateLimit`, não `rate_limit`). O adapter não usa transação:
+os hooks de e-mail gravam por outra conexão e não veriam o usuário ainda não confirmado.
 
 ## Papéis do Postgres
 
@@ -40,11 +53,13 @@ contact_messages
 
 ## Testes com banco
 
-`npm run test:db` roda `tests/db/**/*.test.ts` (`vitest.db.config.ts`) contra o
+`npm run test:db` roda `tests/db/**/*.test.ts` (`vitest.db.config.ts`, que fixa
+`EMAIL_PROVIDER=memory` e `TRUSTED_PROXY_HOPS=1`) contra o
 Postgres do Docker com as migrations aplicadas, sem paralelismo entre arquivos.
 `tests/db/roles.test.ts` prova que `DATABASE_URL` é `bizu_app` sem `BYPASSRLS`, que ele
-não cria tabelas e que herda acesso às tabelas de `bizu_owner`. O `rls.test.ts` da
-fase 4 entra na mesma pasta.
+não cria tabelas e que herda acesso às tabelas de `bizu_owner`. `auth.test.ts` cobre os
+fluxos de autenticação com `api.request()` e `auth-http.test.ts` repete o principal sobre
+o servidor Node. O `rls.test.ts` da fase 4 entra na mesma pasta.
 
 ## Regras
 

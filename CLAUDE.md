@@ -27,8 +27,8 @@ Níveis de acesso: **proprietário da plataforma** (`/admin`), **owner** e
 **colaboradores** do tenant (`/app`), **clientes/leads** do tenant (`/portal`).
 
 - Público com SSR: `/`, `/sobre`, `/projetos`, `/contato`, `/blog`, `/blog/:slug`.
-- Auth standalone: `/login` (e, nas fases seguintes, `/cadastro`, `/verificar-email`,
-  `/convite/:id`, `/esqueci-senha`, `/redefinir-senha`).
+- Auth standalone: `/login`, `/cadastro`, `/verificar-email`, `/esqueci-senha`,
+  `/redefinir-senha` (e, na fase 4, `/convite/:id`).
 - Áreas autenticadas client-only: `/app/**`, `/admin/**`, `/portal/**`.
 
 Fora do escopo: subdomínio por tenant, login social, API pública, nota fiscal e o

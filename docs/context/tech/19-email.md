@@ -19,6 +19,15 @@
 Hoje `sendEmail` entrega direto. A fase 3 troca o miolo por `email_message` +
 fila `email.send` (retry, supressão de bounces, Resend) sem mudar a assinatura.
 
+## Templates de autenticação (fase 2)
+
+Em `templates/auth/`, enviados por `src/lib/auth/emails.ts` com `sendEmail`:
+`verify-email`, `existing-user-signup`, `reset-password`, `password-changed`,
+`change-email-confirm` e `change-email-done`. Cada arquivo exporta `<nome>Template` e
+`previewInput`. Os envios correm em `runInBackground`: a resposta da API não espera o
+provedor, então o tempo não revela se o e-mail existe. Links vêm de `appLink`
+(`src/lib/auth/links.ts`).
+
 ## Como escrever um template
 
 ```ts
