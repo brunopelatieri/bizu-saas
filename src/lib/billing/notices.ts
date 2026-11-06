@@ -1,5 +1,5 @@
 import { and, eq, sql } from "drizzle-orm";
-import { withTenant } from "@/db/rls";
+import { type Tx, withTenant } from "@/db/rls";
 import { subscription } from "@/db/schema";
 
 /**
@@ -12,29 +12,40 @@ export type NoticeList = "trialNotices" | "dunningNotices";
 
 type NoticeTarget = { tenantId: string; subscriptionId: string };
 
+/** Reserva na transação de quem chama. Devolve `false` se o aviso já estava reservado. */
+export async function reserveNotice(
+  tx: Tx,
+  subscriptionId: string,
+  list: NoticeList,
+  notice: string,
+  now: Date,
+) {
+  const claimed = await tx
+    .update(subscription)
+    .set({
+      metadata: sql`jsonb_set(${subscription.metadata}, array[${list}::text], coalesce(${subscription.metadata}->${list}::text, '{}'::jsonb) || jsonb_build_object(${notice}::text, ${now.toISOString()}::text), true)`,
+    })
+    .where(
+      and(
+        eq(subscription.id, subscriptionId),
+        sql`${subscription.metadata}->${list}::text->>${notice}::text is null`,
+      ),
+    )
+    .returning({ id: subscription.id });
+
+  return claimed.length > 0;
+}
+
 /** Devolve `false` se o aviso já estava reservado. */
-export async function claimNotice(
+export function claimNotice(
   { tenantId, subscriptionId }: NoticeTarget,
   list: NoticeList,
   notice: string,
   now: Date,
 ) {
-  const claimed = await withTenant(tenantId, (tx) =>
-    tx
-      .update(subscription)
-      .set({
-        metadata: sql`jsonb_set(${subscription.metadata}, array[${list}::text], coalesce(${subscription.metadata}->${list}::text, '{}'::jsonb) || jsonb_build_object(${notice}::text, ${now.toISOString()}::text), true)`,
-      })
-      .where(
-        and(
-          eq(subscription.id, subscriptionId),
-          sql`${subscription.metadata}->${list}::text->>${notice}::text is null`,
-        ),
-      )
-      .returning({ id: subscription.id }),
+  return withTenant(tenantId, (tx) =>
+    reserveNotice(tx, subscriptionId, list, notice, now),
   );
-
-  return claimed.length > 0;
 }
 
 /** Se o envio falha, o aviso volta a ser devido e a próxima tentativa do job o refaz. */

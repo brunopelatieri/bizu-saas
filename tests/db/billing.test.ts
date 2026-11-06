@@ -466,6 +466,35 @@ describe("job billing.trial", () => {
     expect(mail.sent.filter(({ to }) => to === suspended.email)).toEqual([]);
   });
 
+  it("falha no aviso de expiração desfaz a expiração: a próxima rodada faz os dois", async () => {
+    const flaky = await createUser(owner);
+    const flakyId = (await createTenant(flaky)).id;
+    const end = (await subscriptionOf(flakyId))?.trial_ends_at as Date;
+    const now = new Date(end.getTime() + 8 * DAY_MS);
+
+    setEmailProviderForTests({
+      id: "memory",
+      send: async () => {
+        throw new Error("provedor fora do ar");
+      },
+    });
+    await expect(runBillingTrial(now, only(flakyId))).rejects.toThrow("billing.trial");
+
+    const failed = await subscriptionOf(flakyId);
+    expect(failed?.status).toBe("trialing");
+    expect(failed?.metadata.trialNotices?.expired).toBeUndefined();
+    expect(await accessModeOf(flakyId)).toBe("full");
+
+    mail.reset();
+    setEmailProviderForTests(mail);
+    const retry = await runBillingTrial(now, only(flakyId));
+
+    expect(retry).toMatchObject({ expired: 1, notices: { expired: 1 } });
+    expect((await subscriptionOf(flakyId))?.status).toBe("expired");
+    expect(await accessModeOf(flakyId)).toBe("read_only");
+    expect(mail.sent.filter(({ to }) => to === flaky.email)).toHaveLength(1);
+  });
+
   it("falha de envio não marca o aviso: a próxima rodada tenta de novo", async () => {
     const flaky = await createUser(owner);
     const flakyId = (await createTenant(flaky)).id;

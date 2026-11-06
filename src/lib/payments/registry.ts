@@ -87,6 +87,18 @@ export function getProvider(id: string): PaymentProvider | null {
   return loadRegistry().get(id as PaymentProviderId) ?? null;
 }
 
+/** Dá para comprar agora: provedor ativo e, se ele exigir, referência preenchida. */
+export function isPriceUsable(price: {
+  provider: string;
+  providerPriceRef: string | null;
+}) {
+  const provider = getProvider(price.provider);
+
+  return (
+    provider !== null && (!provider.requiresPriceRef || price.providerPriceRef !== null)
+  );
+}
+
 /** Fluxo (a): sem credenciais do tenant, o módulo usa as variáveis de ambiente. */
 export function platformContext(): PaymentContext {
   return { sandbox: getEnv().NODE_ENV !== "production" };

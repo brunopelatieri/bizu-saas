@@ -1,4 +1,5 @@
 import { and, count, desc, eq, ilike, or, type SQL, sql } from "drizzle-orm";
+import { logError } from "@/api/log";
 import { withPlatformScope } from "@/db/rls";
 import {
   auditLog,
@@ -175,8 +176,8 @@ export async function getTenantDetail(tenantId: string) {
 
 /**
  * Suspende (`suspended` + `locked`): `requireTenant` passa a responder 403 a todos. Já
- * suspenso é 409. Avisa os proprietários por e-mail; a falha do aviso não desfaz a
- * suspensão.
+ * suspenso é 409. Avisa os proprietários por e-mail; a falha do aviso fica no log: a
+ * suspensão já valeu, e a rota ainda precisa responder e auditar.
  */
 export async function suspendTenant(tenantId: string, reason?: string) {
   const updated = await withPlatformScope("admin: suspende tenant", (tx) =>
@@ -190,17 +191,21 @@ export async function suspendTenant(tenantId: string, reason?: string) {
   const [tenant] = updated;
   if (!tenant) return failUpdate(tenantId, "ALREADY_SUSPENDED");
 
-  for (const owner of await listTenantOwners(tenantId)) {
-    await sendEmail({
-      to: owner.email,
-      ...tenantSuspendedTemplate({
-        name: owner.name,
-        tenantName: tenant.name,
-        reason,
-        url: appLink("/app"),
-      }),
-      tags: { template: "tenant-suspended" },
-    });
+  try {
+    for (const owner of await listTenantOwners(tenantId)) {
+      await sendEmail({
+        to: owner.email,
+        ...tenantSuspendedTemplate({
+          name: owner.name,
+          tenantName: tenant.name,
+          reason,
+          url: appLink("/app"),
+        }),
+        tags: { template: "tenant-suspended" },
+      });
+    }
+  } catch (error) {
+    logError("Falha ao avisar a suspensão", error);
   }
 
   return tenant;

@@ -93,7 +93,9 @@ o aviso mais urgente devido:
 Idempotência: cada aviso é reservado em `subscription.metadata.trialNotices.<aviso>` por
 `UPDATE` condicional **antes** de enviar; rodar duas vezes não repete e-mail. Se o envio falha
 (enfileirar), a reserva é desfeita e o job relança no fim para o pg-boss tentar de novo; falha
-de um tenant não impede os outros. Quem já tem assinatura no provedor (trial nativo) fica fora: cobrar
+de um tenant não impede os outros. `expired` faz transição, reserva e envio na mesma transação:
+expirada, a assinatura sai da lista do job e um aviso falho não voltaria, então a falha desfaz
+também a transição. Trial que já não pode expirar (pagamento chegou antes) não recebe o aviso. Quem já tem assinatura no provedor (trial nativo) fica fora: cobrar
 e encerrar é com ele. Tenant suspenso não é tocado, e suspensão (`locked`) tem
 precedência sobre `read_only`. `runBillingTrial(now, { tenantIds })` aceita um relógio e um
 filtro, usados pelos testes. Destinatários: proprietários do tenant (`listTenantOwners`).
