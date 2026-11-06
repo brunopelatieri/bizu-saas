@@ -1,9 +1,12 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { PageTitle, QueryState } from "@/components/admin/query-state";
+import { AccountDeletionCard } from "@/components/privacy/account-deletion-card";
+import { ExportCard } from "@/components/privacy/export-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -269,13 +272,83 @@ function SessionsCard() {
   );
 }
 
+/**
+ * Quem pediu a exclusão sem ter senha chega aqui pelo link do e-mail. A página só mostra o
+ * botão: o token é consumido pelo clique (POST), nunca por abrir o link.
+ */
+function ConfirmDeletionCard({ token, onDone }: { token: string; onDone: () => void }) {
+  const queryClient = useQueryClient();
+  const confirm = useMutation({
+    mutationFn: () =>
+      apiFetch("/api/portal/me/deletion/confirm", {
+        method: "POST",
+        body: JSON.stringify({ token }),
+      }),
+    onSuccess: async () => {
+      toast.success("Exclusão confirmada e agendada.");
+      await queryClient.invalidateQueries({ queryKey: ["privacy", "deletion"] });
+      onDone();
+    },
+    onError: (error) => toast.error(error.message),
+  });
+
+  return (
+    <Card className="border-destructive/40">
+      <CardHeader>
+        <CardTitle className="text-base">Confirmar a exclusão da sua conta</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm">
+        <p className="text-muted-foreground">
+          Depois de confirmar, seus dados serão anonimizados em 30 dias. Até lá você pode desistir
+          nesta mesma página.
+        </p>
+        <div className="flex gap-2">
+          <Button
+            variant="destructive"
+            disabled={confirm.isPending}
+            onClick={() => confirm.mutate()}
+          >
+            Confirmar exclusão
+          </Button>
+          <Button variant="outline" onClick={onDone}>
+            Não excluir
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function PortalAccountPage() {
+  const { user } = usePortalAuth();
+  const [params, setParams] = useSearchParams();
+  const token = params.get("confirmar-exclusao");
+
   return (
     <div className="space-y-6">
-      <PageTitle title="Minha conta" description="Perfil, senha e sessões." />
+      <PageTitle
+        title="Minha conta"
+        description="Perfil, senha, sessões e privacidade."
+      />
+      {token ? (
+        <ConfirmDeletionCard
+          token={token}
+          onDone={() => {
+            params.delete("confirmar-exclusao");
+            setParams(params, { replace: true });
+          }}
+        />
+      ) : null}
       <ProfileCard />
       <PasswordCard />
       <SessionsCard />
+      <ExportCard endpoint="/api/portal/me/export" />
+      <AccountDeletionCard
+        statusUrl="/api/portal/me/deletion"
+        deleteUrl="/api/portal/me"
+        cancelUrl="/api/portal/me/deletion/cancel"
+        needsPassword={user?.hasPassword ?? false}
+      />
     </div>
   );
 }

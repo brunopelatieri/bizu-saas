@@ -11,6 +11,7 @@ import { audit } from "@/lib/audit";
 import { LEGAL_VERSIONS } from "@/lib/legal/versions";
 import {
   acceptCurrentVersions,
+  currentConsents,
   pendingConsents,
   setMarketingConsent,
 } from "@/lib/lgpd/consent";
@@ -115,6 +116,27 @@ meRoutes.get("/api/me", authRateLimit, requireAuth, async (c) => {
 
 meRoutes.use("/api/me/consent/*", sameOrigin, jsonBodyLimit);
 meRoutes.use("/api/me/consent", sameOrigin, jsonBodyLimit);
+
+/** Estado do consentimento para a tela de privacidade: marketing e versões já aceitas. */
+meRoutes.get(
+  "/api/me/consent",
+  authRateLimit,
+  requireAuth,
+  blockWhileImpersonating,
+  async (c) => {
+    const latest = await currentConsents({ type: "user", id: c.get("user").id });
+    const accepted = (kind: "terms" | "privacy" | "marketing") => {
+      const row = latest.get(kind);
+      return row?.accepted ? row.version : null;
+    };
+
+    return c.json({
+      marketing: accepted("marketing") !== null,
+      accepted: { terms: accepted("terms"), privacy: accepted("privacy") },
+      current: LEGAL_VERSIONS,
+    });
+  },
+);
 
 /** Re-aceite dos textos legais (modal do `AppLayout`). */
 meRoutes.post(
