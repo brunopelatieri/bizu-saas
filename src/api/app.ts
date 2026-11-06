@@ -4,6 +4,7 @@ import { secureHeaders } from "hono/secure-headers";
 import { zValidator } from "@hono/zod-validator";
 import { adminRoutes } from "@/api/admin";
 import { authRoutes } from "@/api/auth-ext";
+import { billingRoutes } from "@/api/billing";
 import { invitationRoutes } from "@/api/invitations";
 import { logError } from "@/api/log";
 import { meRoutes } from "@/api/me";
@@ -13,6 +14,7 @@ import { rolesRoutes } from "@/api/roles";
 import { teamRoutes } from "@/api/team";
 import { tenantRoutes } from "@/api/tenant";
 import { emailWebhooks } from "@/api/webhooks-email";
+import { paymentWebhooks } from "@/api/webhooks-payments";
 import { getDb } from "@/db";
 import { contactMessages } from "@/db/schema";
 import { contactMessageSchema } from "@/lib/schemas/contact";
@@ -39,7 +41,9 @@ api.get("/api/ready", async (c) => {
   return c.json(checks, ok ? 200 : 503);
 });
 
+// Antes de tudo que lê o corpo: webhook é verificado sobre os bytes brutos.
 api.route("/", emailWebhooks);
+api.route("/", paymentWebhooks);
 
 // Better Auth em /api/auth/* e rotas próprias em /api/auth-ext/* (src/api/auth-ext.ts).
 api.route("/", authRoutes);
@@ -49,6 +53,7 @@ api.route("/", tenantRoutes);
 api.route("/", teamRoutes);
 api.route("/", rolesRoutes);
 api.route("/", invitationRoutes);
+api.route("/", billingRoutes);
 api.route("/", adminRoutes);
 
 api.post(

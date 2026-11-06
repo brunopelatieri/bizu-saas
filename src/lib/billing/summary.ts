@@ -11,6 +11,8 @@ export type BillingSummary = {
   trialEndsAt: string | null;
   /** Dias inteiros até o fim do trial; só em `trialing`. */
   trialDaysLeft: number | null;
+  /** Fim da carência (ISO 8601); só em `past_due`. */
+  graceUntil: string | null;
 };
 
 export type TenantBilling = {
@@ -50,6 +52,10 @@ export async function loadTenantBilling(
       },
       trialEndsAt: trialEndsAt?.toISOString() ?? null,
       trialDaysLeft: trialEndsAt ? daysLeft(now, trialEndsAt) : null,
+      graceUntil:
+        state === "past_due"
+          ? (current?.subscription.graceUntil?.toISOString() ?? null)
+          : null,
     },
     features: state === "locked" ? [] : (current?.plan.features ?? []),
     limits: state === "locked" ? {} : limits,

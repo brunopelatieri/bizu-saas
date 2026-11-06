@@ -1,14 +1,26 @@
-import { and, eq, inArray, isNotNull, lte, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, lte, or } from "drizzle-orm";
 import { logError } from "@/api/log";
 import { withPlatformScope, withTenant } from "@/db/rls";
 import { organization, subscription } from "@/db/schema";
 import { auditInTransaction } from "@/lib/audit";
 import { appLink } from "@/lib/auth/links";
-import { listTenantOwners } from "@/lib/billing/notify";
+import {
+  applyDecision,
+  lockSubscription,
+  snapshotOf,
+} from "@/lib/billing/apply";
+import { dueDunningNotice, type DunningNotice } from "@/lib/billing/dunning";
+import { requeueStuckEvents } from "@/lib/billing/inbox";
+import { latestUnpaidInvoice } from "@/lib/billing/invoices";
+import { claimNotice, releaseNotice } from "@/lib/billing/notices";
+import { listTenantOwners, notifyOwners } from "@/lib/billing/notify";
+import { type ReconcileTarget, syncSubscription } from "@/lib/billing/reconcile";
 import { loadSettings } from "@/lib/billing/settings";
-import { recordSubscriptionEvent } from "@/lib/billing/subscription";
+import { transition } from "@/lib/billing/state-machine";
+import { findFreePlanId } from "@/lib/billing/subscription";
 import { DAY_MS, dueTrialNotice, type TrialNotice } from "@/lib/billing/trial";
 import { sendEmail } from "@/lib/email/send";
+import { paymentFailedTemplate } from "@/lib/email/templates/payment-failed";
 import { trialEndingTemplate } from "@/lib/email/templates/trial-ending";
 import { trialExpiredTemplate } from "@/lib/email/templates/trial-expired";
 
@@ -26,48 +38,6 @@ type Candidate = {
   tenantName: string;
   trialEndsAt: Date;
 };
-
-/**
- * Marca o aviso como enviado antes de enviar, de forma atômica: dois jobs ao mesmo tempo
- * (ou o mesmo job duas vezes) só deixam um passar. Devolve `false` se já estava marcado.
- */
-async function claimNotice(
-  { tenantId, subscriptionId }: Candidate,
-  notice: TrialNotice,
-  now: Date,
-) {
-  const claimed = await withTenant(tenantId, (tx) =>
-    tx
-      .update(subscription)
-      .set({
-        metadata: sql`jsonb_set(${subscription.metadata}, '{trialNotices}', coalesce(${subscription.metadata}->'trialNotices', '{}'::jsonb) || jsonb_build_object(${notice}::text, ${now.toISOString()}::text), true)`,
-      })
-      .where(
-        and(
-          eq(subscription.id, subscriptionId),
-          sql`${subscription.metadata}->'trialNotices'->>${notice} is null`,
-        ),
-      )
-      .returning({ id: subscription.id }),
-  );
-
-  return claimed.length > 0;
-}
-
-/** Se o envio falha, o aviso volta a ser devido e a próxima tentativa do job o refaz. */
-async function releaseNotice(
-  { tenantId, subscriptionId }: Candidate,
-  notice: TrialNotice,
-) {
-  await withTenant(tenantId, (tx) =>
-    tx
-      .update(subscription)
-      .set({
-        metadata: sql`${subscription.metadata} #- array['trialNotices', ${notice}::text]`,
-      })
-      .where(eq(subscription.id, subscriptionId)),
-  );
-}
 
 async function sendNotice(candidate: Candidate, notice: TrialNotice) {
   const owners = await listTenantOwners(candidate.tenantId);
@@ -95,39 +65,15 @@ async function sendNotice(candidate: Candidate, notice: TrialNotice) {
 }
 
 /** Passa o trial vencido para `expired` e o tenant para `read_only`. */
-async function expireTrial(candidate: Candidate) {
+async function expireTrial(candidate: Candidate, now: Date) {
   return withTenant(candidate.tenantId, async (tx) => {
-    const [expired] = await tx
-      .update(subscription)
-      .set({ status: "expired" })
-      .where(
-        and(
-          eq(subscription.id, candidate.subscriptionId),
-          eq(subscription.status, "trialing"),
-        ),
-      )
-      .returning({ id: subscription.id });
+    const row = await lockSubscription(tx, candidate.subscriptionId);
+    if (!row) return false;
 
-    if (!expired) return false;
+    const decision = transition(snapshotOf(row), { type: "trial.expired" }, now);
+    if (decision.outcome === "ignored") return false;
 
-    // Suspensão (`locked`) tem precedência: só `full` vira `read_only`.
-    await tx
-      .update(organization)
-      .set({ accessMode: "read_only" })
-      .where(
-        and(
-          eq(organization.id, candidate.tenantId),
-          eq(organization.accessMode, "full"),
-        ),
-      );
-    await recordSubscriptionEvent(tx, {
-      tenantId: candidate.tenantId,
-      subscriptionId: candidate.subscriptionId,
-      from: "trialing",
-      to: "expired",
-      reason: "trial_expired",
-      source: "job",
-    });
+    await applyDecision(tx, row, decision, { source: "job" });
     await auditInTransaction(tx, "billing.trial_expired", {
       actor: { type: "system", id: null },
       tenantId: candidate.tenantId,
@@ -168,6 +114,8 @@ export async function runBillingTrial(
           eq(subscription.status, "trialing"),
           isNotNull(subscription.trialEndsAt),
           lte(subscription.trialEndsAt, horizon),
+          // Trial nativo: quem cobra e encerra é o provedor, com `invoice.paid` ou falha.
+          isNull(subscription.providerSubscriptionRef),
           eq(organization.status, "active"),
           options.tenantIds
             ? inArray(subscription.tenantId, options.tenantIds)
@@ -195,17 +143,17 @@ export async function runBillingTrial(
     if (!notice) continue;
 
     try {
-      if (notice === "expired" && (await expireTrial(candidate))) {
+      if (notice === "expired" && (await expireTrial(candidate, now))) {
         result.expired += 1;
       }
 
-      if (!(await claimNotice(candidate, notice, now))) continue;
+      if (!(await claimNotice(candidate, "trialNotices", notice, now))) continue;
 
       try {
         await sendNotice(candidate, notice);
         result.notices[notice] += 1;
       } catch (error) {
-        await releaseNotice(candidate, notice);
+        await releaseNotice(candidate, "trialNotices", notice);
         throw error;
       }
     } catch (error) {
@@ -223,4 +171,271 @@ export async function runBillingTrial(
 
 export async function handleBillingTrial() {
   await runBillingTrial();
+}
+
+type BillingJobOptions = {
+  /** Restringe a execução a estes tenants (testes e reprocessamento pontual). */
+  tenantIds?: string[];
+};
+
+export type DunningJobResult = {
+  unpaid: number;
+  notices: Record<DunningNotice, number>;
+};
+
+type DunningCandidate = {
+  subscriptionId: string;
+  tenantId: string;
+  graceUntil: Date;
+};
+
+/** `past_due` vencido vira `unpaid` e o tenant, `read_only`. */
+async function closeGrace(candidate: DunningCandidate, now: Date) {
+  return withTenant(candidate.tenantId, async (tx) => {
+    const row = await lockSubscription(tx, candidate.subscriptionId);
+    if (!row) return false;
+
+    const decision = transition(snapshotOf(row), { type: "dunning.expired" }, now);
+    if (decision.outcome === "ignored") return false;
+
+    await applyDecision(tx, row, decision, {
+      source: "job",
+      actor: { type: "system", id: null },
+    });
+
+    return true;
+  });
+}
+
+async function sendDunningNotice(
+  candidate: DunningCandidate,
+  notice: DunningNotice,
+) {
+  const unpaid = await withTenant(candidate.tenantId, (tx) =>
+    latestUnpaidInvoice(tx, candidate.subscriptionId),
+  );
+
+  await notifyOwners(candidate.tenantId, "payment-failed", (owner) =>
+    paymentFailedTemplate({
+      ...owner,
+      amountCents: unpaid?.amountCents ?? 0,
+      currency: unpaid?.currency,
+      graceEndsAt: notice === "unpaid" ? undefined : candidate.graceUntil,
+    }),
+  );
+}
+
+/**
+ * `billing.dunning` (cron diário). Avisa em T-3 e T0 da carência e, vencida, passa a
+ * `unpaid` + `read_only`. Mesma idempotência de `billing.trial`, em
+ * `subscription.metadata.dunningNotices`, limpa quando o pagamento volta.
+ */
+export async function runBillingDunning(
+  now = new Date(),
+  options: BillingJobOptions = {},
+): Promise<DunningJobResult> {
+  const rows = await withPlatformScope("billing.dunning: lista carências", (tx) =>
+    tx
+      .select({
+        subscriptionId: subscription.id,
+        tenantId: subscription.tenantId,
+        graceUntil: subscription.graceUntil,
+      })
+      .from(subscription)
+      .innerJoin(organization, eq(subscription.tenantId, organization.id))
+      .where(
+        and(
+          eq(subscription.status, "past_due"),
+          isNotNull(subscription.graceUntil),
+          eq(organization.status, "active"),
+          options.tenantIds
+            ? inArray(subscription.tenantId, options.tenantIds)
+            : undefined,
+        ),
+      ),
+  );
+
+  const result: DunningJobResult = {
+    unpaid: 0,
+    notices: { t3: 0, t0: 0, unpaid: 0 },
+  };
+  const failures: unknown[] = [];
+
+  for (const { graceUntil, ...rest } of rows) {
+    if (!graceUntil) continue;
+
+    const candidate = { ...rest, graceUntil };
+    const notice = dueDunningNotice({ now, graceUntil });
+    if (!notice) continue;
+
+    try {
+      if (notice === "unpaid" && (await closeGrace(candidate, now))) {
+        result.unpaid += 1;
+      }
+
+      if (!(await claimNotice(candidate, "dunningNotices", notice, now))) continue;
+
+      try {
+        await sendDunningNotice(candidate, notice);
+        result.notices[notice] += 1;
+      } catch (error) {
+        await releaseNotice(candidate, "dunningNotices", notice);
+        throw error;
+      }
+    } catch (error) {
+      logError("Falha ao processar carência", error);
+      failures.push(error);
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new Error(`billing.dunning: ${failures.length} tenant(s) com falha`);
+  }
+
+  return result;
+}
+
+export async function handleBillingDunning() {
+  await runBillingDunning();
+}
+
+export type PeriodEndJobResult = { canceled: number; downgraded: number };
+
+/**
+ * `billing.period_end` (cron horário). Encerra cancelamentos e aplica downgrades cujo
+ * `current_period_end` já passou. O provedor costuma avisar antes, por webhook: a
+ * transição repetida é ignorada, e este job cobre o aviso que não chegou.
+ */
+export async function runBillingPeriodEnd(
+  now = new Date(),
+  options: BillingJobOptions = {},
+): Promise<PeriodEndJobResult> {
+  const freePlanId = await findFreePlanId();
+  const rows = await withPlatformScope("billing.period_end: lista", (tx) =>
+    tx
+      .select({ id: subscription.id, tenantId: subscription.tenantId })
+      .from(subscription)
+      .where(
+        and(
+          lte(subscription.currentPeriodEnd, now),
+          or(
+            eq(subscription.cancelAtPeriodEnd, true),
+            isNotNull(subscription.pendingPlanId),
+          ),
+          inArray(subscription.status, ["active", "past_due", "paused", "trialing"]),
+          options.tenantIds
+            ? inArray(subscription.tenantId, options.tenantIds)
+            : undefined,
+        ),
+      ),
+  );
+
+  const result: PeriodEndJobResult = { canceled: 0, downgraded: 0 };
+  const failures: unknown[] = [];
+
+  for (const { id, tenantId } of rows) {
+    try {
+      await withTenant(tenantId, async (tx) => {
+        const row = await lockSubscription(tx, id);
+        if (!row) return;
+
+        const decision = transition(
+          snapshotOf(row),
+          row.cancelAtPeriodEnd
+            ? { type: "period.ended", freePlanId }
+            : { type: "downgrade.due" },
+          now,
+        );
+        if (decision.outcome === "ignored") return;
+
+        await applyDecision(tx, row, decision, {
+          source: "job",
+          actor: { type: "system", id: null },
+        });
+        if (row.cancelAtPeriodEnd) result.canceled += 1;
+        else result.downgraded += 1;
+      });
+    } catch (error) {
+      logError("Falha ao encerrar período", error);
+      failures.push(error);
+    }
+  }
+
+  if (failures.length > 0) {
+    throw new Error(`billing.period_end: ${failures.length} tenant(s) com falha`);
+  }
+
+  return result;
+}
+
+export async function handleBillingPeriodEnd() {
+  await runBillingPeriodEnd();
+}
+
+export type ReconcileJobResult = {
+  checked: number;
+  diverged: number;
+  requeuedEvents: number;
+};
+
+/**
+ * `billing.reconcile` (cron diário). Compara cada assinatura viva com o provedor; a
+ * divergência é corrigida com `subscription_event` de `source = job` e fica em alerta no
+ * `/admin`. Falha de um provedor não impede os demais. Devolve à fila os eventos parados.
+ */
+export async function runBillingReconcile(
+  now = new Date(),
+  options: BillingJobOptions = {},
+): Promise<ReconcileJobResult> {
+  const rows = await withPlatformScope("billing.reconcile: lista", (tx) =>
+    tx
+      .select({
+        id: subscription.id,
+        tenantId: subscription.tenantId,
+        provider: subscription.provider,
+        providerSubscriptionRef: subscription.providerSubscriptionRef,
+      })
+      .from(subscription)
+      .where(
+        and(
+          inArray(subscription.status, ["trialing", "active", "past_due"]),
+          isNotNull(subscription.provider),
+          isNotNull(subscription.providerSubscriptionRef),
+          options.tenantIds
+            ? inArray(subscription.tenantId, options.tenantIds)
+            : undefined,
+        ),
+      )
+      .orderBy(desc(subscription.updatedAt)),
+  );
+
+  const result: ReconcileJobResult = { checked: 0, diverged: 0, requeuedEvents: 0 };
+  const failures: unknown[] = [];
+
+  for (const row of rows) {
+    try {
+      const synced = await syncSubscription(row as ReconcileTarget, now, {
+        source: "job",
+      });
+      if (synced.skipped) continue;
+
+      result.checked += 1;
+      if (synced.diverged) result.diverged += 1;
+    } catch (error) {
+      logError("Falha ao reconciliar assinatura", error);
+      failures.push(error);
+    }
+  }
+
+  if (!options.tenantIds) result.requeuedEvents = await requeueStuckEvents(now);
+
+  if (failures.length > 0) {
+    throw new Error(`billing.reconcile: ${failures.length} assinatura(s) com falha`);
+  }
+
+  return result;
+}
+
+export async function handleBillingReconcile() {
+  await runBillingReconcile();
 }

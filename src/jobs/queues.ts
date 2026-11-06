@@ -3,8 +3,8 @@ import type { EmailMessage } from "@/lib/email/types";
 
 /**
  * Definição das filas. Só dados, sem imports de runtime, para que `sendEmail` e os
- * testes possam usá-la sem puxar o pg-boss. O restante das filas de billing e as de LGPD entram nas
- * fases 6 e 10: acrescente aqui, com o handler em `src/jobs/index.ts`.
+ * testes possam usá-la sem puxar o pg-boss. As de LGPD entram na fase 10: acrescente aqui,
+ * com o handler em `src/jobs/index.ts`.
  */
 
 export const QUEUE = {
@@ -13,6 +13,14 @@ export const QUEUE = {
   maintenancePrune: "maintenance.prune",
   billingTrial: "billing.trial",
   billingTrialDead: "billing.trial.dead",
+  webhookProcess: "webhook.process",
+  webhookProcessDead: "webhook.process.dead",
+  billingDunning: "billing.dunning",
+  billingDunningDead: "billing.dunning.dead",
+  billingPeriodEnd: "billing.period_end",
+  billingPeriodEndDead: "billing.period_end.dead",
+  billingReconcile: "billing.reconcile",
+  billingReconcileDead: "billing.reconcile.dead",
 } as const;
 
 /** Payload de `email.send`: o id da `email_message` e a mensagem já renderizada. */
@@ -21,7 +29,25 @@ export type EmailSendJob = {
   message: EmailMessage;
 };
 
+/** Payload de `webhook.process`: o evento fica em `payment_event`, não na fila. */
+export type WebhookProcessJob = { paymentEventId: string };
+
 export const EMAIL_RETRY_LIMIT = 5;
+export const WEBHOOK_RETRY_LIMIT = 5;
+
+const DEAD_LETTER_OPTIONS = {
+  retentionSeconds: 14 * 24 * 3600,
+  deleteAfterSeconds: 14 * 24 * 3600,
+};
+
+/** Job idempotente e diário ou horário: repetir não duplica e-mail nem transição. */
+const billingJobOptions = (deadLetter: string) => ({
+  retryLimit: 3,
+  retryDelay: 300,
+  retryBackoff: true,
+  deleteAfterSeconds: 7 * 24 * 3600,
+  deadLetter,
+});
 
 export type QueueDefinition = {
   name: string;
@@ -39,8 +65,12 @@ export const queueDefinitions: QueueDefinition[] = [
   },
   {
     name: QUEUE.billingTrialDead,
-    options: { retentionSeconds: 14 * 24 * 3600, deleteAfterSeconds: 14 * 24 * 3600 },
+    options: DEAD_LETTER_OPTIONS,
   },
+  { name: QUEUE.webhookProcessDead, options: DEAD_LETTER_OPTIONS },
+  { name: QUEUE.billingDunningDead, options: DEAD_LETTER_OPTIONS },
+  { name: QUEUE.billingPeriodEndDead, options: DEAD_LETTER_OPTIONS },
+  { name: QUEUE.billingReconcileDead, options: DEAD_LETTER_OPTIONS },
   {
     name: QUEUE.emailSend,
     options: {
@@ -60,22 +90,45 @@ export const queueDefinitions: QueueDefinition[] = [
     options: { retryLimit: 1, retryDelay: 300, deleteAfterSeconds: 7 * 24 * 3600 },
   },
   {
-    // Idempotente: repetir não duplica e-mail nem transição (`src/jobs/billing.ts`).
     name: QUEUE.billingTrial,
+    options: billingJobOptions(QUEUE.billingTrialDead),
+  },
+  {
+    // `exclusive`: no máximo um job vivo por `singletonKey` (= `payment_event.id`). O estado
+    // fica em `payment_event`; repetir o job só repete o que falhou.
+    name: QUEUE.webhookProcess,
     options: {
-      retryLimit: 3,
-      retryDelay: 300,
+      policy: "exclusive",
+      retryLimit: WEBHOOK_RETRY_LIMIT,
+      retryDelay: 30,
       retryBackoff: true,
+      retryDelayMax: 3600,
+      expireInSeconds: 120,
       deleteAfterSeconds: 7 * 24 * 3600,
-      deadLetter: QUEUE.billingTrialDead,
+      deadLetter: QUEUE.webhookProcessDead,
     },
+  },
+  {
+    name: QUEUE.billingDunning,
+    options: billingJobOptions(QUEUE.billingDunningDead),
+  },
+  {
+    name: QUEUE.billingPeriodEnd,
+    options: billingJobOptions(QUEUE.billingPeriodEndDead),
+  },
+  {
+    name: QUEUE.billingReconcile,
+    options: billingJobOptions(QUEUE.billingReconcileDead),
   },
 ];
 
 export type ScheduleDefinition = { queue: string; cron: string };
 
-/** Crons (UTC): `billing.trial` todo dia 03:00; `maintenance.prune` domingo 04:00. */
+/** Crons (UTC), como em `spec-email-jobs.md`. */
 export const scheduleDefinitions: ScheduleDefinition[] = [
   { queue: QUEUE.billingTrial, cron: "0 3 * * *" },
+  { queue: QUEUE.billingDunning, cron: "10 3 * * *" },
+  { queue: QUEUE.billingPeriodEnd, cron: "0 * * * *" },
+  { queue: QUEUE.billingReconcile, cron: "0 4 * * *" },
   { queue: QUEUE.maintenancePrune, cron: "0 4 * * 0" },
 ];

@@ -1,8 +1,14 @@
 import type { PgBoss } from "pg-boss";
 import { startBoss, stopBoss } from "@/jobs/boss";
-import { handleBillingTrial } from "@/jobs/billing";
+import {
+  handleBillingDunning,
+  handleBillingPeriodEnd,
+  handleBillingReconcile,
+  handleBillingTrial,
+} from "@/jobs/billing";
 import { handleEmailSend } from "@/jobs/email";
 import { handleMaintenancePrune } from "@/jobs/maintenance";
+import { handleWebhookProcess } from "@/jobs/webhooks";
 import {
   queueDefinitions,
   QUEUE,
@@ -35,6 +41,10 @@ export async function registerWorkers(
   await boss.offWork(QUEUE.emailSend);
   await boss.offWork(QUEUE.maintenancePrune);
   await boss.offWork(QUEUE.billingTrial);
+  await boss.offWork(QUEUE.webhookProcess);
+  await boss.offWork(QUEUE.billingDunning);
+  await boss.offWork(QUEUE.billingPeriodEnd);
+  await boss.offWork(QUEUE.billingReconcile);
   await boss.work(
     QUEUE.emailSend,
     { includeMetadata: true, batchSize: 1, localConcurrency: 4, ...options },
@@ -42,6 +52,14 @@ export async function registerWorkers(
   );
   await boss.work(QUEUE.maintenancePrune, options, handleMaintenancePrune);
   await boss.work(QUEUE.billingTrial, options, handleBillingTrial);
+  await boss.work(
+    QUEUE.webhookProcess,
+    { batchSize: 1, localConcurrency: 4, ...options },
+    handleWebhookProcess,
+  );
+  await boss.work(QUEUE.billingDunning, options, handleBillingDunning);
+  await boss.work(QUEUE.billingPeriodEnd, options, handleBillingPeriodEnd);
+  await boss.work(QUEUE.billingReconcile, options, handleBillingReconcile);
 }
 
 /**

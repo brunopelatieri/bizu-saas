@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { paymentProviderIds, priceIntervals } from "@/lib/billing/constants";
+import {
+  paymentEventStatuses,
+  paymentProviderIds,
+  priceIntervals,
+} from "@/lib/billing/constants";
 import { billingStates } from "@/lib/billing/state";
 import { slugSchema } from "@/lib/schemas/tenant";
 
@@ -124,3 +128,24 @@ export const tenantsQuerySchema = z.object({
 });
 
 export const usersQuerySchema = z.object({ q: search, page });
+
+export const webhooksQuerySchema = z.object({
+  status: z.enum(paymentEventStatuses).optional(),
+  page,
+});
+
+export const subscriptionStatusFilter = [
+  "trialing",
+  "active",
+  "past_due",
+  "unpaid",
+  "paused",
+  "canceled",
+  "expired",
+] as const;
+
+export const subscriptionsQuerySchema = z.object({
+  status: z.enum(subscriptionStatusFilter).optional(),
+  q: search,
+  page,
+});

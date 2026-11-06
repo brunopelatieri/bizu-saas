@@ -4,6 +4,7 @@ import {
   auditLog,
   member,
   organization,
+  paymentEvent,
   plan,
   subscription,
   subscriptionEvent,
@@ -22,6 +23,7 @@ const stateSql = sql<BillingState>`case
   when ${organization.status} <> 'active' or ${organization.accessMode} = 'locked' then 'locked'
   when ${organization.accessMode} = 'read_only' then 'read_only'
   when ${subscription.status} = 'trialing' then 'trialing'
+  when ${subscription.status} = 'past_due' then 'past_due'
   else 'active' end`;
 
 const escapeLike = (value: string) => value.replace(/[\\%_]/g, "\\$&");
@@ -285,9 +287,17 @@ export async function getOverview(now = new Date()) {
       .from(plan)
       .where(eq(plan.active, true));
 
+    const [failed] = await tx
+      .select({ total: count() })
+      .from(paymentEvent)
+      .where(
+        and(eq(paymentEvent.status, "failed"), eq(paymentEvent.verified, true)),
+      );
+
     const tenants: Record<BillingState, number> = {
       trialing: 0,
       active: 0,
+      past_due: 0,
       read_only: 0,
       locked: 0,
     };
@@ -299,6 +309,7 @@ export async function getOverview(now = new Date()) {
       users: { total: users?.total ?? 0, banned: users?.banned ?? 0 },
       trialsExpiringSoon: expiring?.total ?? 0,
       activePlans: plans?.total ?? 0,
+      failedWebhooks: failed?.total ?? 0,
     };
   });
 }

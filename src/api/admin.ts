@@ -25,9 +25,16 @@ import {
   suspendTenant,
   unsuspendTenant,
 } from "@/lib/admin/tenants";
+import { listSubscriptions } from "@/lib/admin/subscriptions";
 import { assertBannable, listUsers } from "@/lib/admin/users";
 import { type AuditAction, audit } from "@/lib/audit";
 import { getAuth } from "@/lib/auth/server";
+import {
+  adminCancelSubscription,
+  loadSubscriptionForSync,
+} from "@/lib/billing/checkout";
+import { listPaymentEvents, reprocessEvent } from "@/lib/billing/inbox";
+import { syncSubscription } from "@/lib/billing/reconcile";
 import { loadSettings } from "@/lib/billing/settings";
 import { changeTenantPlan } from "@/lib/billing/subscription";
 import {
@@ -36,10 +43,12 @@ import {
   planSchema,
   platformSettingsSchema,
   reasonSchema,
+  subscriptionsQuerySchema,
   tenantsQuerySchema,
   updatePlanPriceSchema,
   updatePlanSchema,
   usersQuerySchema,
+  webhooksQuerySchema,
 } from "@/lib/schemas/admin";
 import { notFound } from "@/lib/tenant/errors";
 import { z } from "zod";
@@ -291,5 +300,72 @@ adminRoutes.post(
     await auditAdmin(c, "admin.user_unbanned", { target: { type: "user", id } });
 
     return c.json({ ok: true });
+  },
+);
+
+adminRoutes.get(
+  "/api/admin/webhooks",
+  zValidator("query", webhooksQuerySchema, validationError),
+  async (c) => c.json(await listPaymentEvents(c.req.valid("query"))),
+);
+
+adminRoutes.post(
+  "/api/admin/webhooks/:id/reprocess",
+  ownerOnly,
+  validId,
+  async (c) => {
+    const { id } = c.req.valid("param");
+
+    await reprocessEvent(id);
+    await auditAdmin(c, "admin.webhook_reprocessed", {
+      target: { type: "payment_event", id },
+    });
+
+    return c.json({ ok: true });
+  },
+);
+
+adminRoutes.get(
+  "/api/admin/subscriptions",
+  zValidator("query", subscriptionsQuerySchema, validationError),
+  async (c) => c.json(await listSubscriptions(c.req.valid("query"))),
+);
+
+adminRoutes.post(
+  "/api/admin/subscriptions/:id/cancel",
+  ownerOnly,
+  validId,
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const updated = await adminCancelSubscription(id, c.get("user").id);
+
+    await auditAdmin(c, "admin.subscription_canceled", {
+      tenantId: updated.tenantId,
+      target: { type: "subscription", id },
+    });
+
+    return c.json({ subscription: { id, status: updated.status } });
+  },
+);
+
+adminRoutes.post(
+  "/api/admin/subscriptions/:id/sync",
+  ownerOnly,
+  validId,
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const target = await loadSubscriptionForSync(id);
+    const result = await syncSubscription(target, new Date(), {
+      source: "admin",
+      actor: { type: "platform", id: c.get("user").id },
+    });
+
+    await auditAdmin(c, "admin.subscription_synced", {
+      tenantId: target.tenantId,
+      target: { type: "subscription", id },
+      metadata: { diverged: result.diverged },
+    });
+
+    return c.json(result);
   },
 );
