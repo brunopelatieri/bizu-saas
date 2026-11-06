@@ -5,6 +5,7 @@ import type { PlanLimits } from "@/db/schema/billing";
 import { LIMIT_LABELS, type LimitMetric } from "@/lib/billing/constants";
 import { withTenant } from "@/db/rls";
 import { TenantRuleError } from "@/lib/tenant/errors";
+import { storageUsedBytes } from "@/lib/files";
 import { loadTenantPlan } from "@/lib/billing/subscription";
 
 export type { LimitMetric };
@@ -52,8 +53,8 @@ export type LimitSource = {
 
 /**
  * Uso corrente. `members` conta membros e convites pendentes e vigentes: o convite já
- * reserva o assento. `storage_mb` ganha contagem na fase 10; até lá o uso é 0 e o limite
- * não bloqueia nada.
+ * reserva o assento. `storage_mb` soma `file.size` em MB (arredondado para cima); o upload confere os bytes
+ * exatos em `assertStorageAvailable` (`src/lib/files/index.ts`).
  */
 export const databaseLimitSource: LimitSource = {
   async limits(tenantId) {
@@ -102,6 +103,8 @@ export const databaseLimitSource: LimitSource = {
 
         return row?.total ?? 0;
       }
+      case "storage_mb":
+        return Math.ceil((await storageUsedBytes(tenantId)) / (1024 * 1024));
       default:
         return 0;
     }

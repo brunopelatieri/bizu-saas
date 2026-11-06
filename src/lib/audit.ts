@@ -27,6 +27,8 @@ export type AuditAction =
   | "role.created"
   | "role.updated"
   | "role.deleted"
+  | "file.uploaded"
+  | "file.deleted"
   | "customer.created"
   | "customer.updated"
   | "customer.deleted"

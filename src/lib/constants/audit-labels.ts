@@ -20,6 +20,8 @@ const AUDIT_LABELS: Record<string, string> = {
   "role.created": "Papel criado",
   "role.updated": "Papel alterado",
   "role.deleted": "Papel excluído",
+  "file.uploaded": "Arquivo enviado",
+  "file.deleted": "Arquivo excluído",
   "customer.created": "Cliente criado",
   "customer.updated": "Cliente alterado",
   "customer.deleted": "Cliente excluído",

@@ -12,7 +12,7 @@ import path from "node:path";
 
 const id = process.argv[2] ?? "stripe";
 
-if (!/^[a-z]+$/.test(id)) {
+if (!/^[a-z][a-z0-9]*$/.test(id)) {
   console.error(`Id de módulo inválido: ${id}`);
   process.exit(1);
 }
