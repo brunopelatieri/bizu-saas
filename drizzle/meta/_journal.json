@@ -29,6 +29,13 @@
       "when": 1793923840794,
       "tag": "0003_famous_korath",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1793930381987,
+      "tag": "0004_email_jobs",
+      "breakpoints": true
     }
   ]
 }

@@ -12,3 +12,6 @@ export const contactMessages = pgTable("contact_messages", {
 
 export type ContactMessage = typeof contactMessages.$inferSelect;
 export type NewContactMessage = typeof contactMessages.$inferInsert;
+
+// Schemas por domínio: um arquivo em `src/db/schema/` por área (spec-dados.md).
+export * from "./schema/email";
