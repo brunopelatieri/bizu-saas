@@ -8,8 +8,9 @@ export const authClient = createAuthClient({
 });
 
 const AUTH_ERROR_MESSAGES: Record<string, string> = {
-  EMAIL_NOT_VERIFIED: "Confirme seu e-mail para entrar.",
-  INVALID_EMAIL_OR_PASSWORD: "E-mail ou senha incorretos.",
+  // Fixa: o login responde igual para senha errada e conta não confirmada.
+  INVALID_EMAIL_OR_PASSWORD:
+    "E-mail ou senha incorretos. Se a conta é nova, confirme o e-mail pelo link mais recente.",
   INVALID_EMAIL: "Informe um e-mail válido.",
   INVALID_PASSWORD: "E-mail ou senha incorretos.",
   PASSWORD_TOO_SHORT: "A senha é curta demais.",

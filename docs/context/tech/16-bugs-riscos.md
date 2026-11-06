@@ -193,13 +193,13 @@ plugin não oferece rotação. O caminho manual está em `tech/26-seguranca.md`.
 
 ---
 
-### RISK-008 — Cadastro + login revelam se o e-mail existe em `/api/auth` (aberto)
+### RISK-008 — Cadastro + login revelavam se o e-mail existe em `/api/auth` (corrigido)
 
 Achado no security-review da fase 8, no código da fase 2. `/api/auth/sign-up/email` responde
-igual para e-mail novo e existente, mas o login confere a senha antes da verificação: com a senha
-usada no cadastro, responde 403 `EMAIL_NOT_VERIFIED` se a conta é nova e 401 se ela já existia.
-Quem sonda envia e-mail ao alvo, então o ataque não é silencioso. O portal já fecha esse caminho
-(`hideUnverified`). Na equipe, a correção muda a tela de login, que hoje oferece o reenvio.
+igual para e-mail novo e existente, mas o login conferia a senha antes da verificação: com a senha
+usada no cadastro, respondia 403 `EMAIL_NOT_VERIFIED` se a conta era nova e 401 se ela já existia.
+Corrigido com `hideUnverified` (`src/api/auth-ext.ts`), o mesmo do portal, que devolve o 401 do
+Better Auth byte a byte. A tela de login passou a oferecer o reenvio sempre, sem depender do erro.
 
 ### RISK-007 — Pré-sequestro no autocadastro do portal (risco aceito)
 
@@ -219,6 +219,7 @@ indeterminado, mas não essa janela.
 Decisão do usuário: manter a confirmação em um clique. Pedir a senha na página de
 confirmação fecharia a janela, mas acrescenta atrito ao cadastro de todo mundo, e o ataque
 exige alvo específico e o clique da vítima dentro do prazo. Reavalie se o produto derivado
-guardar dados sensíveis já no cadastro.
+guardar dados sensíveis já no cadastro. O reenvio fixo na tela de login (RISK-008) facilita
+esse clique: o servidor não mudou, mas o dono chega ao link com menos esforço.
 
 Falta também um job de limpeza (fase 3): hoje a conta vencida só some no próximo cadastro.

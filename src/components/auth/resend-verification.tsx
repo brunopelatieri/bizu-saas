@@ -15,9 +15,19 @@ async function resendVerification(email: string) {
   });
 }
 
-/** Sem `email`, pede o endereço: é o caso da página aberta com link vencido. */
-export function ResendVerification({ email }: { email?: string }) {
-  const [typed, setTyped] = useState("");
+type ResendVerificationProps = {
+  /** Endereço já conhecido, sem campo para editar. */
+  email?: string;
+  /** Sem `email`, preenche o campo, que segue editável. */
+  initialEmail?: string;
+};
+
+/** Sem `email`, pede o endereço: é o caso do login e da página com link vencido. */
+export function ResendVerification({
+  email,
+  initialEmail = "",
+}: ResendVerificationProps) {
+  const [typed, setTyped] = useState(initialEmail);
   const [sending, setSending] = useState(false);
   const target = email ?? typed;
 

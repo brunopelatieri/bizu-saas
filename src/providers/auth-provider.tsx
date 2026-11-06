@@ -43,7 +43,7 @@ type AuthContextValue = {
   /** Falta 2FA para seguir: a API responde 403 até a pessoa configurar. */
   security: MeResponse["security"];
   /**
-   * Lança `AuthActionError`; `code` traz `EMAIL_NOT_VERIFIED` e afins. Devolve
+   * Lança `AuthActionError`, com o `code` do Better Auth. Devolve
    * `twoFactor: true` quando a senha passou, mas a sessão ainda depende do desafio em `/2fa`.
    */
   signIn: (values: LoginInput) => Promise<{ twoFactor: boolean }>;

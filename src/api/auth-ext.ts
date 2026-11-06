@@ -39,6 +39,32 @@ export function forwardedHeaders(c: Context) {
   return headers;
 }
 
+/**
+ * O Better Auth confere a senha antes da verificação. Com cadastro aberto, isso vira um
+ * oráculo: cadastra-se o e-mail com uma senha qualquer, e o login responde 403 se a conta é
+ * nova e 401 se já existia. Por fora, as duas respostas são a de senha errada; o link de
+ * verificação segue saindo pelo `sendOnSignIn`.
+ */
+export async function hideUnverified(response: Response) {
+  if (response.status !== 403) return response;
+
+  const body = (await response
+    .clone()
+    .json()
+    .catch(() => null)) as { code?: string } | null;
+
+  if (body?.code !== "EMAIL_NOT_VERIFIED") return response;
+
+  // Byte a byte a resposta do Better Auth: a ordem das chaves também distinguiria as duas.
+  return new Response(
+    JSON.stringify({
+      message: "Invalid email or password",
+      code: "INVALID_EMAIL_OR_PASSWORD",
+    }),
+    { status: 401, headers: response.headers },
+  );
+}
+
 /** O corpo do Better Auth não diz em que etapa o token estava. */
 function verificationStep(token: string): VerificationStep {
   const { requestType } = readVerificationClaims(token);
@@ -70,6 +96,7 @@ const rateLimitByEmail = createRateLimitByEmail();
  *
  * - Cadastro: exige o aceite de termos e devolve sempre o mesmo corpo. O do Better
  *   Auth traz id e datas, que diferem entre e-mail novo e existente.
+ * - Login: conta não verificada responde como senha errada (`hideUnverified`).
  * - `verify-email`: o endpoint do Better Auth é GET e consumiria o token em qualquer
  *   visita. Aqui só existe POST, atrás do `verificationGuard`.
  * - `/api/auth-ext/*`: respondem `{ ok: true }` na hora, antes de saber se o e-mail
@@ -195,9 +222,11 @@ authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
   const { method, url } = c.req;
   const body = method === "POST" ? await c.req.text() : undefined;
 
-  return getAuth().handler(
+  const response = await getAuth().handler(
     new Request(url, { method, headers: forwardedHeaders(c), body }),
   );
+
+  return hideUnverified(response);
 });
 
 authRoutes.post(
