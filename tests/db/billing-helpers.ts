@@ -105,6 +105,12 @@ export async function cleanUpBilling(owner: postgres.Sql) {
       )
     `;
     await tx`delete from payment_event where provider = ${STUB_ID}`;
+    // O seed roda com a configuração de teste: `acme` pode nascer num plano `test-`.
+    await tx`
+      delete from subscription where plan_id in (
+        select id from plan where slug like ${`${PLAN_PREFIX}%`}
+      )
+    `;
     await tx`delete from plan where slug like ${`${PLAN_PREFIX}%`}`;
   });
 }

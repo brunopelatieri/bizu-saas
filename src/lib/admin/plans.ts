@@ -1,4 +1,4 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { withPlatformScope } from "@/db/rls";
 import { plan, planPrice, subscription } from "@/db/schema";
@@ -25,6 +25,12 @@ const SLUG_TAKEN = new TenantRuleError(
   409,
   "SLUG_TAKEN",
   "Já existe um plano com este identificador.",
+);
+
+const FREE_PLAN_NO_PRICE = new TenantRuleError(
+  409,
+  "FREE_PLAN_NO_PRICE",
+  "Plano gratuito não tem preço.",
 );
 
 /** Todos os planos (inclusive inativos), com preços e quantos tenants os usam. */
@@ -71,20 +77,20 @@ export async function createPlan(input: PlanInput) {
 export async function updatePlan(planId: string, patch: UpdatePlanInput) {
   const current = await getPlan(planId);
 
-  // Plano gratuito não tem preço: marcá-lo assim com preço ativo geraria um plano
-  // que cobra e é de graça ao mesmo tempo.
+  // Plano gratuito não tem preço ativo: marcá-lo assim geraria um plano que cobra e é de
+  // graça ao mesmo tempo. Preço não se apaga: desativado, deixa de contar.
   if (patch.isFree) {
     const [priced] = await getDb()
       .select({ id: planPrice.id })
       .from(planPrice)
-      .where(eq(planPrice.planId, planId))
+      .where(and(eq(planPrice.planId, planId), eq(planPrice.active, true)))
       .limit(1);
 
     if (priced) {
       throw new TenantRuleError(
         409,
         "PLAN_HAS_PRICES",
-        "Remova os preços antes de marcar o plano como gratuito.",
+        "Desative os preços antes de marcar o plano como gratuito.",
       );
     }
   }
@@ -101,13 +107,7 @@ export async function updatePlan(planId: string, patch: UpdatePlanInput) {
 export async function createPrice(planId: string, input: PlanPriceInput) {
   const owner = await getPlan(planId);
 
-  if (owner.isFree) {
-    throw new TenantRuleError(
-      409,
-      "FREE_PLAN_NO_PRICE",
-      "Plano gratuito não tem preço.",
-    );
-  }
+  if (owner.isFree) throw FREE_PLAN_NO_PRICE;
 
   try {
     const [created] = await getDb()
@@ -132,6 +132,8 @@ export async function updatePrice(
   priceId: string,
   patch: Partial<Pick<PlanPriceInput, "amountCents" | "providerPriceRef" | "active">>,
 ) {
+  if (patch.active && (await getPlan(planId)).isFree) throw FREE_PLAN_NO_PRICE;
+
   const [updated] = await getDb()
     .update(planPrice)
     .set({

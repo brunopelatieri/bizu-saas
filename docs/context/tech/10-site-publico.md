@@ -27,7 +27,9 @@ autor; personalize ali primeiro (`docs/context/receitas.md`).
 `src/routes/pricing.tsx` tem `loader` server-side que lê os planos ativos e seus preços ativos
 pelo Drizzle (`listPublicPlans`, `public-plans.server.ts`), sem volta HTTP: são dados públicos,
 sem RLS e sem dado pessoal. Devolve só o que a página mostra (nada de `provider_price_ref` nem
-contagem de uso). Mostra o menor preço ativo por intervalo, alternância mensal/anual quando há
+contagem de uso). Só entram preços compráveis (`isPriceUsable`, o mesmo filtro do checkout):
+provedor fora de `PAYMENT_PROVIDERS` ou sem a referência exigida não aparece, e o plano fica
+"Preço em breve". Mostra o menor preço por intervalo, alternância mensal/anual quando há
 preço anual, limites e features; o CTA leva a `/cadastro`. `meta` via `buildMeta`; está em
 `navItems` e em `public/sitemap.xml`. O que mudar em `/admin/planos` aparece na hora.
 

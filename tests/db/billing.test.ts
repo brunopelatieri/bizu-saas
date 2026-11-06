@@ -1,7 +1,7 @@
 import type postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runBillingTrial } from "@/jobs/billing";
-import { runSeed, SEED_USERS } from "@/db/seed";
+import { runSeed, SEED_CUSTOMERS, SEED_USERS } from "@/db/seed";
 import { checkLimit } from "@/lib/billing/limits";
 import { computeTrialEnd, DAY_MS } from "@/lib/billing/trial";
 import { createMemoryProvider } from "@/lib/email/providers/memory";
@@ -10,6 +10,7 @@ import {
   call,
   cleanUp,
   connectOwner,
+  createRole,
   createTenant,
   createUser,
   newEmail,
@@ -324,6 +325,25 @@ describe("limite de assentos", () => {
     expect(await checkLimit(id, "members")).toMatchObject({ used: 2, allowed: false });
   });
 
+  it("papel personalizado respeita o limite do plano", async () => {
+    const plan = await createPlanRow(owner, { isFree: false, limits: { custom_roles: 1 } });
+    const user = await createUser(owner);
+    const { id } = await createTenant(user);
+    await owner.begin(async (tx) => {
+      await tx`select set_config('app.bypass_tenant', 'on', true)`;
+      await tx`update subscription set plan_id = ${plan.id} where tenant_id = ${id}`;
+    });
+
+    await createRole(user, "assistente", ["invitation:create"]);
+
+    const refused = await call("POST", "/api/roles", {
+      cookie: user.cookie,
+      body: { name: "auxiliar", permissions: ["invitation:create"] },
+    });
+    expect(refused.status).toBe(403);
+    expect((await bodyOf(refused)).code).toBe("PLAN_LIMIT_REACHED");
+  });
+
   it("tenant sem assinatura não tem limite", async () => {
     const user = await createUser(owner);
     const { id } = await createTenant(user);
@@ -446,6 +466,35 @@ describe("job billing.trial", () => {
     expect(mail.sent.filter(({ to }) => to === suspended.email)).toEqual([]);
   });
 
+  it("falha no aviso de expiração desfaz a expiração: a próxima rodada faz os dois", async () => {
+    const flaky = await createUser(owner);
+    const flakyId = (await createTenant(flaky)).id;
+    const end = (await subscriptionOf(flakyId))?.trial_ends_at as Date;
+    const now = new Date(end.getTime() + 8 * DAY_MS);
+
+    setEmailProviderForTests({
+      id: "memory",
+      send: async () => {
+        throw new Error("provedor fora do ar");
+      },
+    });
+    await expect(runBillingTrial(now, only(flakyId))).rejects.toThrow("billing.trial");
+
+    const failed = await subscriptionOf(flakyId);
+    expect(failed?.status).toBe("trialing");
+    expect(failed?.metadata.trialNotices?.expired).toBeUndefined();
+    expect(await accessModeOf(flakyId)).toBe("full");
+
+    mail.reset();
+    setEmailProviderForTests(mail);
+    const retry = await runBillingTrial(now, only(flakyId));
+
+    expect(retry).toMatchObject({ expired: 1, notices: { expired: 1 } });
+    expect((await subscriptionOf(flakyId))?.status).toBe("expired");
+    expect(await accessModeOf(flakyId)).toBe("read_only");
+    expect(mail.sent.filter(({ to }) => to === flaky.email)).toHaveLength(1);
+  });
+
   it("falha de envio não marca o aviso: a próxima rodada tenta de novo", async () => {
     const flaky = await createUser(owner);
     const flakyId = (await createTenant(flaky)).id;
@@ -470,6 +519,34 @@ describe("job billing.trial", () => {
 });
 
 describe("seed", () => {
+  // O plano `free` do seed, ativo, viraria o padrão dos outros arquivos de teste. Em banco
+  // que já tinha o seed (o de desenvolvimento), não há o que desfazer.
+  let seededHere = false;
+
+  beforeAll(async () => {
+    const found = await owner`select 1 from plan where slug = 'free'`;
+    seededHere = found.length === 0;
+  });
+
+  afterAll(async () => {
+    if (!seededHere) return;
+
+    const emails = Object.values(SEED_USERS).map(({ email }) => email);
+    const customers = Object.values(SEED_CUSTOMERS).map(({ email }) => email);
+    await owner.begin(async (tx) => {
+      await tx`select set_config('app.bypass_tenant', 'on', true)`;
+      await tx`
+        delete from audit_log where tenant_id in (
+          select id from organization where slug in ('acme', 'beta')
+        )
+      `;
+      await tx`delete from organization where slug in ('acme', 'beta')`;
+      await tx`delete from "user" where email in ${tx(emails)}`;
+      await tx`delete from portal_user where email in ${tx(customers)}`;
+      await tx`delete from plan where slug in ('free', 'basic', 'pro')`;
+    });
+  });
+
   it("roda duas vezes sem erro nem duplicar nada", async () => {
     const counts = async () => {
       const [row] = await owner<{ users: number; plans: number; tenants: number }[]>`
@@ -503,6 +580,30 @@ describe("seed", () => {
     ).toEqual([{ total: 3 }]);
   });
 
+  it("não promove conta que outra pessoa cadastrou sem confirmar o e-mail", async () => {
+    const { email } = SEED_USERS.platformOwner;
+    await owner`update "user" set email_verified = false, role = 'user' where email = ${email}`;
+
+    await expect(runSeed("senha-do-seed-123")).rejects.toThrow("sem e-mail confirmado");
+
+    const [row] = await owner<{ role: string; email_verified: boolean }[]>`
+      select role, email_verified from "user" where email = ${email}
+    `;
+    await owner`update "user" set email_verified = true, role = 'platform_owner' where email = ${email}`;
+
+    expect(row).toEqual({ role: "user", email_verified: false });
+  });
+
+  it("não liga cliente ativo à identidade sem e-mail confirmado", async () => {
+    const { email } = SEED_CUSTOMERS.julia;
+    await runSeed("senha-do-seed-123");
+    await owner`update portal_user set email_verified = false where email = ${email}`;
+
+    await expect(runSeed("senha-do-seed-123")).rejects.toThrow("sem e-mail confirmado");
+
+    await owner`update portal_user set email_verified = true where email = ${email}`;
+  });
+
   it("recusa produção sem SEED_ALLOW_PRODUCTION", async () => {
     const { assertSeedAllowed } = await import("@/db/seed");
 
@@ -517,6 +618,13 @@ describe("seed", () => {
       }),
     ).toBe("senha-longa-123");
     expect(() => assertSeedAllowed({ NODE_ENV: "development" })).toThrow("SEED_PASSWORD");
+    expect(() =>
+      assertSeedAllowed({
+        NODE_ENV: "production",
+        SEED_ALLOW_PRODUCTION: "1",
+        SEED_PASSWORD: "Bizu-seed-2026!",
+      }),
+    ).toThrow(".env.example");
     expect(computeTrialEnd(new Date(0), 1).getTime()).toBe(DAY_MS);
   });
 });

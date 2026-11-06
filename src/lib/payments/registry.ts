@@ -35,9 +35,7 @@ async function discover(): Promise<ModuleFile[]> {
         .filter((entry) => entry.isDirectory())
         .map(
           (entry) =>
-            import(
-              pathToFileURL(path.join(root, entry.name, "index.ts")).href,
-            ) as Promise<ModuleFile>,
+            import(pathToFileURL(path.join(root, entry.name, "index.ts")).href) as Promise<ModuleFile>,
         ),
     );
   }
@@ -87,6 +85,18 @@ export function getProviders(): PaymentProvider[] {
 
 export function getProvider(id: string): PaymentProvider | null {
   return loadRegistry().get(id as PaymentProviderId) ?? null;
+}
+
+/** Dá para comprar agora: provedor ativo e, se ele exigir, referência preenchida. */
+export function isPriceUsable(price: {
+  provider: string;
+  providerPriceRef: string | null;
+}) {
+  const provider = getProvider(price.provider);
+
+  return (
+    provider !== null && (!provider.requiresPriceRef || price.providerPriceRef !== null)
+  );
 }
 
 /** Fluxo (a): sem credenciais do tenant, o módulo usa as variáveis de ambiente. */

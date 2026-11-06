@@ -1,8 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { listPublicPlans } from "@/lib/billing/public-plans.server";
 import { createMemoryProvider } from "@/lib/email/providers/memory";
 import { setEmailProviderForTests } from "@/lib/email/send";
+import { createMemoryEmailStore } from "@/lib/email/store";
+import { setProvidersForTests } from "@/lib/payments/registry";
 import {
   call,
   cleanUp,
@@ -15,6 +18,7 @@ import {
   bodyOf,
   cleanUpBilling,
   createPlanRow,
+  createStubProvider,
   makePlatformUser,
   restoreSettings,
   saveSettings,
@@ -205,6 +209,31 @@ describe("visão geral e tenants", () => {
     ).toBe(409);
   });
 
+  it("falha ao avisar não derruba a suspensão nem a auditoria", async () => {
+    const user = await createUser(owner);
+    const { id } = await createTenant(user, "Aviso Falho");
+    const store = createMemoryEmailStore();
+    store.createMessage = async () => {
+      throw new Error("fila fora do ar");
+    };
+    setEmailProviderForTests(createMemoryProvider(), { store });
+
+    const suspend = await send(platformOwner, "POST", `/api/admin/tenants/${id}/suspend`, {});
+    setEmailProviderForTests(createMemoryProvider());
+
+    expect(suspend.status).toBe(200);
+    expect((await get(user, "/api/team")).status).toBe(403);
+
+    const [row] = await owner.begin(async (tx) => {
+      await tx`select set_config('app.bypass_tenant', 'on', true)`;
+      return tx<{ total: number }[]>`
+        select count(*)::int as total from audit_log
+        where tenant_id = ${id} and action = 'admin.tenant_suspended'
+      `;
+    });
+    expect(row?.total).toBe(1);
+  });
+
   it("trocar para plano gratuito encerra o trial; o inexistente é 404", async () => {
     const unknown = await send(platformOwner, "PUT", `/api/admin/tenants/${tenantId}/plan`, {
       planId: randomUUID(),
@@ -323,6 +352,57 @@ describe("planos", () => {
     expect(makeFree.status).toBe(409);
   });
 
+  it("plano com preço desativado pode virar gratuito, e o preço não volta", async () => {
+    const paid = await createPlanRow(owner, { isFree: false });
+    const created = await send(platformOwner, "POST", `/api/admin/plans/${paid.id}/prices`, {
+      provider: "stripe",
+      interval: "month",
+      amountCents: 4900,
+    });
+    const priceId = ((await bodyOf(created)).price as { id: string }).id;
+    const pricePath = `/api/admin/plans/${paid.id}/prices/${priceId}`;
+
+    await send(platformOwner, "PATCH", pricePath, { active: false });
+    const makeFree = await send(platformOwner, "PATCH", `/api/admin/plans/${paid.id}`, {
+      isFree: true,
+    });
+    expect(makeFree.status).toBe(200);
+
+    const reactivate = await send(platformOwner, "PATCH", pricePath, { active: true });
+    expect(reactivate.status).toBe(409);
+    expect((await bodyOf(reactivate)).code).toBe("FREE_PLAN_NO_PRICE");
+  });
+
+  it("/precos só mostra plano ativo e preço que dá para comprar", async () => {
+    const offered = await createPlanRow(owner, { isFree: false });
+    const hidden = await createPlanRow(owner, { isFree: false });
+    await owner`update plan set active = false where id = ${hidden.id}`;
+    await owner`
+      insert into plan_price (plan_id, provider, interval, amount_cents, provider_price_ref) values
+        (${offered.id}, 'stripe', 'month', 1000, 'price_desligado'),
+        (${offered.id}, 'pagarme', 'month', 5000, 'price_ligado'),
+        (${offered.id}, 'pagarme', 'year', 3000, null)
+    `;
+
+    const publicPlan = async () => {
+      const plans = await listPublicPlans();
+      expect(plans.map(({ slug }) => slug)).not.toContain(hidden.slug);
+      return plans.find(({ slug }) => slug === offered.slug);
+    };
+
+    try {
+      setProvidersForTests([createStubProvider({ requiresPriceRef: true })]);
+      expect((await publicPlan())?.prices).toEqual({
+        month: { amountCents: 5000, currency: "BRL" },
+      });
+
+      setProvidersForTests([]);
+      expect((await publicPlan())?.prices).toEqual({});
+    } finally {
+      setProvidersForTests(undefined);
+    }
+  });
+
   it("preço de outro plano não é editável pelo id do plano errado", async () => {
     const other = await createPlanRow(owner, { isFree: false });
     const [row] = await owner<{ id: string }[]>`
@@ -371,6 +451,11 @@ describe("configurações da plataforma", () => {
       trialDays: 0,
     });
     expect(free.status).toBe(200);
+
+    // "Primeiro plano gratuito ativo": a tela manda `null`.
+    const auto = await send(platformOwner, "PATCH", "/api/admin/settings", { trialPlanId: null });
+    expect(auto.status).toBe(200);
+    expect((await bodyOf(auto)).settings).toMatchObject({ trialPlanId: null });
 
     const unknown = await send(platformOwner, "PATCH", "/api/admin/settings", {
       trialPlanId: randomUUID(),

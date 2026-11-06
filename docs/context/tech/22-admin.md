@@ -24,18 +24,18 @@ só o caminho da interface. Sem `loader` de servidor. O 2FA obrigatório da plat
 | `GET /api/admin/overview` | plataforma | tenants por estado, usuários, testes acabando em 7 dias, planos ativos, webhooks com falha |
 | `GET /api/admin/tenants?q&status&page` | plataforma | `status` é o estado de cobrança; 20 por página |
 | `GET /api/admin/tenants/:id` | plataforma | membros, assinatura, últimos eventos e auditoria |
-| `POST /api/admin/tenants/:id/suspend` `{ reason? }` | owner | `suspended` + `locked`; e-mail `tenant-suspended` aos proprietários; 409 `ALREADY_SUSPENDED` |
+| `POST /api/admin/tenants/:id/suspend` `{ reason? }` | owner | `suspended` + `locked`; e-mail `tenant-suspended` aos proprietários (falha no aviso só vai para o log: a suspensão vale e é auditada); 409 `ALREADY_SUSPENDED` |
 | `POST /api/admin/tenants/:id/unsuspend` | owner | volta `full`, ou `read_only` se a assinatura expirou; 409 `NOT_SUSPENDED` |
-| `PUT /api/admin/tenants/:id/plan` `{ planId }` | owner | plano gratuito encerra o trial e destrava o `read_only`; plano pago mantém o estado; 409 `PROVIDER_SUBSCRIPTION_ACTIVE` com assinatura viva no provedor |
+| `PUT /api/admin/tenants/:id/plan` `{ planId }` | owner | plano gratuito encerra o trial, destrava o `read_only` e larga a referência do provedor; plano pago mantém o estado; 409 `PROVIDER_SUBSCRIPTION_ACTIVE` com assinatura viva no provedor (`unpaid` conta como viva: cancele antes) |
 | `GET /api/admin/subscriptions?status&q&page` | plataforma | sem referências do provedor; traz `alert` da reconciliação |
 | `POST /api/admin/subscriptions/:id/cancel` | owner | imediato, no provedor e aqui; 409 `ALREADY_CANCELED` |
 | `POST /api/admin/subscriptions/:id/sync` | owner | busca do provedor, corrige e alerta; conferido e igual, o alerta sai; 409 `NO_PROVIDER_SUBSCRIPTION` |
 | `GET /api/admin/webhooks?status&page` | plataforma | `payment_event` sem `raw`, que tem dado pessoal |
 | `POST /api/admin/webhooks/:id/reprocess` | owner | só `failed` ou `ignored` e verificado; 409 `NOT_REPROCESSABLE` |
 | `GET`, `POST /api/admin/plans` | leitura plataforma; escrita owner | 409 `SLUG_TAKEN` |
-| `PATCH /api/admin/plans/:id` | owner | parcial, o `slug` não muda; 409 `PLAN_HAS_PRICES` ao marcar gratuito com preço |
+| `PATCH /api/admin/plans/:id` | owner | parcial, o `slug` não muda; 409 `PLAN_HAS_PRICES` ao marcar gratuito com preço ativo; preço não se apaga, e reativar preço de plano gratuito é 409 `FREE_PLAN_NO_PRICE` |
 | `POST /api/admin/plans/:id/prices`, `PATCH .../prices/:priceId` | owner | 409 `PRICE_EXISTS`, 409 `FREE_PLAN_NO_PRICE`; sem exclusão, só `active` |
-| `GET`, `PATCH /api/admin/settings` | leitura plataforma; escrita owner | 400 `PLAN_NOT_FOUND`, `TRIAL_PLAN_NOT_FREE` |
+| `GET`, `PATCH /api/admin/settings` | leitura plataforma; escrita owner | `trialPlanId: null` = primeiro plano gratuito ativo; 400 `PLAN_NOT_FOUND`, `TRIAL_PLAN_NOT_FREE` |
 | `GET /api/admin/users?q&page` | plataforma | |
 | `POST /api/admin/users/:id/ban` `{ reason? }`, `.../unban` | owner | via `auth.api.banUser`, que encerra as sessões; 409 `SELF_BAN`, 403 `PLATFORM_USER_PROTECTED` |
 

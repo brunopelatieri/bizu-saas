@@ -79,7 +79,7 @@
 - Reembolso sem tela: sai pelo painel do provedor e chega por webhook.
 - `consent_log` (fase 10) ainda não existe: o aceite de termos é exigido, mas não registrado.
 - `audit_log` grava, mas sem tela de leitura (`/app/auditoria`, `/admin/auditoria`).
-- Teto de tenants por usuário (3) e de papéis personalizados (20) seguem constantes do plugin; só `members` usa o limite do plano (`tech/23-billing-planos.md`).
+- Teto de tenants por usuário (3) e de papéis personalizados (20) seguem constantes do plugin; `members`, `custom_roles` e `customers` usam o limite do plano (`tech/23-billing-planos.md`).
 - Overview do admin sem MRR e jobs mortos; sem `/admin/auditoria`, `/admin/jobs`.
 - Rate limit das rotas próprias em memória até a fase 9.
 - Evoluir blog estático para tabela Drizzle quando virar feature real.

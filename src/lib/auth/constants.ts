@@ -21,5 +21,5 @@ export const INVITATION_TTL_SECONDS = 2 * 24 * 60 * 60;
 /** Teto fixo do plugin; ainda não vem de `platform_setting` (`spec.md`, fase 5). */
 export const MAX_TENANTS_PER_USER = 3;
 
-/** Teto fixo do plugin; o limite por plano (`plan.limits.custom_roles`) não é aplicado ainda. */
+/** Teto fixo do plugin; `plan.limits.custom_roles` vale abaixo dele, em `POST /api/roles`. */
 export const MAX_CUSTOM_ROLES = 20;

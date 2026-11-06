@@ -17,7 +17,7 @@ paths:
 - `plan`, `plan_price` e `platform_setting` são da plataforma (sem RLS, editadas só por `/api/admin/*`).
 - `subscription`, `subscription_event`, `invoice` e `billing_profile` são de tenant; `payment_event` tem RLS e só se lê com `withPlatformScope`.
 - Transição de cobrança em `subscription.status` passa por `transition()` + `applyDecision()` (`src/lib/billing/`), com a linha travada. A exceção é `changeTenantPlan`, a troca manual do admin.
-- `npm run db:seed` é idempotente e recusa produção sem `SEED_ALLOW_PRODUCTION=1`.
+- `npm run db:seed` é idempotente, recusa produção sem `SEED_ALLOW_PRODUCTION=1` e nunca promove conta com e-mail não confirmado.
 - Testes que precisam de banco ficam em `tests/db/` e rodam com `npm run test:db`.
 - `drizzle-kit` é devDependency: rode pelos scripts `db:*`, sem instalar globalmente.
 - Toda tabela com `tenant_id` tem `.enableRLS()`, `tenantPolicy()` e `FORCE ROW LEVEL SECURITY` em migration customizada; `tests/db/rls.test.ts` reprova quem esquecer.

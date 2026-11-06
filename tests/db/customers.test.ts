@@ -235,7 +235,12 @@ describe("clientes", () => {
 
       await owner.begin(async (tx) => {
         await tx`select set_config('app.bypass_tenant', 'on', true)`;
-        await tx`update subscription set plan_id = ${plan.id} where tenant_id = ${id}`;
+        // Em banco sem planos, o tenant nasce sem assinatura.
+        await tx`
+          insert into subscription (tenant_id, plan_id, status)
+          values (${id}, ${plan.id}, 'active')
+          on conflict (tenant_id) do update set plan_id = excluded.plan_id
+        `;
       });
 
       const first = await createCustomer(user);
