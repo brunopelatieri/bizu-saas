@@ -20,9 +20,9 @@
 |-- src/
 |   |-- api/                  Hono API (/api/*): app, auth, auth-ext, rate limit, log
 |   |-- components/
+|   |   |-- app/              shell e telas da área /app
 |   |   |-- auth/
 |   |   |-- contact/
-|   |   |-- dashboard/        cards da área /app (vira components/app na fase 4)
 |   |   |-- landing/
 |   |   |-- layout/
 |   |   |-- projects/

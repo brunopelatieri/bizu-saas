@@ -14,7 +14,10 @@ alwaysApply: false
 - `DATABASE_URL` é de runtime (`bizu_app`, sem `BYPASSRLS`); `DIRECT_URL` é do Drizzle Kit e do seed (`bizu_owner`).
 - Testes que precisam de banco ficam em `tests/db/` e rodam com `npm run test:db`.
 - `drizzle-kit` é devDependency: rode pelos scripts `db:*`, sem instalar globalmente.
-- Permissões são validadas no servidor, com `requireAuth` + checks.
+- Toda tabela com `tenant_id` tem `.enableRLS()`, `tenantPolicy()` e `FORCE ROW LEVEL SECURITY` em migration customizada; `tests/db/rls.test.ts` reprova quem esquecer.
+- Toda query de tenant roda em `withTenant(tenantId, fn)`; jobs e `/api/admin/*` usam `withPlatformScope(reason, fn)` (`src/db/rls.ts`). Fora disso, `bizu_app` lê vazio.
+- Rotas de tenant não importam `@/db`: os dados passam por `src/lib/tenant/`.
+- Permissões são validadas no servidor, com `requireAuth` + `requireTenant` + `requirePermission`.
 - Loaders acessam o banco direto, sem chamada HTTP interna.
 - Migrations rodam fora do container da aplicação.
 

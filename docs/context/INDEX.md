@@ -15,6 +15,7 @@ estão nas rules e no cabeçalho de cada arquivo.
 | Endpoint `/api/*`, `requireAuth` | `tech/06-hono-api.md` |
 | Schema, migration, query | `tech/07-banco-drizzle.md` |
 | Login, sessão, provedor de autenticação | `tech/08-auth.md` |
+| Tenant, equipe, convite, papéis, permissões, auditoria | `tech/21-tenant-rbac.md` |
 | Tokens de design, Tailwind, dark mode | `tech/09-tema-css.md` |
 | Landing, header, páginas públicas | `tech/10-site-publico.md` |
 | Áreas `/app/**`, `/admin/**`, `/portal/**` | `tech/11-dashboard.md` |

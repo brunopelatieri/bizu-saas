@@ -2,11 +2,15 @@
 
 - **Escopo:** Schema, papéis do Postgres, variáveis e uso do Drizzle em qualquer Postgres.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-dados.md`, `spec-tenant-rbac.md`
-- **Paths do código:** `src/db/index.ts`, `src/db/schema.ts`, `src/db/schema/`, `drizzle.config.ts`, `docker/postgres/init.sql`, `tests/db/`
+- **Paths do código:** `src/db/index.ts`, `src/db/rls.ts`, `src/db/tenant-policy.ts`, `src/db/schema.ts`, `src/db/schema/`, `drizzle.config.ts`, `docker/postgres/init.sql`, `tests/db/`
 
 ## Arquivos
 
-- `src/db/schema/<domínio>.ts`: um arquivo por domínio (`auth.ts`, `contact.ts`, `email.ts`).
+- `src/db/schema/<domínio>.ts`: um arquivo por domínio (`auth.ts`, `tenant.ts`, `audit.ts`,
+  `contact.ts`, `email.ts`).
+- `src/db/rls.ts`: `withTenant` e `withPlatformScope`.
+- `src/db/tenant-policy.ts`: `tenantPolicy()`, fora de `rls.ts` porque o Drizzle Kit carrega o
+  schema sem o alias `@/` nem as variáveis de ambiente.
 - `src/db/schema.ts`: reexporta os domínios. `drizzle.config.ts` e o adapter do Better
   Auth leem este arquivo, então domínio novo entra aqui com `export * from "./schema/<domínio>"`.
 - `src/db/index.ts`: `getDb()`, conexão de runtime com `DATABASE_URL` lida de `getEnv()`.
@@ -17,12 +21,19 @@
 Schema atual:
 
 ```text
-user                      Better Auth; role, banned e ban_* (plugin admin), phone, locale
-session                   token unique, user_id, expires_at, impersonated_by
+user                      Better Auth; role, banned e ban_* (plugin admin), phone, locale,
+                          last_tenant_id
+session                   token unique, user_id, expires_at, impersonated_by,
+                          active_organization_id
 account                   provider_id = credential guarda a senha
 verification              tokens de reset, em hash
 rate_limit                key unique, count, last_request (rate limit do Better Auth)
 email_verification_issue  user_id PK, token_hash unique, kind (verify, change), issued_at
+organization              o tenant: slug unique, status, access_mode, settings, trial_ends_at
+member                    unique (organization_id, user_id); role com papéis separados por vírgula
+invitation                email, role, status, expires_at, inviter_id
+organization_role         papéis personalizados; permission em texto, como o plugin grava
+audit_log                 tenant_id nulo = fora de tenant; ip_hash; RLS forçado
 
 contact_messages
   id uuid primary key defaultRandom
@@ -45,8 +56,9 @@ email_suppression
   email_hash text pk, reason (hard_bounce|complaint|manual), created_at
 ```
 
-Nenhuma das duas guarda o endereço em claro nem o corpo. `tenant_id` em `email_message`
-(opcional na spec) entra quando a fase 4 criar a tabela de tenants.
+Nenhuma das duas guarda o endereço em claro nem o corpo. `email_message` segue sem
+`tenant_id`: a spec a deixa fora do RLS, e o inventário de `tests/db/rls.test.ts` exige RLS em
+toda tabela com essa coluna.
 
 ## Schema `pgboss`
 
@@ -55,6 +67,25 @@ ao `bizu_app` (`ALTER DEFAULT PRIVILEGES`). As tabelas do pg-boss são criadas p
 `npm run jobs:install` (primeiro `start()` com `DIRECT_URL`), não pelo Drizzle: o
 Drizzle Kit não conhece essas tabelas e não deve gerar migration para elas. Detalhes em
 `tech/20-jobs.md`.
+
+## RLS e `withTenant`
+
+Toda tabela com `tenant_id` tem `.enableRLS()`, `tenantPolicy()` no schema e
+`ALTER TABLE ... FORCE ROW LEVEL SECURITY` em migration customizada
+(`npx drizzle-kit generate --custom --name <nome>`; ver `0007_rls_roles.sql`). Sem o `FORCE`, o
+dono da tabela ignoraria o RLS. Hoje só `audit_log` entra nessa regra.
+
+```ts
+await withTenant(tenantId, (tx) => tx.select().from(auditLog));
+await withPlatformScope("motivo", (tx) => tx.select().from(auditLog));
+```
+
+- `set_config(..., true)` vale só para a transação; funciona em pooler no modo transaction.
+- Fora de `withTenant`, `bizu_app` não lê nem grava nada: a query esquecida volta vazia.
+- A policy vale para `bizu_app` e `bizu_owner`. Com `FORCE`, o dono sem policy não acessaria
+  nada, e o seed precisa gravar; ele também usa `app.bypass_tenant`.
+- `organization`, `member`, `invitation` e `organization_role` não têm RLS
+  (`spec-tenant-rbac.md`); o isolamento fica em `requireTenant` e em `src/lib/tenant/`.
 
 ## Papéis do Postgres
 
@@ -79,11 +110,13 @@ Postgres do Docker com as migrations aplicadas, sem paralelismo entre arquivos.
 `tests/db/roles.test.ts` prova que `DATABASE_URL` é `bizu_app` sem `BYPASSRLS`, que ele
 não cria tabelas e que herda acesso às tabelas de `bizu_owner`. `auth.test.ts` cobre os
 fluxos de autenticação com `api.request()` e `auth-http.test.ts` repete o principal sobre
-o servidor Node. O `rls.test.ts` da fase 4 entra na mesma pasta.
+o servidor Node. `rls.test.ts` prova o isolamento e faz o inventário de tabelas; `rbac.test.ts` é
+a matriz papel × endpoint gerada do catálogo; `team.test.ts` e `tenant-http.test.ts` cobrem
+convite, escalada, último owner e ids cruzados, este último sobre HTTP de verdade.
 
 ## Regras
 
 - Dados da aplicação passam sempre pelo Drizzle, em qualquer Postgres.
-- Toda tabela de tenant terá `tenant_id`, `enableRLS()` e policy; toda query de tenant
-  rodará em `withTenant` (fase 4, `spec-tenant-rbac.md`).
+- Toda tabela de tenant tem `tenant_id`, `enableRLS()`, `tenantPolicy()` e `FORCE`; toda query
+  de tenant roda em `withTenant`. Tabela sem isso reprova `tests/db/rls.test.ts`.
 - Mudança de schema é sempre migration; `db:push` só em dev descartável.

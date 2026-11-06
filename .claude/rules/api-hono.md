@@ -12,6 +12,8 @@ paths:
 - Entrada validada com `zValidator` e schema Zod compartilhado em `src/lib/schemas/`.
 - O formulário reutiliza o mesmo schema da API.
 - Toda rota privada usa `authRateLimit` + `requireAuth` e lê o usuário em `c.get("user")`.
+- Rota de tenant soma `requireTenant` + `requirePermission(recurso, ação)` (`src/api/permissions.ts`), `validId` nos ids e `handleTenantError`; recurso de outro tenant responde 404.
+- Rota com DELETE ou POST sem corpo é testada em `tests/db/tenant-http.test.ts`: `api.request()` não passa pelo `bodyLimit` do servidor Node.
 - Rota pública que grava dados usa `rateLimit` e `bodyLimit`.
 - Erro interno vai para `logError`, nunca para `console.error` direto: mensagens do Drizzle trazem dados pessoais.
 - O cliente recebe mensagem genérica.
