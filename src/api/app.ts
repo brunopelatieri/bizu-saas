@@ -9,6 +9,7 @@ import { customerRoutes } from "@/api/customers";
 import { fileRoutes } from "@/api/files";
 import { impersonationRoutes } from "@/api/impersonation";
 import { invitationRoutes } from "@/api/invitations";
+import { lgpdRoutes, portalLgpdRoutes } from "@/api/lgpd";
 import { logError } from "@/api/log";
 import { meRoutes } from "@/api/me";
 import { portalRoutes } from "@/api/portal";
@@ -68,6 +69,8 @@ api.route("/", portalRoutes);
 
 api.route("/", sessionRoutes);
 api.route("/", meRoutes);
+api.route("/", lgpdRoutes);
+api.route("/", portalLgpdRoutes);
 api.route("/", tenantRoutes);
 api.route("/", teamRoutes);
 api.route("/", fileRoutes);
