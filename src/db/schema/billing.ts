@@ -21,6 +21,7 @@ import {
   paymentProviderIds,
   type PriceInterval,
   priceIntervals,
+  subscriptionStatusList,
 } from "../../lib/billing/constants";
 import { tenantPolicy } from "../tenant-policy";
 import { user } from "./auth";
@@ -107,15 +108,7 @@ export const platformSetting = pgTable("platform_setting", {
   updatedAt: timestamptz("updated_at").notNull().defaultNow(),
 });
 
-export const subscriptionStatuses = [
-  "trialing",
-  "active",
-  "past_due",
-  "unpaid",
-  "paused",
-  "canceled",
-  "expired",
-] as const;
+export const subscriptionStatuses = subscriptionStatusList;
 export type SubscriptionStatus = (typeof subscriptionStatuses)[number];
 
 /** Algo que o proprietário da plataforma precisa olhar (`/admin/assinaturas`). */

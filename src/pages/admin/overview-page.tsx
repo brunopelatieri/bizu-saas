@@ -16,6 +16,7 @@ type Overview = {
   users: { total: number; banned: number };
   trialsExpiringSoon: number;
   activePlans: number;
+  failedWebhooks: number;
 };
 
 function Stat({
@@ -77,7 +78,7 @@ export function AdminOverviewPage() {
                 />
               ))}
             </div>
-            <div className="grid gap-4 sm:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <Stat
                 label="Testes acabando"
                 value={data.trialsExpiringSoon}
@@ -93,6 +94,12 @@ export function AdminOverviewPage() {
                 label="Planos ativos"
                 value={data.activePlans}
                 to="/admin/planos"
+              />
+              <Stat
+                label="Webhooks com falha"
+                value={data.failedWebhooks}
+                hint="Eventos de pagamento a reprocessar"
+                to="/admin/webhooks?status=failed"
               />
             </div>
           </>

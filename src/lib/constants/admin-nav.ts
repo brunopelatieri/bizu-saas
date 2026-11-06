@@ -1,4 +1,12 @@
-import { CreditCard, LayoutDashboard, Settings, Users, Building2 } from "lucide-react";
+import {
+  Building2,
+  CreditCard,
+  LayoutDashboard,
+  Receipt,
+  Settings,
+  Users,
+  Webhook,
+} from "lucide-react";
 import type { AppNavItem } from "@/lib/constants/app-nav";
 
 /** Navegação da área da plataforma (`/admin/**`). Só `platform_owner` e `platform_support`. */
@@ -7,6 +15,8 @@ export const adminMainNav: AppNavItem[] = [
   { href: "/admin/tenants", label: "Organizações", icon: Building2 },
   { href: "/admin/usuarios", label: "Usuários", icon: Users },
   { href: "/admin/planos", label: "Planos", icon: CreditCard },
+  { href: "/admin/assinaturas", label: "Assinaturas", icon: Receipt },
+  { href: "/admin/webhooks", label: "Webhooks", icon: Webhook },
 ];
 
 export const adminBottomNav: AppNavItem[] = [
@@ -18,6 +28,8 @@ const adminTitles: Record<string, string> = {
   "/admin/tenants": "Organizações",
   "/admin/usuarios": "Usuários",
   "/admin/planos": "Planos",
+  "/admin/assinaturas": "Assinaturas",
+  "/admin/webhooks": "Webhooks",
   "/admin/configuracoes": "Configurações da plataforma",
 };
 

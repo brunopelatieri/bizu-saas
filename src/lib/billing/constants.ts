@@ -16,6 +16,30 @@ export type PaymentProviderId = (typeof paymentProviderIds)[number];
 export const priceIntervals = ["month", "year"] as const;
 export type PriceInterval = (typeof priceIntervals)[number];
 
+/** Mesma lista de `subscription.status`, sem depender do schema no navegador. */
+export const subscriptionStatusList = [
+  "trialing",
+  "active",
+  "past_due",
+  "unpaid",
+  "paused",
+  "canceled",
+  "expired",
+] as const;
+
+export const SUBSCRIPTION_STATUS_LABELS: Record<
+  (typeof subscriptionStatusList)[number],
+  string
+> = {
+  trialing: "Em teste",
+  active: "Ativa",
+  past_due: "Pagamento pendente",
+  unpaid: "Inadimplente",
+  paused: "Pausada",
+  canceled: "Cancelada",
+  expired: "Teste encerrado",
+};
+
 export const paymentMethods = ["pix", "boleto", "card"] as const;
 export type PaymentMethod = (typeof paymentMethods)[number];
 

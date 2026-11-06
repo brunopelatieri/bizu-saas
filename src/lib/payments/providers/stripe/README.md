@@ -97,7 +97,7 @@ acesso a um sandbox: serve de contrato, não de prova de que o Stripe responde a
 pelas capturas reais, anonimizadas, na primeira rodada do checklist acima:
 
 ```bash
-stripe events resend <id>
+stripe events retrieve <id>
 ```
 
 ## Remover

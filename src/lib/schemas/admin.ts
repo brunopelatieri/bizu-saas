@@ -3,6 +3,7 @@ import {
   paymentEventStatuses,
   paymentProviderIds,
   priceIntervals,
+  subscriptionStatusList,
 } from "@/lib/billing/constants";
 import { billingStates } from "@/lib/billing/state";
 import { slugSchema } from "@/lib/schemas/tenant";
@@ -134,18 +135,8 @@ export const webhooksQuerySchema = z.object({
   page,
 });
 
-export const subscriptionStatusFilter = [
-  "trialing",
-  "active",
-  "past_due",
-  "unpaid",
-  "paused",
-  "canceled",
-  "expired",
-] as const;
-
 export const subscriptionsQuerySchema = z.object({
-  status: z.enum(subscriptionStatusFilter).optional(),
+  status: z.enum(subscriptionStatusList).optional(),
   q: search,
   page,
 });

@@ -3,24 +3,26 @@ import { Link } from "react-router";
 import { useCan } from "@/components/auth/can";
 import { useAuth } from "@/providers/auth-provider";
 
+const BANNER_STATES = ["trialing", "past_due", "read_only"];
+
+const formatDate = (iso: string) => new Date(iso).toLocaleDateString("pt-BR");
+
 /**
- * Aviso de trial e de somente leitura no topo de `/app`. Só informa: quem bloqueia a
- * escrita é `requireTenant`. O link leva à assinatura para quem pode vê-la.
+ * Aviso de trial, de pagamento pendente e de somente leitura no topo de `/app`. Só informa:
+ * quem bloqueia a escrita é `requireTenant`. O link leva à assinatura para quem pode vê-la.
  */
 export function BillingBanner() {
   const { billing } = useAuth();
   const can = useCan();
 
-  if (!billing || (billing.state !== "trialing" && billing.state !== "read_only")) {
-    return null;
-  }
+  if (!billing || !BANNER_STATES.includes(billing.state)) return null;
 
   const action = can("billing", "read") ? (
     <Link to="/app/assinatura" className="font-medium underline underline-offset-4">
-      Escolher um plano
+      {billing.state === "past_due" ? "Regularizar pagamento" : "Escolher um plano"}
     </Link>
   ) : (
-    <span>Peça ao proprietário da organização para escolher um plano.</span>
+    <span>Fale com o proprietário da organização.</span>
   );
 
   if (billing.state === "read_only") {
@@ -33,6 +35,24 @@ export function BillingBanner() {
         <p>
           Esta organização está em modo somente leitura: você vê tudo, mas não
           pode alterar nada. {action}
+        </p>
+      </div>
+    );
+  }
+
+  if (billing.state === "past_due") {
+    return (
+      <div
+        role="alert"
+        className="flex items-start gap-3 border-b border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+      >
+        <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+        <p>
+          O último pagamento falhou
+          {billing.graceUntil
+            ? ` e o acesso segue até ${formatDate(billing.graceUntil)}`
+            : ""}
+          . {action}
         </p>
       </div>
     );
