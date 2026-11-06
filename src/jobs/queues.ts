@@ -130,5 +130,5 @@ export const scheduleDefinitions: ScheduleDefinition[] = [
   { queue: QUEUE.billingDunning, cron: "10 3 * * *" },
   { queue: QUEUE.billingPeriodEnd, cron: "0 * * * *" },
   { queue: QUEUE.billingReconcile, cron: "0 4 * * *" },
-  { queue: QUEUE.maintenancePrune, cron: "0 4 * * 0" },
+  { queue: QUEUE.maintenancePrune, cron: "30 4 * * *" },
 ];

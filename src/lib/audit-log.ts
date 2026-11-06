@@ -37,7 +37,7 @@ async function readPage(tx: Tx, where: SQL | undefined, page: number) {
     .leftJoin(user, eq(auditLog.actorId, user.id))
     .leftJoin(organization, eq(auditLog.tenantId, organization.id))
     .where(where)
-    .orderBy(desc(auditLog.createdAt))
+    .orderBy(desc(auditLog.createdAt), desc(auditLog.id))
     .limit(AUDIT_PAGE_SIZE)
     .offset((page - 1) * AUDIT_PAGE_SIZE);
 

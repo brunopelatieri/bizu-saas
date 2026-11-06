@@ -41,10 +41,9 @@ export const postgresRateLimitStore: RateLimitStore = {
 
 export async function pruneRateLimitBuckets(now = new Date()) {
   const cutoff = new Date(now.getTime() - RATE_LIMIT_RETENTION_MS);
-  const deleted = await getDb()
+  const { count } = await getDb()
     .delete(rateLimitBucket)
-    .where(lt(rateLimitBucket.windowStart, cutoff))
-    .returning({ key: rateLimitBucket.key });
+    .where(lt(rateLimitBucket.windowStart, cutoff));
 
-  return deleted.length;
+  return count;
 }

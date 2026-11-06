@@ -140,6 +140,24 @@ describe("sessões", () => {
     }
   });
 
+  it("sessão de suporte aparece marcada, e some depois do teto", async () => {
+    const user = await createUser(owner);
+    const [current] = await list(user);
+    const support = randomUUID();
+
+    await owner`
+      insert into session (token, user_id, expires_at, impersonated_by, impersonation_expires_at)
+      values
+        (${randomUUID()}, ${user.id}, now() + interval '7 days', ${support}, now() + interval '1 hour'),
+        (${randomUUID()}, ${user.id}, now() + interval '7 days', ${support}, now() - interval '1 hour')
+    `;
+
+    const sessions = await list(user);
+
+    expect(sessions).toHaveLength(2);
+    expect(sessions.find(({ id }) => id !== current?.id)?.support).toBe(true);
+  });
+
   it("exige sessão", async () => {
     expect((await call("GET", "/api/me/sessions")).status).toBe(401);
     expect((await call("POST", "/api/me/sessions/revoke-others")).status).toBe(401);

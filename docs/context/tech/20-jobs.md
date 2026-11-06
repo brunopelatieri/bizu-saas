@@ -41,7 +41,7 @@ Sem o passo 2, `sendEmail` falha (fila inexistente), o `email_message` fica `fai
 | Fila | Gatilho | Retry | Observação |
 |---|---|---|---|
 | `email.send` | `sendEmail` | 5x, backoff exponencial (30 s a 1 h) | `singletonKey = email_message.id`; dead letter `email.send.dead` (7 dias) |
-| `maintenance.prune` | cron dom 04:00 UTC | 1x | apaga `email_message` > 180 dias (`pruneOldData`) |
+| `maintenance.prune` | cron diário 04:30 UTC | 1x | apaga `email_message` > 180 dias e buckets de rate limit > 24 h (`pruneOldData`) |
 | `billing.trial` | cron diário 03:00 UTC | 3x, 5 min com backoff | avisos T-3, T-1 e T0, expira o trial vencido para `read_only` após a carência; idempotente (`runBillingTrial`, `tech/23-billing-planos.md`); dead letter `billing.trial.dead` (14 dias) |
 | `webhook.process` | `POST /api/webhooks/payments/:provider` | 5x, backoff de 30 s a 1 h | política `exclusive`, `singletonKey = payment_event.id`: no máximo um job vivo por evento; dead letter `webhook.process.dead` (14 dias) |
 | `billing.dunning` | cron diário 03:10 UTC | 3x, 5 min com backoff | avisos T-3 e T0 da carência, `past_due` → `unpaid` + `read_only`; idempotente (`runBillingDunning`) |

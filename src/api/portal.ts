@@ -182,7 +182,7 @@ portalRoutes.post(
   "/api/portal/auth-ext/magic-link",
   rateLimit({ name: "portal-magic-link", limit: 3, windowMs: 15 * MINUTE }),
   zValidator("json", magicLinkRequestSchema, validationError),
-  createRateLimitByEmail(),
+  createRateLimitByEmail("portal-magic-link-by-email"),
   (c) => {
     const { email, org } = c.req.valid("json");
 
@@ -196,7 +196,7 @@ portalRoutes.post(
   "/api/portal/auth-ext/sign-up",
   rateLimit({ name: "portal-sign-up", limit: 3, windowMs: 15 * MINUTE }),
   zValidator("json", portalSignupSchema, validationError),
-  createRateLimitByEmail(),
+  createRateLimitByEmail("portal-sign-up-by-email"),
   (c) => {
     runInBackground(requestPortalSignup(c.req.valid("json")));
 

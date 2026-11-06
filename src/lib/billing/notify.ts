@@ -28,7 +28,7 @@ export type OwnerNotice = {
   url: string;
 };
 
-/** Avisa todos os proprietários do tenant. `template` só identifica o envio. */
+/** Avisa todos os proprietários do tenant, não só de cobrança. `template` identifica o envio. */
 export async function notifyOwners(
   tenantId: string,
   template: string,

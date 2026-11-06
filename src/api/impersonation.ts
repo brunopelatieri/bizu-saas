@@ -1,5 +1,6 @@
 import { zValidator } from "@hono/zod-validator";
-import { Hono } from "hono";
+import { isAPIError } from "better-auth/api";
+import { type Context, Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { type AuthEnv, requireAuth, requirePlatform } from "@/api/auth";
 import {
@@ -27,9 +28,36 @@ import { findMembership } from "@/lib/tenant/membership";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 
+/** Registra a tentativa e responde o 403 de quem está personificando. */
+export async function refuseImpersonated(
+  c: Context,
+  session: {
+    impersonatedBy: string;
+    userId: string;
+    tenantId: string | null | undefined;
+  },
+) {
+  await audit("platform.impersonation_blocked_action", {
+    actor: { type: "platform", id: session.impersonatedBy },
+    impersonatorId: session.impersonatedBy,
+    tenantId: session.tenantId,
+    target: { type: "user", id: session.userId },
+    metadata: { method: c.req.method, path: c.req.path },
+    ip: clientKey(c),
+  });
+
+  return c.json(
+    {
+      error: "Esta ação não fica disponível durante a personificação.",
+      code: "IMPERSONATION_BLOCKED",
+    },
+    403,
+  );
+}
+
 /**
- * Vem depois de `requireAuth`. Recusa e audita o que o suporte não faz em nome de ninguém:
- * dinheiro, propriedade, papéis e credenciais da conta (`spec-auth.md`).
+ * Vem depois de `requireAuth`. Recusa o que o suporte não faz em nome de ninguém: dinheiro,
+ * propriedade, papéis e credenciais da conta (`spec-auth.md`).
  */
 export const blockWhileImpersonating = createMiddleware<AuthEnv>(
   async (c, next) => {
@@ -37,22 +65,11 @@ export const blockWhileImpersonating = createMiddleware<AuthEnv>(
 
     if (!impersonatedBy) return next();
 
-    await audit("platform.impersonation_blocked_action", {
-      actor: { type: "platform", id: impersonatedBy },
-      impersonatorId: impersonatedBy,
+    return refuseImpersonated(c, {
+      impersonatedBy,
+      userId: id,
       tenantId: c.get("activeOrganizationId"),
-      target: { type: "user", id },
-      metadata: { method: c.req.method, path: c.req.path },
-      ip: clientKey(c),
     });
-
-    return c.json(
-      {
-        error: "Esta ação não fica disponível durante a personificação.",
-        code: "IMPERSONATION_BLOCKED",
-      },
-      403,
-    );
   },
 );
 
@@ -170,10 +187,17 @@ impersonationRoutes.post(
       );
     }
 
-    const { headers } = await getAuth().api.stopImpersonating({
-      headers: c.req.raw.headers,
-      returnHeaders: true,
-    });
+    const auth = getAuth();
+    const request = { headers: c.req.raw.headers, returnHeaders: true } as const;
+
+    // Sem a sessão original ou o cookie `admin_session`, o plugin lança erro. Quem saiu não
+    // pode ficar preso: encerra só a personificada, e o suporte entra de novo.
+    const { headers } = await auth.api
+      .stopImpersonating(request)
+      .catch((error: unknown) => {
+        if (!isAPIError(error)) throw error;
+        return auth.api.signOut(request);
+      });
 
     await audit("platform.impersonation_stopped", {
       actor: { type: "platform", id: impersonatedBy },

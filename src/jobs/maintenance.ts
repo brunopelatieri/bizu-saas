@@ -6,7 +6,7 @@ import { emailMessages } from "@/db/schema";
 export const EMAIL_MESSAGE_RETENTION_DAYS = 180;
 
 /**
- * `maintenance.prune` (cron semanal). Apaga `email_message` com mais de 180 dias e os
+ * `maintenance.prune` (cron diário). Apaga `email_message` com mais de 180 dias e os
  * buckets vencidos de rate limit; as fases seguintes acrescentam `payment_event` e sessões.
  * Idempotente: rodar duas vezes seguidas não apaga nada a mais.
  */

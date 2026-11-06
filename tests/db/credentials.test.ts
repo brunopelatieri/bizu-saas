@@ -97,6 +97,31 @@ describe("credenciais por tenant", () => {
     expect(JSON.stringify(item)).not.toContain("sk_test");
   });
 
+  it("linha ilegível não esconde as demais", async () => {
+    const tenantId = randomUUID();
+    await owner`
+      insert into organization (id, name, slug)
+      values (${tenantId}, 'C', ${`cred-c-${tenantId}`})
+    `;
+
+    await save(tenantId);
+    const broken = await save(tenantId);
+
+    await owner.begin(async (tx) => {
+      await tx`select set_config('app.bypass_tenant', 'on', true)`;
+      await tx`
+        update tenant_payment_credential
+        set encrypted_secret = ${Buffer.from("v1:lixo:lixo:lixo")}
+        where id = ${broken.id}
+      `;
+    });
+
+    const items = await listCredentials(tenantId);
+
+    expect(items.map(({ hint }) => hint).sort()).toEqual(["••••WXYZ", null].sort());
+    await owner`delete from organization where id = ${tenantId}`;
+  });
+
   it("segredo curto não mostra nada", () => {
     expect(maskSecret("abc123")).toBe("••••");
   });

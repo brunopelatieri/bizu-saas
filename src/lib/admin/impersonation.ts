@@ -1,14 +1,13 @@
-import { and, desc, eq, gt, isNull } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { withPlatformScope } from "@/db/rls";
-import { auditLog, impersonationGrant, organization, session } from "@/db/schema";
+import { auditLog, impersonationGrant, session } from "@/db/schema";
 import { audit } from "@/lib/audit";
 import { runInBackground } from "@/lib/auth/background";
 import { appLink } from "@/lib/auth/links";
 import type { ImpersonationPolicy } from "@/lib/billing/constants";
-import { listTenantOwners } from "@/lib/billing/notify";
+import { notifyOwners } from "@/lib/billing/notify";
 import { loadSettings } from "@/lib/billing/settings";
-import { sendEmail } from "@/lib/email/send";
 import { impersonationRequestedTemplate } from "@/lib/email/templates/impersonation-requested";
 import { impersonationStartedTemplate } from "@/lib/email/templates/impersonation-started";
 
@@ -95,6 +94,7 @@ export function recordGrantUse(grantId: string, usedBy: string) {
   );
 }
 
+/** Conta só o que virou e-mail: tentativa barrada aqui não pode esticar a janela. */
 async function requestedRecently(tenantId: string, now: Date) {
   const [row] = await withPlatformScope("admin: pedido de acesso recente", (tx) =>
     tx
@@ -104,6 +104,7 @@ async function requestedRecently(tenantId: string, now: Date) {
         and(
           eq(auditLog.tenantId, tenantId),
           eq(auditLog.action, "platform.impersonation_requested"),
+          sql`${auditLog.metadata}->>'email_sent' = 'true'`,
           gt(auditLog.createdAt, new Date(now.getTime() - REQUEST_THROTTLE_MS)),
         ),
       )
@@ -113,31 +114,17 @@ async function requestedRecently(tenantId: string, now: Date) {
   return Boolean(row);
 }
 
-async function emailOwnersOfRequest(
-  tenantId: string,
-  reason: string,
-  now: Date,
-) {
-  const [tenant] = await getDb()
-    .select({ name: organization.name })
-    .from(organization)
-    .where(eq(organization.id, tenantId));
-  if (!tenant) return;
-
-  for (const owner of await listTenantOwners(tenantId)) {
-    await sendEmail({
-      to: owner.email,
-      ...impersonationRequestedTemplate({
-        ownerName: owner.name,
-        tenantName: tenant.name,
-        supportName: SUPPORT_NAME,
-        reason,
-        expiresAt: new Date(now.getTime() + REQUEST_TTL_MS),
-        url: appLink("/app/configuracoes/suporte"),
-      }),
-      tags: { template: "impersonation-requested" },
-    });
-  }
+function emailOwnersOfRequest(tenantId: string, reason: string, now: Date) {
+  return notifyOwners(tenantId, "impersonation-requested", (owner) =>
+    impersonationRequestedTemplate({
+      ownerName: owner.name,
+      tenantName: owner.tenantName,
+      supportName: SUPPORT_NAME,
+      reason,
+      expiresAt: new Date(now.getTime() + REQUEST_TTL_MS),
+      url: appLink("/app/configuracoes/suporte"),
+    }),
+  );
 }
 
 /** Sem consentimento: registra o pedido e avisa os owners, no máximo uma vez por hora. */
@@ -174,28 +161,18 @@ export async function requestSupportAccess({
   }
 }
 
-export async function notifyImpersonationStarted(
+export function notifyImpersonationStarted(
   tenantId: string,
   endsAt: Date,
   now = new Date(),
 ) {
-  const [tenant] = await getDb()
-    .select({ name: organization.name })
-    .from(organization)
-    .where(eq(organization.id, tenantId));
-  if (!tenant) return;
-
-  for (const owner of await listTenantOwners(tenantId)) {
-    await sendEmail({
-      to: owner.email,
-      ...impersonationStartedTemplate({
-        ownerName: owner.name,
-        tenantName: tenant.name,
-        supportName: SUPPORT_NAME,
-        startedAt: now,
-        endsAt,
-      }),
-      tags: { template: "impersonation-started" },
-    });
-  }
+  return notifyOwners(tenantId, "impersonation-started", (owner) =>
+    impersonationStartedTemplate({
+      ownerName: owner.name,
+      tenantName: owner.tenantName,
+      supportName: SUPPORT_NAME,
+      startedAt: now,
+      endsAt,
+    }),
+  );
 }

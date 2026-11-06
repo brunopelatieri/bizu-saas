@@ -153,6 +153,20 @@ describe("personificação", () => {
       expect(await templatesSent()).toEqual(["impersonation-requested"]);
     });
 
+    it("tentativa sem e-mail não estica a janela do pedido", async () => {
+      await asGrant(
+        (tx) => tx`
+          insert into audit_log (tenant_id, actor_type, action, metadata)
+          values (${tenantId}, 'platform', 'platform.impersonation_requested',
+                  ${tx.json({ email_sent: false })})
+        `,
+      );
+
+      await impersonate(support, member.id);
+
+      expect(await templatesSent()).toEqual(["impersonation-requested"]);
+    });
+
     it("não abre sessão nem devolve cookie", async () => {
       const response = await impersonate(support, member.id);
 
@@ -659,6 +673,24 @@ describe("personificação", () => {
       expect((await call("GET", "/api/me", { cookie })).status).toBe(401);
     });
 
+    it("sem a sessão original, encerra só a personificada", async () => {
+      await grant();
+      const cookie = await enterAs(member);
+      const withoutAdmin = cookie
+        .split("; ")
+        .filter((pair) => !pair.includes("admin_session"))
+        .join("; ");
+
+      const response = await call("POST", "/api/admin/stop-impersonating", {
+        cookie: withoutAdmin,
+        body: {},
+      });
+
+      expect(response.status).toBe(200);
+      expect((await call("GET", "/api/me", { cookie: withoutAdmin })).status).toBe(401);
+      expect(await auditRows("platform.impersonation_stopped")).not.toEqual([]);
+    });
+
     it("em sessão comum responde 400", async () => {
       const response = await call("POST", "/api/admin/stop-impersonating", {
         cookie: member.cookie,
@@ -710,6 +742,21 @@ describe("personificação", () => {
 
       expect(await auditRows("support.grant_created")).not.toEqual([]);
       expect(await auditRows("support.grant_revoked")).not.toEqual([]);
+    });
+
+    it("em read_only, o owner ainda libera e revoga", async () => {
+      await owner`update organization set access_mode = 'read_only' where id = ${tenantId}`;
+
+      try {
+        const id = await grant();
+        const response = await call("DELETE", `/api/tenant/support-grant/${id}`, {
+          cookie: tenantOwner.cookie,
+        });
+
+        expect(response.status).toBe(200);
+      } finally {
+        await owner`update organization set access_mode = 'full' where id = ${tenantId}`;
+      }
     });
 
     it("revogar duas vezes responde 404", async () => {

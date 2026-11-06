@@ -24,6 +24,12 @@ export type TenantEnv = AuthEnv & {
 
 const MUTATIONS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+/**
+ * Por `/api/billing/` o tenant volta a pagar; por `support-grant` o owner libera e, acima de
+ * tudo, revoga o suporte: inadimplência não pode tirar dele esse controle.
+ */
+const OPEN_WHEN_READ_ONLY = ["/api/billing/", "/api/tenant/support-grant"];
+
 /** Recusa quem não pode usar agora o tenant ativo da sessão. */
 export function refusal(
   c: Context,
@@ -36,12 +42,10 @@ export function refusal(
     );
   }
 
-  const billingRoute = c.req.path.startsWith("/api/billing/");
-
   if (
     tenant.accessMode === "read_only" &&
     MUTATIONS.has(c.req.method) &&
-    !billingRoute
+    !OPEN_WHEN_READ_ONLY.some((prefix) => c.req.path.startsWith(prefix))
   ) {
     return c.json(
       {

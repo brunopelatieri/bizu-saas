@@ -1,4 +1,4 @@
-import { and, desc, eq, gt } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, or } from "drizzle-orm";
 import { getDb } from "@/db";
 import { session } from "@/db/schema";
 
@@ -23,7 +23,16 @@ export async function listOwnSessions(
       expiresAt: session.expiresAt,
     })
     .from(session)
-    .where(and(eq(session.userId, userId), gt(session.expiresAt, now)))
+    .where(
+      and(
+        eq(session.userId, userId),
+        gt(session.expiresAt, now),
+        or(
+          isNull(session.impersonatedBy),
+          gt(session.impersonationExpiresAt, now),
+        ),
+      ),
+    )
     .orderBy(desc(session.updatedAt));
 
   return rows.map(({ impersonatedBy, ...row }) => ({

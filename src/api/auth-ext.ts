@@ -10,13 +10,13 @@ import {
   validationError,
 } from "@/api/guards";
 import { resolveSession } from "@/api/auth";
+import { refuseImpersonated } from "@/api/impersonation";
 import { logError } from "@/api/log";
 import { clientKey, rateLimit } from "@/api/rate-limit";
 import {
   INVALID_LINK_MESSAGE,
   verificationGuard,
 } from "@/api/verification-guard";
-import { audit } from "@/lib/audit";
 import { runInBackground } from "@/lib/auth/background";
 import { CLIENT_IP_HEADER } from "@/lib/auth/constants";
 import { purgeExpiredPendingSignup } from "@/lib/auth/pending-signup";
@@ -76,8 +76,8 @@ function verificationStep(token: string): VerificationStep {
 const validEmail = zValidator("json", emailOnlySchema, validationError);
 
 /** Conta por e-mail, exista ele ou não: o 429 não revela nada. */
-export const createRateLimitByEmail = () => rateLimit({
-  name: "resend-by-email",
+export const createRateLimitByEmail = (name: string) => rateLimit({
+  name,
   limit: 3,
   windowMs: 60 * MINUTE,
   key: async (c) => {
@@ -88,7 +88,7 @@ export const createRateLimitByEmail = () => rateLimit({
   },
 });
 
-const rateLimitByEmail = createRateLimitByEmail();
+const rateLimitByEmail = createRateLimitByEmail("resend-by-email");
 
 /**
  * Rotas de autenticação com regra própria, antes do handler do Better Auth.
@@ -137,22 +137,11 @@ const closedWhileImpersonating = createMiddleware(async (c, next) => {
   const impersonatedBy = resolved?.user.impersonatedBy;
   if (!resolved || !impersonatedBy) return next();
 
-  await audit("platform.impersonation_blocked_action", {
-    actor: { type: "platform", id: impersonatedBy },
-    impersonatorId: impersonatedBy,
+  return refuseImpersonated(c, {
+    impersonatedBy,
+    userId: resolved.user.id,
     tenantId: resolved.activeOrganizationId,
-    target: { type: "user", id: resolved.user.id },
-    metadata: { method: c.req.method, path: c.req.path },
-    ip: clientKey(c),
   });
-
-  return c.json(
-    {
-      error: "Esta ação não fica disponível durante a personificação.",
-      code: "IMPERSONATION_BLOCKED",
-    },
-    403,
-  );
 });
 
 authRoutes.use("/api/auth/*", jsonBodyLimit, sameOrigin, closedWhileImpersonating);

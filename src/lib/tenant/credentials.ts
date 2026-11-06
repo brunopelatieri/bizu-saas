@@ -5,6 +5,7 @@ import {
   currentKeyRing,
   decryptSecret,
   encryptSecret,
+  SecretDecryptError,
 } from "@/lib/crypto/secrets";
 import { notFound } from "@/lib/tenant/errors";
 
@@ -49,6 +50,16 @@ export function maskSecret(secret: string) {
   return secret.length < MIN_LENGTH_FOR_HINT ? "••••" : `••••${secret.slice(-4)}`;
 }
 
+/** `null`: não decifra com as chaves atuais. As demais continuam listadas. */
+function hintOf(row: CredentialRow) {
+  try {
+    return maskSecret(reveal(row));
+  } catch (error) {
+    if (error instanceof SecretDecryptError) return null;
+    throw error;
+  }
+}
+
 export async function saveCredential(tenantId: string, input: CredentialInput) {
   const [row] = await withTenant(tenantId, (tx) =>
     tx
@@ -83,7 +94,7 @@ export async function listCredentials(tenantId: string) {
     sandbox: row.sandbox,
     keyVersion: row.keyVersion,
     createdAt: row.createdAt,
-    hint: maskSecret(reveal(row)),
+    hint: hintOf(row),
   }));
 }
 
