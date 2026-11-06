@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import type { AddressInfo } from "node:net";
 import { type ServerType, serve } from "@hono/node-server";
@@ -5,8 +6,15 @@ import type postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { api } from "@/api/app";
 import { waitForBackgroundTasks } from "@/lib/auth/background";
+import { setWebhookQueueForTests } from "@/lib/billing/inbox";
 import { createMemoryProvider } from "@/lib/email/providers/memory";
 import { setEmailProviderForTests } from "@/lib/email/send";
+import { setProvidersForTests } from "@/lib/payments/registry";
+import {
+  createStubProvider,
+  makePlatformUser,
+  STUB_ID,
+} from "./billing-helpers";
 import {
   addMember,
   cleanUp,
@@ -64,8 +72,92 @@ describe("rotas de equipe sobre o servidor Node", () => {
   afterAll(async () => {
     await new Promise((resolve) => server.close(resolve));
     setEmailProviderForTests(undefined);
+    await owner.begin(async (tx) => {
+      await tx`select set_config('app.bypass_tenant', 'on', true)`;
+      await tx`delete from payment_event where provider = ${STUB_ID}`;
+    });
     await cleanUp(owner);
     await owner.end();
+  });
+
+  describe("rotas de cobrança", () => {
+    const anyId = randomUUID();
+    let platformCookie: string;
+
+    beforeAll(async () => {
+      setProvidersForTests([createStubProvider()]);
+      platformCookie = (await makePlatformUser(owner, "platform_owner")).cookie;
+    });
+
+    afterAll(() => setProvidersForTests(undefined));
+
+    it.each(["reactivate", "pause", "portal"])(
+      "POST /api/billing/%s sem corpo chega à regra de negócio",
+      async (route) => {
+        const response = await request("POST", `/api/billing/${route}`);
+
+        expect(response.status).toBe(409);
+      },
+    );
+
+    it.each([
+      `/api/admin/webhooks/${anyId}/reprocess`,
+      `/api/admin/subscriptions/${anyId}/cancel`,
+      `/api/admin/subscriptions/${anyId}/sync`,
+    ])("POST %s sem corpo chega à regra de negócio", async (path) => {
+      const response = await request("POST", path, {
+        headers: { Cookie: platformCookie },
+      });
+
+      expect(response.status).toBe(404);
+    });
+
+    /** Sem `Content-Length`, como um cliente que manda o corpo em pedaços. */
+    function streamed(size: number) {
+      const chunk = "x".repeat(64 * 1024);
+      const pieces = Math.ceil(size / chunk.length);
+      let sent = 0;
+
+      return new ReadableStream<Uint8Array>({
+        pull(controller) {
+          if (sent >= pieces) return controller.close();
+          sent += 1;
+          controller.enqueue(new TextEncoder().encode(chunk));
+        },
+      });
+    }
+
+    it("webhook em pedaços acima de 1 MB é recusado", async () => {
+      const response = await fetch(`${base}/api/webhooks/payments/${STUB_ID}`, {
+        method: "POST",
+        headers: { "X-Stub-Signature": "ok", "X-Forwarded-For": "10.41.1.1" },
+        body: streamed(2 * 1024 * 1024),
+        duplex: "half",
+      } as RequestInit);
+
+      expect(response.status).toBe(413);
+    });
+
+    it("webhook sobre HTTP de verdade é recebido", async () => {
+      const queued: string[] = [];
+      setWebhookQueueForTests(async (id) => {
+        queued.push(id);
+      });
+
+      const response = await fetch(`${base}/api/webhooks/payments/${STUB_ID}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Stub-Signature": "ok",
+          "X-Forwarded-For": "10.41.1.2",
+        },
+        body: JSON.stringify({ id: `evt_${randomUUID()}`, events: [] }),
+      });
+      setWebhookQueueForTests(undefined);
+
+      expect(response.status).toBe(200);
+      expect(queued).toHaveLength(1);
+    });
   });
 
   it("o servidor de produção usa o mesmo Request destes testes", async () => {

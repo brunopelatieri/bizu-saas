@@ -1,10 +1,10 @@
+import { escapeLike } from "@/lib/admin/tenants";
 import { count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { member, user } from "@/db/schema";
 import { PAGE_SIZE } from "@/lib/schemas/admin";
 import { notFound, TenantRuleError } from "@/lib/tenant/errors";
 
-const escapeLike = (value: string) => value.replace(/[\\%_]/g, "\\$&");
 
 /**
  * Usuários de equipe e da plataforma. `user` não tem RLS: quem chega aqui já passou por

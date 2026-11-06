@@ -1,0 +1,32 @@
+{
+  "id": "evt_test_refund_partial",
+  "object": "event",
+  "api_version": "2026-10-28.endive",
+  "created": 1793620800,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "charge.refunded",
+  "data": {
+    "object": {
+      "id": "ch_test_1",
+      "object": "charge",
+      "amount": 9900,
+      "amount_captured": 9900,
+      "amount_refunded": 3000,
+      "captured": true,
+      "created": 1793620800,
+      "currency": "brl",
+      "customer": "cus_test_1",
+      "livemode": false,
+      "metadata": {},
+      "paid": true,
+      "payment_intent": "pi_test_1",
+      "refunded": false,
+      "status": "succeeded"
+    }
+  }
+}

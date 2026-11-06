@@ -3,6 +3,7 @@ import { createHonoServer } from "react-router-hono-server/node";
 import { api } from "@/api/app";
 import { requestLogger } from "@/api/request-logger";
 import { EnvError, getEnv } from "@/lib/env";
+import { getProviders } from "@/lib/payments/registry";
 
 // Em desenvolvimento, carrega variáveis do .env.local (DATABASE_URL etc.).
 // Em produção (Docker/VPS) as variáveis são injetadas pelo container.
@@ -15,6 +16,8 @@ if (process.env.NODE_ENV !== "production") {
 // com a lista do que falta, sem imprimir valores (src/lib/env.ts).
 try {
   getEnv();
+  // `PAYMENT_PROVIDERS` com id sem módulo também é configuração errada, não erro na 1ª venda.
+  getProviders();
 } catch (error) {
   if (error instanceof EnvError) {
     console.error(error.message);

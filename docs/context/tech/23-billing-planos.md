@@ -1,6 +1,6 @@
 # Planos, trial e limites
 
-- **Escopo:** Planos e preços, configurações da plataforma, assinatura e trial, estado de cobrança do tenant, limites e features, job `billing.trial`, seed. A cobrança em si (checkout, webhooks, provedores) é da fase 6.
+- **Escopo:** Planos e preços, configurações da plataforma, assinatura e trial, estado de cobrança do tenant, limites e features, job `billing.trial`, seed. A cobrança em si (checkout, webhooks, provedores) está em `tech/24-billing-cobranca.md`.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-billing.md`, `spec-dados.md`, `spec-tenant-rbac.md` (limites), `spec-email-jobs.md`
 - **Paths do código:** `src/lib/billing/` (`constants.ts`, `trial.ts`, `state.ts`, `settings.ts`, `subscription.ts`, `limits.ts`, `summary.ts`, `notify.ts`, `public-plans.server.ts`), `src/db/schema/billing.ts`, `src/jobs/billing.ts`, `src/db/seed.ts`, `src/lib/schemas/admin.ts`, `tests/db/{billing,admin}.test.ts`, `drizzle/0008_billing_planos.sql`, `drizzle/0009_rls_billing.sql`
 
@@ -11,8 +11,8 @@
 | `plan` | plataforma, sem RLS | `slug` único e imutável, `limits` jsonb, `features` text[], `is_free`, `active`, `sort_order`. Nunca se apaga: `active = false` tira de `/precos` e da oferta, e quem já usa segue nele |
 | `plan_price` | plataforma, sem RLS | um por (plano, provedor, intervalo); `amount_cents` em centavos, `currency` `BRL`, `provider_price_ref` só como campo (preenchido em `/admin/planos`) |
 | `platform_setting` | plataforma, sem RLS | uma chave por linha; ver abaixo |
-| `subscription` | tenant, RLS forçado | uma por tenant. Fase 5 grava `trialing`, `active` e `expired`; as colunas de provedor e período são da fase 6 |
-| `subscription_event` | tenant, RLS forçado | toda mudança de `status` grava uma linha (`system`, `admin`, `job`) |
+| `subscription` | tenant, RLS forçado | uma por tenant. Estados e colunas do provedor em `tech/24-billing-cobranca.md` |
+| `subscription_event` | tenant, RLS forçado | toda transição grava uma linha (`system`, `admin`, `job`, `owner`, `webhook`) |
 
 `plan.limits`: `{ members, customers, storage_mb, custom_roles }`. Chave ausente ou `null` =
 ilimitado; `0` não deixa criar nada.
@@ -55,10 +55,12 @@ features. Falha em `startTrial` vai para `logError` e não derruba o onboarding.
 | `locked` | `status <> active` ou `access_mode = locked` (suspenso): `requireTenant` responde 403 `TENANT_SUSPENDED` a tudo |
 | `read_only` | `access_mode = read_only`: lê normal; mutações respondem 403 `TENANT_READ_ONLY`, exceto `/api/billing/*` |
 | `trialing` | assinatura `trialing` |
+| `past_due` | pagamento falhou, ainda na carência: acesso total, com aviso (`graceUntil` em `/api/me`) |
 | `active` | o resto |
 
-`/api/me` devolve `billing` (`state`, `plan`, `trialEndsAt`, `trialDaysLeft`), `features[]` e
-`limits{}` (só os definidos) do plano da assinatura. Em `locked`, features e limites vêm vazios.
+`/api/me` devolve `billing` (`state`, `plan`, `trialEndsAt`, `trialDaysLeft`, `graceUntil`), `features[]`
+e `limits{}` (só os definidos) do plano da assinatura. Em `locked`, features e limites vêm vazios; em
+`expired`, `canceled` e `unpaid`, as features.
 O banner de `/app` (`BillingBanner`) só informa; quem barra é a API.
 
 ## Limites e features
@@ -91,7 +93,8 @@ o aviso mais urgente devido:
 Idempotência: cada aviso é reservado em `subscription.metadata.trialNotices.<aviso>` por
 `UPDATE` condicional **antes** de enviar; rodar duas vezes não repete e-mail. Se o envio falha
 (enfileirar), a reserva é desfeita e o job relança no fim para o pg-boss tentar de novo; falha
-de um tenant não impede os outros. Tenant suspenso não é tocado, e suspensão (`locked`) tem
+de um tenant não impede os outros. Quem já tem assinatura no provedor (trial nativo) fica fora: cobrar
+e encerrar é com ele. Tenant suspenso não é tocado, e suspensão (`locked`) tem
 precedência sobre `read_only`. `runBillingTrial(now, { tenantIds })` aceita um relógio e um
 filtro, usados pelos testes. Destinatários: proprietários do tenant (`listTenantOwners`).
 
@@ -108,6 +111,5 @@ próprio Better Auth.
 
 ## Fora desta fase
 
-Checkout, `PaymentProvider`, webhooks, `past_due`/dunning e `/app/assinatura` (fase 6);
 `billing.usage` e `usage_counter`; `tenant_feature_override`; `max_tenants_per_user` em
 `platform_setting` (o plugin lê um número fixo na criação); perfil de cobrança no onboarding.

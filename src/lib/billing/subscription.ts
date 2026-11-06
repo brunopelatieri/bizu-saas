@@ -13,6 +13,7 @@ import type {
 } from "@/db/schema/billing";
 import { initialSubscription } from "@/lib/billing/trial";
 import { loadSettings } from "@/lib/billing/settings";
+import { TenantRuleError } from "@/lib/tenant/errors";
 
 export type TenantPlan = {
   subscription: typeof subscription.$inferSelect;
@@ -42,6 +43,8 @@ export async function recordSubscriptionEvent(
     to: SubscriptionStatus;
     reason: string;
     source: SubscriptionEventSource;
+    paymentEventId?: string;
+    occurredAt?: Date;
   },
 ) {
   await tx.insert(subscriptionEvent).values({
@@ -51,6 +54,8 @@ export async function recordSubscriptionEvent(
     toStatus: input.to,
     reason: input.reason,
     source: input.source,
+    paymentEventId: input.paymentEventId,
+    occurredAt: input.occurredAt,
   });
 }
 
@@ -61,6 +66,13 @@ export function listActivePlans() {
     .from(plan)
     .where(eq(plan.active, true))
     .orderBy(asc(plan.sortOrder), asc(plan.name));
+}
+
+/** Para onde vai quem cancela, se a plataforma tiver um plano gratuito ativo. */
+export async function findFreePlanId() {
+  const plans = await listActivePlans();
+
+  return plans.find(({ isFree }) => isFree)?.id ?? null;
 }
 
 /**
@@ -119,8 +131,9 @@ export async function startTrial(tenantId: string, now = new Date()) {
 
 /**
  * Troca o plano de um tenant (proprietário, em `/admin`). Plano gratuito encerra o
- * trial e devolve o acesso total; plano pago mantém o estado e o trial como estavam
- * (a cobrança é da fase 6).
+ * trial e devolve o acesso total; plano pago mantém o estado e o trial como estavam.
+ * Quem tem assinatura viva no provedor precisa ser cancelado antes: trocar só aqui
+ * deixaria a cobrança correndo por um plano que o tenant não tem mais.
  */
 export async function changeTenantPlan(
   tenantId: string,
@@ -157,6 +170,17 @@ export async function changeTenantPlan(
         source: "admin",
       });
       return created;
+    }
+
+    if (
+      current.providerSubscriptionRef &&
+      ["active", "past_due", "trialing", "paused"].includes(current.status)
+    ) {
+      throw new TenantRuleError(
+        409,
+        "PROVIDER_SUBSCRIPTION_ACTIVE",
+        "Cancele a assinatura no provedor antes de trocar o plano.",
+      );
     }
 
     const toFree = target.isFree;

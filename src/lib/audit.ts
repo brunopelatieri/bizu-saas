@@ -19,6 +19,12 @@ export type AuditAction =
   | "role.updated"
   | "role.deleted"
   | "billing.trial_expired"
+  | "billing.checkout_started"
+  | "billing.subscription_changed"
+  | "billing.plan_change_requested"
+  | "billing.profile_updated"
+  | "billing.invoice_refunded"
+  | "billing.chargeback_opened"
   | "admin.tenant_suspended"
   | "admin.tenant_unsuspended"
   | "admin.tenant_plan_changed"
@@ -26,7 +32,10 @@ export type AuditAction =
   | "admin.plan_updated"
   | "admin.settings_updated"
   | "admin.user_banned"
-  | "admin.user_unbanned";
+  | "admin.user_unbanned"
+  | "admin.subscription_canceled"
+  | "admin.subscription_synced"
+  | "admin.webhook_reprocessed";
 
 export type AuditEntry = {
   actor: { type?: AuditActorType; id: string | null };

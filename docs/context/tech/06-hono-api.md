@@ -2,7 +2,7 @@
 
 - **Escopo:** Rotas `/api/*`, validação Zod e montagem no servidor único.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`
-- **Paths do código:** `src/api/auth.ts`, `src/api/auth-ext.ts`, `src/api/guards.ts`, `src/api/permissions.ts`, `src/api/tenant-errors.ts`, `src/api/me.ts`, `src/api/tenant.ts`, `src/api/team.ts`, `src/api/roles.ts`, `src/api/invitations.ts`, `src/api/verification-guard.ts`, `src/api/rate-limit.ts`, `src/api/request-logger.ts`, `src/api/log.ts`, `src/api/app.ts`, `src/api/ready.ts`, `src/api/webhooks-email.ts`, `src/api/admin.ts`, `src/components/contact/contact-form.tsx`, `src/lib/schemas/contact.ts`, `src/server.ts`
+- **Paths do código:** `src/api/auth.ts`, `src/api/auth-ext.ts`, `src/api/guards.ts`, `src/api/permissions.ts`, `src/api/tenant-errors.ts`, `src/api/me.ts`, `src/api/tenant.ts`, `src/api/team.ts`, `src/api/roles.ts`, `src/api/invitations.ts`, `src/api/verification-guard.ts`, `src/api/rate-limit.ts`, `src/api/request-logger.ts`, `src/api/log.ts`, `src/api/app.ts`, `src/api/ready.ts`, `src/api/webhooks-email.ts`, `src/api/webhooks-payments.ts`, `src/api/billing.ts`, `src/api/admin.ts`, `src/components/contact/contact-form.tsx`, `src/lib/schemas/contact.ts`, `src/server.ts`
 
 
 ## 6. Hono API
@@ -16,7 +16,9 @@ Rotas atuais:
 | GET | `/api/health` | Liveness simples |
 | GET | `/api/ready` | Prontidão: `{ db, jobs }` (`SELECT 1` e fila `email.send`, timeout 2 s cada); 503 se algum falhar (`src/api/ready.ts`) |
 | POST | `/api/webhooks/email/:provider` | Eventos de entrega, bounce e reclamação do provedor de e-mail (`src/api/webhooks-email.ts`): corpo bruto, assinatura conferida antes do JSON (400 se inválida), 404 se `:provider` não for o configurado; hard bounce e reclamação criam `email_suppression` |
-| GET | `/api/me` | Rota privada: `{ user, tenants, permissions, billing, features, limits }`; `billing` traz estado, plano e fim do trial do tenant ativo |
+| POST | `/api/webhooks/payments/:provider` | Eventos do provedor de pagamento (`src/api/webhooks-payments.ts`): corpo bruto até 1 MB, assinatura antes do JSON, 400 + rastro sem corpo se inválida, 429 após 20 erros por IP no minuto, 404 fora de `PAYMENT_PROVIDERS`. Grava `payment_event` e enfileira `webhook.process`; repetido responde 200 `duplicate` |
+| * | `/api/billing/*` | Assinatura do owner, liberada em `read_only` (`tech/24-billing-cobranca.md`) |
+| GET | `/api/me` | Rota privada: `{ user, tenants, permissions, billing, features, limits }`; `billing` traz estado, plano, fim do trial e fim da carência do tenant ativo |
 | GET | `/api/me/invitations` | Convites abertos para o e-mail da sessão |
 | GET, POST, PATCH | `/api/tenant`, `/api/tenant/active` | Criar (aplica plano padrão e trial), ler, editar e trocar o tenant ativo |
 | GET, POST, PUT, PATCH | `/api/admin/*` | Plataforma: visão geral, tenants (suspender, trocar plano), planos e preços, configurações, usuários (banir). Só `requirePlatform`; escrita só `platform_owner` (`tech/22-admin.md`) |

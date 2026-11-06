@@ -199,7 +199,7 @@ A senha é a de `SEED_PASSWORD`. Em `/admin` você vê organizações, usuários
 configurações do período de teste (dias, plano padrão e carência). Uma organização nova
 (cadastro, confirmação do e-mail e onboarding) já nasce em teste no plano padrão, com o aviso
 no topo de `/app`; `/precos` lista os planos ativos. Os `provider_price_ref` dos preços
-ficam vazios até você ligar um provedor (fase 6).
+ficam vazios até você ligar um provedor (veja [Pagamentos](#pagamentos)).
 
 **Primeiro acesso sem o seed:**
 
@@ -284,6 +284,29 @@ npm run start
 | `TRUSTED_PROXY_HOPS` | Reverse proxies na frente do app; use `1` atrás de um proxy |
 
 A lista completa, com os módulos de pagamento, está em `.env.example`.
+
+## Pagamentos
+
+Com `PAYMENT_PROVIDERS` vazio, o sistema funciona só com planos gratuitos e trial. Cada provedor é um
+módulo em `src/lib/payments/providers/<id>/` e entra pela variável.
+
+Para ligar o Stripe em modo de teste:
+
+1. Pegue a chave `sk_test_...` no painel e rode a [Stripe CLI](https://docs.stripe.com/stripe-cli):
+
+   ```bash
+   stripe listen --forward-to localhost:5173/api/webhooks/payments/stripe
+   ```
+
+2. Preencha o `.env.local` com `PAYMENT_PROVIDERS=stripe`, `STRIPE_SECRET_KEY` e o `whsec_...`
+   impresso pelo comando em `STRIPE_WEBHOOK_SECRET`.
+3. Crie os preços recorrentes no Stripe e cole cada `price_...` em `/admin/planos`.
+4. Em `/app/assinatura`, preencha os dados de faturamento e assine com o cartão `4242 4242 4242 4242`.
+
+O passo a passo, com o endpoint de produção e o checklist antes de um release, está no
+[README do módulo](src/lib/payments/providers/stripe/README.md). Para escrever outro módulo, siga o
+[checklist de módulos](src/lib/payments/providers/README.md). Assinaturas e webhooks recebidos
+aparecem em `/admin/assinaturas` e `/admin/webhooks`.
 
 ---
 

@@ -2,7 +2,7 @@
 
 - **Escopo:** Fila no Postgres com pg-boss 12: instalação, modos de execução, filas, retry, dead letter, manutenção e prontidão.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-email-jobs.md`
-- **Paths do código:** `src/jobs/` (`boss.ts`, `queues.ts`, `index.ts`, `email.ts`, `billing.ts`, `maintenance.ts`, `install.ts`), `src/server.ts`, `src/api/ready.ts`, `drizzle/0005_email_jobs.sql`
+- **Paths do código:** `src/jobs/` (`boss.ts`, `queues.ts`, `index.ts`, `email.ts`, `billing.ts`, `webhooks.ts`, `maintenance.ts`, `install.ts`), `src/server.ts`, `src/api/ready.ts`, `drizzle/0005_email_jobs.sql`
 
 ## Instalação
 
@@ -43,8 +43,12 @@ Sem o passo 2, `sendEmail` falha (fila inexistente), o `email_message` fica `fai
 | `email.send` | `sendEmail` | 5x, backoff exponencial (30 s a 1 h) | `singletonKey = email_message.id`; dead letter `email.send.dead` (7 dias) |
 | `maintenance.prune` | cron dom 04:00 UTC | 1x | apaga `email_message` > 180 dias (`pruneOldData`) |
 | `billing.trial` | cron diário 03:00 UTC | 3x, 5 min com backoff | avisos T-3, T-1 e T0, expira o trial vencido para `read_only` após a carência; idempotente (`runBillingTrial`, `tech/23-billing-planos.md`); dead letter `billing.trial.dead` (14 dias) |
+| `webhook.process` | `POST /api/webhooks/payments/:provider` | 5x, backoff de 30 s a 1 h | política `exclusive`, `singletonKey = payment_event.id`: no máximo um job vivo por evento; dead letter `webhook.process.dead` (14 dias) |
+| `billing.dunning` | cron diário 03:10 UTC | 3x, 5 min com backoff | avisos T-3 e T0 da carência, `past_due` → `unpaid` + `read_only`; idempotente (`runBillingDunning`) |
+| `billing.period_end` | cron de hora em hora | 3x, 5 min com backoff | encerra cancelamentos e aplica downgrades vencidos (`runBillingPeriodEnd`) |
+| `billing.reconcile` | cron diário 04:00 UTC | 3x, 5 min com backoff | compara com o provedor, corrige e alerta; devolve à fila eventos `pending` há mais de 10 min (`runBillingReconcile`) |
 
-O restante das filas de billing e as de LGPD entram nas fases 6 e 10: acrescente em `queueDefinitions` (a
+Detalhes das filas de cobrança em `tech/24-billing-cobranca.md`. As de LGPD entram na fase 10: acrescente em `queueDefinitions` (a
 dead letter `<fila>.dead` antes da fila), em `scheduleDefinitions` se tiver cron, e o
 handler em `registerWorkers` (`index.ts`); depois `npm run jobs:install`.
 
@@ -70,5 +74,6 @@ pg-boss conecta e a fila `email.send` existe. `/api/health` continua liveness si
 `tests/db/email-queue.test.ts` (`npm run test:db`, exige `db:migrate` + `jobs:install`):
 enfileirar → worker → `sent`, supressão, retries esgotados → `failed` + `email.send.dead`,
 `maintenance.prune` e `checkReady`. `tests/db/billing.test.ts` chama `runBillingTrial(now, { tenantIds })`
-diretamente, com relógio e tenants controlados. Unitários sem banco: `src/jobs/email.test.ts`,
+diretamente, com relógio e tenants controlados, como `billing-lifecycle.test.ts` nos outros jobs de
+cobrança; `billing-queue.test.ts` confere filas, crons e a política `exclusive` no pg-boss real. Unitários sem banco: `src/jobs/email.test.ts`,
 `src/api/ready.test.ts`.

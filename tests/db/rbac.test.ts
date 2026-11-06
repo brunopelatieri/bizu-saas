@@ -9,6 +9,7 @@ import {
 } from "@/lib/auth/permissions";
 import { createMemoryProvider } from "@/lib/email/providers/memory";
 import { setEmailProviderForTests } from "@/lib/email/send";
+import { makePlatformUser } from "./billing-helpers";
 import {
   addMember,
   call,
@@ -48,6 +49,17 @@ const endpoints = [
   ["POST", "/api/roles", "role:create"],
   ["PATCH", `/api/roles/${anyId}`, "role:update"],
   ["DELETE", `/api/roles/${anyId}`, "role:delete"],
+  ["GET", "/api/billing/plans", "billing:read"],
+  ["GET", "/api/billing/subscription", "billing:read"],
+  ["GET", "/api/billing/invoices", "billing:read"],
+  ["GET", `/api/billing/invoices/${anyId}`, "billing:read"],
+  ["PUT", "/api/billing/profile", "billing:manage"],
+  ["POST", "/api/billing/checkout", "billing:manage"],
+  ["POST", "/api/billing/cancel", "billing:manage"],
+  ["POST", "/api/billing/reactivate", "billing:manage"],
+  ["POST", "/api/billing/pause", "billing:manage"],
+  ["POST", "/api/billing/change-plan", "billing:manage"],
+  ["POST", "/api/billing/portal", "billing:manage"],
 ] as const;
 
 const catalog = { ...staticRoleCatalog, [CUSTOM_ROLE]: CUSTOM_PERMISSIONS };
@@ -111,6 +123,56 @@ describe("RBAC", () => {
     const response = await call(method, path);
 
     expect(response.status).toBe(401);
+  });
+
+  describe("área da plataforma", () => {
+    const reads = [
+      ["GET", "/api/admin/webhooks"],
+      ["GET", "/api/admin/subscriptions"],
+    ] as const;
+    const writes = [
+      ["POST", `/api/admin/webhooks/${anyId}/reprocess`],
+      ["POST", `/api/admin/subscriptions/${anyId}/cancel`],
+      ["POST", `/api/admin/subscriptions/${anyId}/sync`],
+    ] as const;
+    let platformOwner: TestUser;
+    let support: TestUser;
+
+    beforeAll(async () => {
+      platformOwner = await makePlatformUser(owner, "platform_owner");
+      support = await makePlatformUser(owner, "platform_support");
+    });
+
+    it.each([...reads, ...writes])("%s %s exige sessão", async (method, path) => {
+      expect((await call(method, path)).status).toBe(401);
+    });
+
+    it.each([...reads, ...writes])(
+      "%s %s recusa o owner de um tenant",
+      async (method, path) => {
+        const response = await call(method, path, { cookie: users.owner?.cookie });
+
+        expect(response.status).toBe(403);
+      },
+    );
+
+    it.each(reads)("%s %s abre para o suporte", async (method, path) => {
+      const response = await call(method, path, { cookie: support.cookie });
+
+      expect(response.status).toBe(200);
+    });
+
+    it.each(writes)("%s %s recusa o suporte", async (method, path) => {
+      const response = await call(method, path, { cookie: support.cookie });
+
+      expect(response.status).toBe(403);
+    });
+
+    it.each(writes)("%s %s abre para o proprietário", async (method, path) => {
+      const response = await call(method, path, { cookie: platformOwner.cookie });
+
+      expect(response.status).toBe(404);
+    });
   });
 
   it("sem tenant ativo, as rotas de tenant respondem 403", async () => {

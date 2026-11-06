@@ -21,12 +21,17 @@ só o caminho da interface. Sem `loader` de servidor. O 2FA obrigatório da plat
 
 | Rota | Quem | Observação |
 |---|---|---|
-| `GET /api/admin/overview` | plataforma | tenants por estado, usuários, testes acabando em 7 dias, planos ativos |
+| `GET /api/admin/overview` | plataforma | tenants por estado, usuários, testes acabando em 7 dias, planos ativos, webhooks com falha |
 | `GET /api/admin/tenants?q&status&page` | plataforma | `status` é o estado de cobrança; 20 por página |
 | `GET /api/admin/tenants/:id` | plataforma | membros, assinatura, últimos eventos e auditoria |
 | `POST /api/admin/tenants/:id/suspend` `{ reason? }` | owner | `suspended` + `locked`; e-mail `tenant-suspended` aos proprietários; 409 `ALREADY_SUSPENDED` |
 | `POST /api/admin/tenants/:id/unsuspend` | owner | volta `full`, ou `read_only` se a assinatura expirou; 409 `NOT_SUSPENDED` |
-| `PUT /api/admin/tenants/:id/plan` `{ planId }` | owner | plano gratuito encerra o trial e destrava o `read_only`; plano pago mantém o estado |
+| `PUT /api/admin/tenants/:id/plan` `{ planId }` | owner | plano gratuito encerra o trial e destrava o `read_only`; plano pago mantém o estado; 409 `PROVIDER_SUBSCRIPTION_ACTIVE` com assinatura viva no provedor |
+| `GET /api/admin/subscriptions?status&q&page` | plataforma | sem referências do provedor; traz `alert` da reconciliação |
+| `POST /api/admin/subscriptions/:id/cancel` | owner | imediato, no provedor e aqui; 409 `ALREADY_CANCELED` |
+| `POST /api/admin/subscriptions/:id/sync` | owner | busca do provedor, corrige e alerta; conferido e igual, o alerta sai; 409 `NO_PROVIDER_SUBSCRIPTION` |
+| `GET /api/admin/webhooks?status&page` | plataforma | `payment_event` sem `raw`, que tem dado pessoal |
+| `POST /api/admin/webhooks/:id/reprocess` | owner | só `failed` ou `ignored` e verificado; 409 `NOT_REPROCESSABLE` |
 | `GET`, `POST /api/admin/plans` | leitura plataforma; escrita owner | 409 `SLUG_TAKEN` |
 | `PATCH /api/admin/plans/:id` | owner | parcial, o `slug` não muda; 409 `PLAN_HAS_PRICES` ao marcar gratuito com preço |
 | `POST /api/admin/plans/:id/prices`, `PATCH .../prices/:priceId` | owner | 409 `PRICE_EXISTS`, 409 `FREE_PLAN_NO_PRICE`; sem exclusão, só `active` |
@@ -46,6 +51,8 @@ tenant levam o `tenant_id`. Tabelas de tenant são lidas com `withPlatformScope(
 | `/admin/tenants`, `/admin/tenants/:id` | `tenants-page.tsx`, `tenant-detail-page.tsx` |
 | `/admin/usuarios` | `users-page.tsx` |
 | `/admin/planos`, `/admin/planos/:id` | `plans-page.tsx`, `plan-detail-page.tsx` |
+| `/admin/assinaturas` | `subscriptions-page.tsx` |
+| `/admin/webhooks` | `webhooks-page.tsx` |
 | `/admin/configuracoes` | `settings-page.tsx` |
 
 Reaproveitam o shell de `/app`: `AppSidebar`, `AppNav` e `AppTopbar` recebem o menu
@@ -56,6 +63,5 @@ escrita só aparece para `platform_owner` (`useIsPlatformOwner`). O menu do usu�
 
 ## Ainda não existe
 
-Overview sem MRR, webhooks falhos e jobs mortos (fases 6 e 10); `/admin/assinaturas`,
-`/admin/webhooks`, `/admin/jobs`, `/admin/auditoria`; personificação (fase 9); detalhe de
-usuário; revogar sessões.
+Overview sem MRR e jobs mortos; `/admin/jobs`, `/admin/auditoria`; personificação (fase 9);
+detalhe de usuário; revogar sessões.

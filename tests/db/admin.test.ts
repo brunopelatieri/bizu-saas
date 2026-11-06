@@ -132,6 +132,7 @@ describe("visão geral e tenants", () => {
     expect(Object.keys(body.tenants as object).sort()).toEqual([
       "active",
       "locked",
+      "past_due",
       "read_only",
       "trialing",
     ]);

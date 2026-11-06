@@ -120,6 +120,8 @@ a matriz papel × endpoint gerada do catálogo; `team.test.ts` e `tenant-http.te
 convite, escalada, último owner e ids cruzados, este último sobre HTTP de verdade. `admin.test.ts`
 e `billing.test.ts` cobrem `/api/admin/*`, trial, `read_only`/`locked`, limite de assentos, o job
 `billing.trial` e o seed; eles guardam e devolvem `platform_setting` e apagam os planos `test-*`.
+`billing-webhooks.test.ts` e `billing-lifecycle.test.ts` cobrem a cobrança com o provedor stub de
+`billing-helpers.ts`, e também o isolamento de `invoice`, `billing_profile` e `payment_event`.
 
 ## Seed
 

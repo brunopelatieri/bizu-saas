@@ -4,6 +4,7 @@ import type { BillingState } from "@/lib/billing/state";
 export const BILLING_STATE_LABELS: Record<BillingState, string> = {
   trialing: "Em teste",
   active: "Ativa",
+  past_due: "Pagamento pendente",
   read_only: "Somente leitura",
   locked: "Bloqueada",
 };
@@ -14,6 +15,7 @@ const VARIANTS: Record<
 > = {
   trialing: "secondary",
   active: "default",
+  past_due: "destructive",
   read_only: "outline",
   locked: "destructive",
 };

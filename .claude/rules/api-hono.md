@@ -1,6 +1,7 @@
 ---
 paths:
   - "src/api/**"
+  - "src/lib/payments/**"
   - "src/server.ts"
   - "src/lib/schemas/**"
 ---
@@ -20,6 +21,9 @@ paths:
 - SDKs com segredo, como e-mail, ficam no servidor, nunca em componentes React.
 - E-mail sai sempre por `sendEmail` (`src/lib/email/send.ts`), que enfileira; nunca chame o provedor direto numa rota. Passe `tags: { template }`.
 - Webhook de provedor lê o corpo bruto e confere a assinatura antes do JSON (`src/api/webhooks-email.ts`); `/api/ready` testa banco e fila.
+- Webhook de pagamento só verifica, grava em `payment_event` e enfileira (`src/api/webhooks-payments.ts`); quem aplica é o job `webhook.process`.
+- `/api/billing/*` segue aberta em `read_only`. Erro do provedor chega ao cliente como 502 genérico; nenhuma resposta traz referência do provedor (`tech/24-billing-cobranca.md`).
+- Falar com o provedor vem antes da transação local, nunca dentro dela.
 - `/api/admin/*` usa `requireAuth` + `requirePlatform()` e, nas escritas, `requirePlatform(["platform_owner"])` antes da validação; tabela de tenant só dentro de `withPlatformScope` (`tech/22-admin.md`).
 - Limite do plano: `assertWithinLimit(tenantId, metric)` antes de criar (`tech/23-billing-planos.md`).
 - Teste rotas com `api.request()` em `src/api/*.test.ts`; com banco real, em `tests/db/`.

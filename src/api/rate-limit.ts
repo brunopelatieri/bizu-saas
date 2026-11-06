@@ -37,6 +37,39 @@ export function clientKey(c: Context) {
 }
 
 /**
+ * Conta só as falhas de quem chama: para rotas em que o volume legítimo é alto, como
+ * webhooks. Em memória, com a mesma janela fixa de `rateLimit`.
+ */
+export function failureLimit({
+  limit,
+  windowMs,
+  maxKeys = 10_000,
+}: Pick<RateLimitOptions, "limit" | "windowMs" | "maxKeys">) {
+  const buckets = new Map<string, Bucket>();
+
+  const current = (key: string, now: number) => {
+    const bucket = buckets.get(key);
+    return bucket && bucket.resetAt > now ? bucket : undefined;
+  };
+
+  return {
+    blocked: (key: string) => (current(key, Date.now())?.count ?? 0) >= limit,
+    hit(key: string) {
+      const now = Date.now();
+
+      for (const [name, bucket] of buckets) {
+        if (bucket.resetAt > now && buckets.size < maxKeys) break;
+        buckets.delete(name);
+      }
+
+      const bucket = current(key, now) ?? { count: 0, resetAt: now + windowMs };
+      bucket.count += 1;
+      buckets.set(key, bucket);
+    },
+  };
+}
+
+/**
  * Janela fixa em memória, suficiente para um processo Node único. Com mais de
  * uma instância, cada uma conta separadamente; aí use um store compartilhado.
  */

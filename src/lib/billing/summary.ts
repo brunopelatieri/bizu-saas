@@ -11,6 +11,8 @@ export type BillingSummary = {
   trialEndsAt: string | null;
   /** Dias inteiros até o fim do trial; só em `trialing`. */
   trialDaysLeft: number | null;
+  /** Fim da carência (ISO 8601); só em `past_due`. */
+  graceUntil: string | null;
 };
 
 export type TenantBilling = {
@@ -31,6 +33,13 @@ export async function loadTenantBilling(
     accessMode: tenant.accessMode,
     subscriptionStatus: current?.subscription.status ?? null,
   });
+  // Assinatura encerrada não dá as features do plano, mesmo antes do `read_only` chegar: um
+  // checkout abandonado nasce `expired` com o plano escolhido.
+  const planApplies =
+    state !== "locked" &&
+    !["expired", "canceled", "unpaid", "paused"].includes(
+      current?.subscription.status ?? "",
+    );
   const trialEndsAt =
     state === "trialing" ? (current?.subscription.trialEndsAt ?? null) : null;
 
@@ -50,8 +59,12 @@ export async function loadTenantBilling(
       },
       trialEndsAt: trialEndsAt?.toISOString() ?? null,
       trialDaysLeft: trialEndsAt ? daysLeft(now, trialEndsAt) : null,
+      graceUntil:
+        state === "past_due"
+          ? (current?.subscription.graceUntil?.toISOString() ?? null)
+          : null,
     },
-    features: state === "locked" ? [] : (current?.plan.features ?? []),
+    features: planApplies ? (current?.plan.features ?? []) : [],
     limits: state === "locked" ? {} : limits,
   };
 }

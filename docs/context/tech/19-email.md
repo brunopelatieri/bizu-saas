@@ -75,6 +75,18 @@ Em `templates/auth/`, enviados por `src/lib/auth/emails.ts` com `sendEmail`:
 provedor, então o tempo não revela se o e-mail existe. Links vêm de `appLink`
 (`src/lib/auth/links.ts`).
 
+## Avisos de cobrança
+
+`notifyOwners` (`src/lib/billing/notify.ts`) envia aos proprietários do tenant. Saem depois do commit do
+job, com o link para `/app/assinatura`:
+
+| Template | Quando |
+|---|---|
+| `invoice-created` | fatura nova, uma vez, com valor maior que zero |
+| `payment-received` | a fatura passou a `paid` |
+| `payment-failed` | falha de cobrança, e T-3, T0 e `unpaid` do `billing.dunning` |
+| `subscription-canceled` | o owner agendou (com a data), ou o provedor encerrou sem pedido do owner |
+
 ## Convite de equipe
 
 `sendInvitationLink` (`src/lib/auth/emails.ts`) envia `invite-member` com link para

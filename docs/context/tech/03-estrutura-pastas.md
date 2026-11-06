@@ -56,5 +56,5 @@
 Autenticação: `src/lib/auth/` (servidor, cliente, e-mails, papéis), `src/routes/auth/` e
 `src/lib/email/templates/auth/`. Schema por domínio em `src/db/schema/`.
 
-Pastas previstas pelas fases seguintes: `src/lib/billing/`,
-`src/lib/payments/providers/<id>/`, `src/jobs/`, `docker/compose.prod.yml`.
+Cobrança: `src/lib/billing/` (núcleo) e `src/lib/payments/providers/<id>/` (módulos).
+Pasta prevista pelas fases seguintes: `docker/compose.prod.yml`.

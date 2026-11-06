@@ -71,6 +71,20 @@
       "when": 1793943198232,
       "tag": "0009_rls_billing",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793946256341,
+      "tag": "0010_billing_cobranca",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793946258261,
+      "tag": "0011_rls_cobranca",
+      "breakpoints": true
     }
   ]
 }

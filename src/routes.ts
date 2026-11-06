@@ -42,9 +42,9 @@ export default [
       index("routes/app.tsx"),
       route("clientes", "routes/app.coming-soon.tsx", { id: "app-clientes" }),
       route("equipe", "routes/app.team.tsx"),
-      route("assinatura", "routes/app.coming-soon.tsx", {
-        id: "app-assinatura",
-      }),
+      route("assinatura", "routes/app.subscription.tsx"),
+      route("assinatura/faturas", "routes/app.subscription.invoices.tsx"),
+      route("assinatura/retorno", "routes/app.subscription.return.tsx"),
       route("configuracoes", "routes/app.settings.tsx"),
     ]),
 
@@ -57,6 +57,8 @@ export default [
       route("usuarios", "routes/admin/users.tsx"),
       route("planos", "routes/admin/plans.tsx"),
       route("planos/:id", "routes/admin/plan.tsx"),
+      route("assinaturas", "routes/admin/subscriptions.tsx"),
+      route("webhooks", "routes/admin/webhooks.tsx"),
       route("configuracoes", "routes/admin/settings.tsx"),
     ]),
   ]),

@@ -1,5 +1,8 @@
 ---
 paths:
+  - "src/pages/subscription-page.tsx"
+  - "src/pages/invoices-page.tsx"
+  - "src/pages/checkout-return-page.tsx"
   - "src/routes/app*.tsx"
   - "src/routes/admin*.tsx"
   - "src/routes/portal*.tsx"
@@ -28,6 +31,7 @@ paths:
   `requirePermission` ou `requirePlatform`).
 - `/admin` reaproveita o shell de `/app` (menu por props em `AppSidebar`/`AppNav`) e usa `useAdminQuery`/`useAdminMutation`; toda rota `/api/admin/*` passa por `requirePlatform`, e escrita só por `["platform_owner"]`. Sem `loader` em `/admin`.
 - Esconder um botão por permissão é conveniência (`<Can>`, `useCan()`); a regra vale no servidor.
+- Pagamento confirmado é o que o banco diz: a página de retorno do checkout consulta o estado local e ignora a query string. Link vindo do provedor só entra como `href` se for `https` (`safeUrl`).
 - Tenant ativo, tenants e permissões vêm de `useAuth()`, que lê `GET /api/me`. Nada na URL identifica o tenant.
 - Mantenha o layout responsivo: sidebar colapsável no desktop e `Sheet` no mobile.
 
