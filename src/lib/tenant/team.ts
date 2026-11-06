@@ -277,6 +277,7 @@ export async function findOpenInvitation(invitationId: string) {
         eq(invitation.status, "pending"),
         gt(invitation.expiresAt, new Date()),
         eq(organization.status, "active"),
+        eq(organization.accessMode, "full"),
       ),
     );
 
@@ -299,6 +300,7 @@ export async function listInvitationsFor(email: string) {
         eq(invitation.status, "pending"),
         gt(invitation.expiresAt, new Date()),
         eq(organization.status, "active"),
+        eq(organization.accessMode, "full"),
       ),
     )
     .orderBy(asc(invitation.createdAt));

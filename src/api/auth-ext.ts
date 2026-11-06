@@ -132,8 +132,8 @@ authRoutes.all("/api/auth/organization/*", (c) =>
 );
 
 authRoutes.on(["GET", "POST"], "/api/auth/*", async (c) => {
-  // Remontada: no servidor Node, `c.req.raw` é um objeto do @hono/node-server que o
-  // construtor de `Request` não aceita. O `jsonBodyLimit` já limitou o corpo.
+  // Remontada para levar o IP resolvido em `forwardedHeaders`. O `jsonBodyLimit` já
+  // limitou o corpo.
   const { method, url } = c.req;
   const body = method === "POST" ? await c.req.text() : undefined;
 

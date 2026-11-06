@@ -2,18 +2,12 @@ import { isAPIError } from "better-auth/api";
 import type { Context } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { logError } from "@/api/log";
-import { TenantRuleError } from "@/lib/tenant/errors";
+import { ROLE_IN_USE, TenantRuleError } from "@/lib/tenant/errors";
 
 type Translated = {
   status: ContentfulStatusCode;
   code: string;
   message: string;
-};
-
-const ROLE_IN_USE: Translated = {
-  status: 409,
-  code: "ROLE_IN_USE",
-  message: "Este papel está em uso por membros ou convites pendentes.",
 };
 
 /** O plugin responde em inglês: a API devolve o texto e o status daqui. */

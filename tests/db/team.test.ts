@@ -439,6 +439,27 @@ describe("convite ponta a ponta", () => {
     expect(response.status).toBe(409);
   });
 
+  it.each([["read_only"], ["locked"]])(
+    "tenant em %s não recebe membro novo",
+    async (accessMode) => {
+      const tenantOwner = await createUser(owner);
+      const tenant = await createTenant(tenantOwner);
+      const guest = await createUser(owner);
+      await invite(tenantOwner, guest.email);
+      const id = await invitationLink(guest.email);
+      await owner`
+        update organization set access_mode = ${accessMode} where id = ${tenant.id}
+      `;
+
+      const response = await call("POST", `/api/invitations/${id}/accept`, {
+        cookie: guest.cookie,
+      });
+
+      expect(response.status).toBe(404);
+      expect(await memberIdOf(tenant.id, guest)).toBeUndefined();
+    },
+  );
+
   it("onboarding lista os convites do e-mail verificado", async () => {
     const tenantOwner = await createUser(owner);
     await createTenant(tenantOwner, "Convida");

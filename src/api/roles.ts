@@ -19,18 +19,12 @@ import { audit } from "@/lib/audit";
 import { toStatements } from "@/lib/auth/permissions";
 import { getAuth } from "@/lib/auth/server";
 import { roleSchema, updateRoleSchema } from "@/lib/schemas/roles";
-import { TenantRuleError } from "@/lib/tenant/errors";
+import { ROLE_IN_USE } from "@/lib/tenant/errors";
 import {
   countRoleUsage,
   findCustomRole,
   listCustomRoles,
 } from "@/lib/tenant/roles";
-
-const ROLE_IN_USE = new TenantRuleError(
-  409,
-  "ROLE_IN_USE",
-  "Este papel está em uso por membros ou convites pendentes.",
-);
 
 /**
  * Papéis personalizados. O plugin não tem hook para isso: `roleSchema` recusa as

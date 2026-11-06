@@ -23,15 +23,8 @@ export type TenantEnv = AuthEnv & {
 
 const MUTATIONS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
-/** Identifica o tenant ativo da sessão e recusa quem não pode usá-lo agora. */
-function refusal(c: Context, tenant: Membership | null) {
-  if (!tenant) {
-    return c.json(
-      { error: "Selecione uma organização.", code: "TENANT_REQUIRED" },
-      403,
-    );
-  }
-
+/** Recusa quem não pode usar agora o tenant ativo da sessão. */
+function refusal(c: Context, tenant: Membership) {
   if (tenant.status !== "active" || tenant.accessMode === "locked") {
     return c.json(
       { error: "Esta organização está suspensa.", code: "TENANT_SUSPENDED" },
@@ -75,8 +68,15 @@ export const requireTenant = createMiddleware<TenantEnv>(async (c, next) => {
     return c.json({ error: "Organização indisponível." }, 503);
   }
 
+  if (!tenant) {
+    return c.json(
+      { error: "Selecione uma organização.", code: "TENANT_REQUIRED" },
+      403,
+    );
+  }
+
   const refused = refusal(c, tenant);
-  if (refused || !tenant) return refused ?? undefined;
+  if (refused) return refused;
 
   c.set("tenant", tenant);
   c.set("roleCatalog", catalog);

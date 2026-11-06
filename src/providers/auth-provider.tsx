@@ -81,13 +81,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.clear();
   }, [queryClient]);
 
-  const refresh = useCallback(async () => {
-    await refetch();
-  }, [refetch]);
-
   const reloadAccount = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ["me"] });
   }, [queryClient]);
+
+  const refresh = useCallback(async () => {
+    await refetch();
+    await reloadAccount();
+  }, [refetch, reloadAccount]);
 
   const switchTenant = useCallback(
     async (tenantId: string) => {
@@ -95,7 +96,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         method: "POST",
         body: JSON.stringify({ tenantId }),
       });
-      await queryClient.invalidateQueries();
+      // Limpa em vez de invalidar: refeita agora, a busca da tela ainda usaria a chave do
+      // tenant anterior e guardaria nela os dados do novo.
+      await queryClient.resetQueries();
     },
     [queryClient],
   );
@@ -110,7 +113,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       tenants: me?.tenants ?? NO_TENANTS,
       permissions: me?.permissions ?? NO_PERMISSIONS,
       accountLoading: Boolean(data) && account.isPending,
-      accountError: account.error,
+      // Com dados em mãos, uma releitura que falha não derruba a tela.
+      accountError: me ? null : account.error,
       signIn,
       signUp,
       signOut,

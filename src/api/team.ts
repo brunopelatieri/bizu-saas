@@ -15,7 +15,7 @@ import {
   type TenantEnv,
   teamActor,
 } from "@/api/permissions";
-import { clientKey, rateLimit } from "@/api/rate-limit";
+import { rateLimit } from "@/api/rate-limit";
 import { handleTenantError } from "@/api/tenant-errors";
 import { audit } from "@/lib/audit";
 import { roleLabel } from "@/lib/auth/permissions";
@@ -150,7 +150,7 @@ teamRoutes.delete(
       actor: { id: actor.userId },
       tenantId: organizationId,
       target: { type: "invitation", id: invitation.id },
-      ip: clientKey(c),
+      ip: actor.ip,
     });
 
     return c.json({ ok: true });

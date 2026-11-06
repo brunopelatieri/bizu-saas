@@ -12,5 +12,11 @@ export class TenantRuleError extends Error {
   }
 }
 
+export const ROLE_IN_USE = new TenantRuleError(
+  409,
+  "ROLE_IN_USE",
+  "Este papel está em uso por membros ou convites pendentes.",
+);
+
 export const notFound = (message: string) =>
   new TenantRuleError(404, "NOT_FOUND", message);

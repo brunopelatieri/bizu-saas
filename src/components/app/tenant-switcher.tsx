@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -54,13 +55,15 @@ export function TenantSwitcher({ collapsed = false }: { collapsed?: boolean }) {
         }
       />
       <DropdownMenuContent align="start" className="w-56">
-        <DropdownMenuLabel>Organizações</DropdownMenuLabel>
-        {tenants.map(({ id, name }) => (
-          <DropdownMenuItem key={id} onClick={() => void select(id)}>
-            <span className="min-w-0 flex-1 truncate">{name}</span>
-            {id === tenant?.id ? <Check className="size-4 shrink-0" /> : null}
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Organizações</DropdownMenuLabel>
+          {tenants.map(({ id, name }) => (
+            <DropdownMenuItem key={id} onClick={() => void select(id)}>
+              <span className="min-w-0 flex-1 truncate">{name}</span>
+              {id === tenant?.id ? <Check className="size-4 shrink-0" /> : null}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem render={<Link to="/app/onboarding" />}>
           <Plus />

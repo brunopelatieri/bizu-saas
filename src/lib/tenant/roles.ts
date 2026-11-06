@@ -1,6 +1,6 @@
 import { and, eq, gt, like } from "drizzle-orm";
 import { invitation, member, organizationRole } from "@/db/schema";
-import { type Tx, withTenant } from "@/db/rls";
+import { withTenant } from "@/db/rls";
 import {
   flattenStatements,
   type RoleCatalog,
@@ -20,22 +20,18 @@ function parsePermissions(permission: string) {
   return flattenStatements(JSON.parse(permission) as Record<string, string[]>);
 }
 
-function selectRoles(tx: Tx, tenantId: string) {
-  return tx
-    .select({
-      id: organizationRole.id,
-      name: organizationRole.role,
-      description: organizationRole.description,
-      permission: organizationRole.permission,
-    })
-    .from(organizationRole)
-    .where(eq(organizationRole.organizationId, tenantId))
-    .orderBy(organizationRole.role);
-}
-
 export function listCustomRoles(tenantId: string): Promise<CustomRole[]> {
   return withTenant(tenantId, async (tx) => {
-    const rows = await selectRoles(tx, tenantId);
+    const rows = await tx
+      .select({
+        id: organizationRole.id,
+        name: organizationRole.role,
+        description: organizationRole.description,
+        permission: organizationRole.permission,
+      })
+      .from(organizationRole)
+      .where(eq(organizationRole.organizationId, tenantId))
+      .orderBy(organizationRole.role);
 
     return rows.map(({ permission, ...role }) => ({
       ...role,
