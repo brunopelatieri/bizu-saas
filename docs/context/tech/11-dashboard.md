@@ -12,7 +12,9 @@
 | `/app/clientes` | em breve (fase 8) |
 | `/app/onboarding` | criação do tenant e convites abertos; fora do layout com sidebar |
 | `/app/equipe` | membros, convites, reenvio, revogação, troca de papel e remoção |
-| `/app/assinatura` | em breve (fase 6) |
+| `/app/assinatura` | plano e estado, escolha de plano e método por capacidades, perfil de faturamento, cancelar, pausar, portal e faturas recentes |
+| `/app/assinatura/faturas` | histórico, com link para a fatura no provedor |
+| `/app/assinatura/retorno` | volta do checkout: consulta o estado local, nunca a query string |
 | `/app/configuracoes` | organização, papéis personalizados (só owner) e troca de e-mail |
 
 `/admin/**` (proprietário e suporte da plataforma, `tech/22-admin.md`) reaproveita o mesmo
@@ -28,13 +30,14 @@ shell com outro menu; `/portal/**` (fase 8) seguirá o mesmo modelo.
   interface; quem barra os dados é `requireTenant`.
 - `useAuth()` expõe `tenant`, `tenants`, `permissions`, `billing`, `features`, `limits`,
   `reloadAccount` e `switchTenant`.
-- `BillingBanner` (topo de `/app`) avisa do fim do trial e do modo somente leitura; só informa,
-  a API é quem bloqueia. O cartão "Assinatura" da visão geral mostra o plano e os dias restantes.
+- `BillingBanner` (topo de `/app`) avisa do fim do trial, do pagamento pendente e do modo somente
+  leitura, com link para `/app/assinatura`; só informa, a API é quem bloqueia. O cartão "Assinatura" da visão geral mostra o plano e os dias restantes.
 - `AppSidebar`, `AppNav` e `AppTopbar` recebem o menu por props (`nav`, `header`, `subtitle`); o
   `AdminLayout` passa o de `admin-nav.ts`.
 - `<Can resource action>` e `useCan()` escondem ações; item de menu usa `permission` em
   `app-nav.ts`. A regra vale na API.
-- Sem `loader` de servidor; dados buscados no cliente via TanStack Query.
+- Sem `loader` de servidor; dados buscados no cliente via TanStack Query. Cobrança em
+  `src/components/app/billing/`, com `useBillingMutation`, que também relê `/api/me`.
 - `AccountCard` (`src/components/app/account-card.tsx`) é o exemplo de dados
   privados: `useQuery` + `apiFetch` -> `GET /api/me` -> `requireAuth` -> Drizzle.
 - Navegação em `src/lib/constants/app-nav.ts`; tela nova entra lá e em
