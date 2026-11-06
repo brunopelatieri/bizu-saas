@@ -25,6 +25,8 @@ export type EmailEvent = {
   recipient: string;
   occurredAt: Date;
   reason?: string;
+  /** Só em `bounced`: `true` para bounce permanente (hard), que suprime o endereço. */
+  permanent?: boolean;
 };
 
 export type EmailProviderId = "smtp" | "resend" | "memory";

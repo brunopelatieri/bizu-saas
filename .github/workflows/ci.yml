@@ -51,6 +51,8 @@ jobs:
         env:
           PGPASSWORD: postgres
       - run: npm run db:migrate
+      # Tabelas do pg-boss (schema pgboss) e filas, com bizu_owner.
+      - run: npm run jobs:install
       - run: npm run test:db
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high
