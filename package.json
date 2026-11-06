@@ -13,7 +13,7 @@
     "build": "react-router build",
     "start": "node ./build/server/index.js",
     "typecheck": "react-router typegen && tsc -p tsconfig.app.json && tsc -p tsconfig.node.json",
-    "lint": "biome lint",
+    "lint": "biome lint src tests",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",

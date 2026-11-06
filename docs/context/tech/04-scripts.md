@@ -10,7 +10,7 @@
 | `npm run build` | Gera `build/client` e `build/server` |
 | `npm run start` | Roda produção local: `node ./build/server/index.js` |
 | `npm run typecheck` | Gera os tipos de rota e verifica `tsconfig.app.json` e `tsconfig.node.json` |
-| `npm run lint` | Lint com Biome |
+| `npm run lint` | Lint com Biome em `src/` e `tests/` (caminhos explícitos: worktrees em `.claude/worktrees/` têm `biome.json` próprio) |
 | `npm test` | Testes unitários e de API, sem banco |
 | `npm run test:db` | Testes em `tests/db/` contra o Postgres do Docker (`DATABASE_URL` e `DIRECT_URL`) |
 | `npm run db:generate` | Gera migrations Drizzle |
