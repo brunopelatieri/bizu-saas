@@ -1,7 +1,14 @@
 import { escapeLike } from "@/lib/admin/tenants";
 import { count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { member, user } from "@/db/schema";
+import { withPlatformScope } from "@/db/rls";
+import {
+  customer,
+  member,
+  portalSession,
+  portalUser,
+  user,
+} from "@/db/schema";
 import { PAGE_SIZE } from "@/lib/schemas/admin";
 import { notFound, TenantRuleError } from "@/lib/tenant/errors";
 
@@ -26,7 +33,9 @@ export async function listUsers(input: { q?: string; page: number }) {
       emailVerified: user.emailVerified,
       banned: user.banned,
       banReason: user.banReason,
-      tenants: sql<number>`(select count(*)::int from ${member} where ${member.userId} = ${user.id})`,
+      // Com uma tabela só no `from`, o Drizzle tira o prefixo das colunas: `${user.id}`
+      // viraria `id`, e dentro da subconsulta seria o da outra tabela.
+      tenants: sql<number>`(select count(*)::int from ${member} where ${member.userId} = "user"."id")`,
       createdAt: user.createdAt,
     })
     .from(user)
@@ -36,6 +45,55 @@ export async function listUsers(input: { q?: string; page: number }) {
     .offset((input.page - 1) * PAGE_SIZE);
 
   return { items, total: totalRow?.total ?? 0, pageSize: PAGE_SIZE };
+}
+
+/**
+ * Clientes e leads. A contagem de tenants lê `customer`, com RLS, e por isso roda em
+ * `withPlatformScope`. O número atravessa tenants, e só a plataforma o vê.
+ */
+export function listPortalUsers(input: { q?: string; page: number }) {
+  const term = input.q ? `%${escapeLike(input.q)}%` : null;
+  const where = term
+    ? or(ilike(portalUser.email, term), ilike(portalUser.name, term))
+    : undefined;
+
+  return withPlatformScope("admin: lista usuários do portal", async (tx) => {
+    const [totalRow] = await tx
+      .select({ total: count() })
+      .from(portalUser)
+      .where(where);
+    const items = await tx
+      .select({
+        id: portalUser.id,
+        name: portalUser.name,
+        email: portalUser.email,
+        emailVerified: portalUser.emailVerified,
+        tenants: sql<number>`(select count(*)::int from ${customer} where ${customer.portalUserId} = "portal_user"."id")`,
+        sessions: sql<number>`(select count(*)::int from ${portalSession} where ${portalSession.userId} = "portal_user"."id" and ${portalSession.expiresAt} > now())`,
+        createdAt: portalUser.createdAt,
+      })
+      .from(portalUser)
+      .where(where)
+      .orderBy(desc(portalUser.createdAt))
+      .limit(PAGE_SIZE)
+      .offset((input.page - 1) * PAGE_SIZE);
+
+    return { items, total: totalRow?.total ?? 0, pageSize: PAGE_SIZE };
+  });
+}
+
+/** Derruba todas as sessões do cliente. Ele entra de novo por um magic link. */
+export async function revokePortalSessions(portalUserId: string) {
+  const [target] = await getDb()
+    .select({ id: portalUser.id })
+    .from(portalUser)
+    .where(eq(portalUser.id, portalUserId));
+
+  if (!target) throw notFound("Usuário não encontrado.");
+
+  await getDb()
+    .delete(portalSession)
+    .where(eq(portalSession.userId, portalUserId));
 }
 
 /**

@@ -24,6 +24,7 @@ import {
   saveSettings,
   type SavedSettings,
 } from "./billing-helpers";
+import { cleanUpPortal, customerEmail } from "./portal-helpers";
 
 /**
  * `/api/admin/*`: recusa quem não é da plataforma, separa leitura (suporte) de escrita
@@ -61,6 +62,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
   setEmailProviderForTests(undefined);
+  await cleanUpPortal(owner);
   await cleanUpBilling(owner);
   await restoreSettings(owner, saved);
   await cleanUp(owner);
@@ -489,6 +491,55 @@ describe("usuários", () => {
 
     const unban = await send(platformOwner, "POST", `/api/admin/users/${target.id}/unban`);
     expect(unban.status).toBe(200);
+  });
+
+  it("lista clientes do portal à parte, sem misturar com a equipe", async () => {
+    const email = customerEmail();
+    const [person] = await owner<{ id: string }[]>`
+      insert into portal_user (name, email) values ('Cliente', ${email}) returning id
+    `;
+    await owner.begin(async (tx) => {
+      await tx`select set_config('app.bypass_tenant', 'on', true)`;
+      await tx`
+        insert into customer (tenant_id, portal_user_id, name, email)
+        values (${tenantId}, ${person?.id ?? ""}, 'Cliente', ${email})
+      `;
+    });
+
+    const portal = await get(support, `/api/admin/users?scope=portal&q=${email}`);
+    expect(portal.status).toBe(200);
+    expect(await bodyOf(portal)).toMatchObject({
+      total: 1,
+      items: [{ email, tenants: 1, sessions: 0, emailVerified: false }],
+    });
+
+    const team = await get(support, `/api/admin/users?q=${email}`);
+    expect(await bodyOf(team)).toMatchObject({ total: 0 });
+  });
+
+  it("revoga as sessões do portal; suporte não revoga", async () => {
+    const email = customerEmail();
+    const [person] = await owner<{ id: string }[]>`
+      insert into portal_user (name, email, email_verified)
+      values ('Cliente', ${email}, true) returning id
+    `;
+    const id = person?.id ?? "";
+    await owner`
+      insert into portal_session (token, user_id, expires_at)
+      values (${randomUUID()}, ${id}, now() + interval '1 day')
+    `;
+    const path = `/api/admin/portal-users/${id}/revoke-sessions`;
+
+    expect((await send(support, "POST", path)).status).toBe(403);
+    expect((await send(regular, "POST", path)).status).toBe(403);
+
+    expect((await send(platformOwner, "POST", path)).status).toBe(200);
+    expect(
+      await owner`select 1 from portal_session where user_id = ${id}`,
+    ).toHaveLength(0);
+
+    const unknown = `/api/admin/portal-users/${randomUUID()}/revoke-sessions`;
+    expect((await send(platformOwner, "POST", unknown)).status).toBe(404);
   });
 
   it("não bane a si mesmo nem outro usuário da plataforma", async () => {

@@ -74,7 +74,8 @@ O banner de `/app` (`BillingBanner`) só informa; quem barra é a API.
   próprio convite (`ignoreInvitationId`).
 - Aplicado em `POST /api/team/invitations` e `POST /api/invitations/:id/accept`.
 - `custom_roles` conta `organization_role` e é aplicado em `POST /api/roles`; sem limite no plano,
-  vale o teto fixo de 20 do plugin. `customers` e `storage_mb` contam 0 até as fases 8 e 10.
+  vale o teto fixo de 20 do plugin. `customers` conta as linhas de `customer` do tenant e é
+  aplicado em `POST /api/customers`; `storage_mb` conta 0 até a fase 10.
 - Features: `GET /api/me` entrega a lista; `hasFeature` no servidor e `tenant_feature_override`
   ficam para quando a primeira feature for cobrada.
 

@@ -3,6 +3,7 @@ import { logError } from "@/api/log";
 import { withPlatformScope } from "@/db/rls";
 import {
   auditLog,
+  customer,
   member,
   organization,
   paymentEvent,
@@ -287,6 +288,8 @@ export async function getOverview(now = new Date()) {
         ),
       );
 
+    const [customers] = await tx.select({ total: count() }).from(customer);
+
     const [plans] = await tx
       .select({ total: count() })
       .from(plan)
@@ -312,6 +315,7 @@ export async function getOverview(now = new Date()) {
       tenants,
       tenantsTotal: Object.values(tenants).reduce((sum, value) => sum + value, 0),
       users: { total: users?.total ?? 0, banned: users?.banned ?? 0 },
+      customers: customers?.total ?? 0,
       trialsExpiringSoon: expiring?.total ?? 0,
       activePlans: plans?.total ?? 0,
       failedWebhooks: failed?.total ?? 0,

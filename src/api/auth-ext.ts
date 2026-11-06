@@ -26,7 +26,7 @@ import {
 } from "@/lib/schemas/auth";
 
 /** O IP resolvido por `TRUSTED_PROXY_HOPS`, sobrescrevendo o que o cliente mandar. */
-function forwardedHeaders(c: Context) {
+export function forwardedHeaders(c: Context) {
   const headers = new Headers(c.req.raw.headers);
   headers.set(CLIENT_IP_HEADER, clientKey(c));
   // Quem chama estas funções remonta o corpo.
@@ -46,7 +46,7 @@ function verificationStep(token: string): VerificationStep {
 const validEmail = zValidator("json", emailOnlySchema, validationError);
 
 /** Conta por e-mail, exista ele ou não: o 429 não revela nada. */
-const rateLimitByEmail = rateLimit({
+export const createRateLimitByEmail = () => rateLimit({
   limit: 3,
   windowMs: 60 * MINUTE,
   key: async (c) => {
@@ -56,6 +56,8 @@ const rateLimitByEmail = rateLimit({
       .digest("hex");
   },
 });
+
+const rateLimitByEmail = createRateLimitByEmail();
 
 /**
  * Rotas de autenticação com regra própria, antes do handler do Better Auth.

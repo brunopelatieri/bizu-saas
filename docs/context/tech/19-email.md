@@ -129,6 +129,9 @@ export function trialExpiredTemplate(input: TrialExpiredInput) {
 - E-mail de tenant usa o nome do tenant no assunto; o `From` continua da plataforma
   e o `Reply-To` (`message.replyTo`) é do owner.
 
+`portal-invite` e `portal-magic-link` saem de `src/lib/auth/portal-emails.ts`, com link para
+`/portal/entrar?token=&org=`; o convite vale 48 h, e o login, 10 min.
+
 Templates gerais (fase 3): `invite-member`, `portal-invite`, `portal-magic-link`,
 `trial-ending`, `trial-expired`, `invoice-created`, `payment-failed`, `payment-received`,
 `subscription-canceled`, `impersonation-requested`, `impersonation-started`,

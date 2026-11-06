@@ -15,6 +15,7 @@ import {
   makePlatformUser,
   STUB_ID,
 } from "./billing-helpers";
+import { cleanUpPortal } from "./portal-helpers";
 import {
   addMember,
   cleanUp,
@@ -22,6 +23,7 @@ import {
   createRole,
   createTenant,
   createUser,
+  DOMAIN,
   type TestUser,
 } from "./tenant-helpers";
 
@@ -77,7 +79,54 @@ describe("rotas de equipe sobre o servidor Node", () => {
       await tx`delete from payment_event where provider = ${STUB_ID}`;
     });
     await cleanUp(owner);
+    await cleanUpPortal(owner);
     await owner.end();
+  });
+
+  describe("rotas de clientes", () => {
+    async function createCustomerOverHttp() {
+      const response = await request("POST", "/api/customers", {
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Cliente", email: `${randomUUID()}@${DOMAIN}` }),
+      });
+      expect(response.status).toBe(201);
+
+      const { customer } = (await response.json()) as { customer: { id: string } };
+      return customer.id;
+    }
+
+    it("POST /api/customers/:id/invite sem corpo envia o acesso", async () => {
+      const id = await createCustomerOverHttp();
+
+      const response = await request("POST", `/api/customers/${id}/invite`);
+
+      expect(response.status).toBe(200);
+    });
+
+    it("DELETE /api/customers/:id sem corpo remove", async () => {
+      const id = await createCustomerOverHttp();
+
+      const response = await request("DELETE", `/api/customers/${id}`);
+
+      expect(response.status).toBe(200);
+    });
+
+    it("rotas do Better Auth no portal passam pelo servidor Node", async () => {
+      const anonymous = await request("GET", "/api/portal/auth/get-session");
+      expect(anonymous.status).toBe(200);
+
+      const verify = await request("POST", "/api/portal/auth/magic-link/verify", {
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: "inexistente" }),
+      });
+      expect(verify.status).toBe(400);
+
+      const signOut = await request("POST", "/api/portal/auth/sign-out", {
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      expect(signOut.status).toBe(200);
+    });
   });
 
   describe("rotas de cobrança", () => {
@@ -101,6 +150,7 @@ describe("rotas de equipe sobre o servidor Node", () => {
     );
 
     it.each([
+      `/api/admin/portal-users/${anyId}/revoke-sessions`,
       `/api/admin/webhooks/${anyId}/reprocess`,
       `/api/admin/subscriptions/${anyId}/cancel`,
       `/api/admin/subscriptions/${anyId}/sync`,

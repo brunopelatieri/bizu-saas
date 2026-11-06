@@ -1,5 +1,16 @@
-/** Prefixo dos cookies da instância `auth`; a de portal (fase 8) usa outro. */
+/** Prefixo dos cookies da instância `auth`. */
 export const AUTH_COOKIE_PREFIX = "bizu";
+
+/** Prefixo dos cookies da instância `portalAuth`: um nunca vale pelo outro. */
+export const PORTAL_COOKIE_PREFIX = "bizu_portal";
+
+export const PORTAL_AUTH_BASE_PATH = "/api/portal/auth";
+
+/** Link de login pedido em `/portal/login`: 10 min. */
+export const PORTAL_MAGIC_LINK_TTL_SECONDS = 10 * 60;
+
+/** Link de convite enviado pelo owner: 48 h. */
+export const PORTAL_INVITE_TTL_SECONDS = 2 * 24 * 60 * 60;
 
 /** Cabeçalho interno com o IP resolvido pela API. Nunca confie no valor do cliente. */
 export const CLIENT_IP_HEADER = "x-bizu-client-ip";

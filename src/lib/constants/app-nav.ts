@@ -50,5 +50,7 @@ export const appTitles: Record<string, string> = {
 };
 
 export function appTitleFromPath(pathname: string): string {
+  if (pathname.startsWith("/app/clientes/")) return "Cliente";
+
   return appTitles[pathname] ?? "Visão geral";
 }

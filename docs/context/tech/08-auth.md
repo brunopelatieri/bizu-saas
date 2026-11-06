@@ -1,15 +1,16 @@
 # Autenticação
 
-- **Escopo:** Better Auth da equipe e da plataforma, verificação de e-mail, sessão e papéis.
+- **Escopo:** Better Auth da equipe e da plataforma, verificação de e-mail, sessão e papéis. A instância do portal está em `tech/25-portal-clientes.md`.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-auth.md`, `spec-seguranca.md`
 - **Paths do código:** `src/lib/auth/`, `src/api/auth.ts`, `src/api/auth-ext.ts`, `src/api/guards.ts`, `src/api/verification-guard.ts`, `src/db/schema/auth.ts`, `src/lib/schemas/auth.ts`, `src/lib/email/templates/auth/`, `src/providers/auth-provider.tsx`, `src/components/auth/`, `src/pages/*-page.tsx`, `src/routes/auth/`
 
 ## Estado atual
 
 Instância `auth`, para plataforma e equipe, com sessão em cookie no Postgres e o plugin
-`organization` (`tech/21-tenant-rbac.md`). Ainda não existem: `portalAuth` (fase 8), 2FA e
-personificação (fase 9) e `consent_log` (fase 10); o aceite de termos é exigido, mas não
-registrado.
+`organization` (`tech/21-tenant-rbac.md`). Clientes e leads usam outra instância, `portalAuth`,
+com cookies, tabelas e segredo próprios (`tech/25-portal-clientes.md`): um cookie nunca vale
+pelo outro. Ainda não existem: 2FA e personificação (fase 9) e `consent_log` (fase 10); o
+aceite de termos é exigido, mas não registrado.
 
 | Peça | Arquivo | Papel |
 |---|---|---|
@@ -20,6 +21,7 @@ registrado.
 | Servidor | `src/api/auth.ts` | `requireAuth` e `requirePlatform` |
 | Cliente | `src/lib/auth/client.ts`, `src/providers/auth-provider.tsx` | `authClient`, `useAuth()` |
 | Papéis | `src/lib/auth/permissions.ts` | plataforma em `user.role`; catálogo e papéis do tenant, compartilhados com o cliente |
+| Portal | `src/lib/auth/portal.ts`, `src/api/portal-auth.ts` | `getPortalAuth()`, `requirePortalAuth`, `requirePortalTenant` |
 
 ## Rotas
 

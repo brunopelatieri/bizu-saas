@@ -5,7 +5,12 @@ paths:
   - "src/pages/checkout-return-page.tsx"
   - "src/routes/app*.tsx"
   - "src/routes/admin*.tsx"
-  - "src/routes/portal*.tsx"
+  - "src/routes/portal/**"
+  - "src/components/portal/**"
+  - "src/pages/portal/**"
+  - "src/pages/customer*-page.tsx"
+  - "src/providers/portal-auth-provider.tsx"
+  - "src/lib/constants/portal-nav.ts"
   - "src/components/app/**"
   - "src/components/admin/**"
   - "src/pages/admin/**"
@@ -33,6 +38,7 @@ paths:
 - Esconder um botão por permissão é conveniência (`<Can>`, `useCan()`); a regra vale no servidor.
 - Pagamento confirmado é o que o banco diz: a página de retorno do checkout consulta o estado local e ignora a query string. Link vindo do provedor só entra como `href` se for `https` (`safeUrl`).
 - Tenant ativo, tenants e permissões vêm de `useAuth()`, que lê `GET /api/me`. Nada na URL identifica o tenant.
+- `/portal/**` tem layout e sessão próprios (`PortalLayout`, `usePortalAuth()`), sem nada de `/app`: o tenant ativo vem de `GET /api/portal/me`, e o único `org` na URL é o do login. Nenhuma tela do portal consome token no GET.
 - Mantenha o layout responsivo: sidebar colapsável no desktop e `Sheet` no mobile.
 
 Para entender este domínio, leia: docs/context/tech/11-dashboard.md e docs/context/tech/22-admin.md

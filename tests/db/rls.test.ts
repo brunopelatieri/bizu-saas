@@ -9,8 +9,9 @@ import * as schema from "@/db/schema";
 import { connectOwner } from "./tenant-helpers";
 
 /**
- * Isolamento na camada do banco (`spec-tenant-rbac.md`). `customer` chega na fase 8; até
- * lá `audit_log` é a tabela de tenant que prova as regras, e o inventário cobre as novas.
+ * Isolamento na camada do banco (`spec-tenant-rbac.md`). `audit_log` prova as regras, e o
+ * inventário cobre as tabelas novas. Os passos com `customer` estão em
+ * `portal-isolation.test.ts`.
  */
 
 const { auditLog } = schema;

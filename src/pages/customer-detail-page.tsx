@@ -1,0 +1,170 @@
+import { useState } from "react";
+import { Link, useNavigate, useParams } from "react-router";
+import { PageTitle, QueryState } from "@/components/admin/query-state";
+import { ConfirmDialog } from "@/components/app/confirm-dialog";
+import { CustomerFormDialog } from "@/components/app/customers/customer-form-dialog";
+import { CustomerStatusBadge } from "@/components/app/customers/customer-status-badge";
+import {
+  type Customer,
+  formatDateTime,
+  useCustomer,
+  useCustomerMutation,
+} from "@/components/app/customers/customers-api";
+import { Can } from "@/components/auth/can";
+import { DetailRow } from "@/components/detail-row";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+function PortalAccessCard({ customer }: { customer: Customer }) {
+  const invite = useCustomerMutation("Acesso enviado por e-mail.");
+  const changeStatus = useCustomerMutation("Situação atualizada.");
+  const path = `/api/customers/${customer.id}`;
+  const blocked = customer.status === "blocked";
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Portal do cliente</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <dl className="space-y-3 text-sm">
+          <DetailRow
+            label="Acesso enviado em"
+            value={customer.invitedAt ? formatDateTime(customer.invitedAt) : null}
+          />
+          <DetailRow label="Último acesso" value={formatDateTime(customer.lastLoginAt)} />
+        </dl>
+        <div className="flex flex-wrap gap-2">
+          <Can resource="customer" action="invite">
+            <Button
+              disabled={blocked || invite.isPending}
+              onClick={() => invite.mutate({ path: `${path}/invite`, method: "POST" })}
+            >
+              {customer.invitedAt
+                ? "Reenviar acesso ao portal"
+                : "Enviar acesso ao portal"}
+            </Button>
+          </Can>
+          <Can resource="customer" action="update">
+            <Button
+              variant="outline"
+              disabled={changeStatus.isPending}
+              onClick={() =>
+                changeStatus.mutate({
+                  path,
+                  method: "PATCH",
+                  body: { status: blocked ? "lead" : "blocked" },
+                })
+              }
+            >
+              {blocked ? "Desbloquear" : "Bloquear"}
+            </Button>
+          </Can>
+        </div>
+        {blocked ? (
+          <p className="text-sm text-muted-foreground">
+            Desbloqueado, o cliente volta a lead e entra depois de um novo envio.
+          </p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+}
+
+export function CustomerDetailPage() {
+  const { id = "" } = useParams();
+  const navigate = useNavigate();
+  const query = useCustomer(id);
+  const [editing, setEditing] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const remove = useCustomerMutation("Cliente removido.");
+  const customer = query.data?.customer;
+
+  function confirmRemoval() {
+    remove.mutate(
+      { path: `/api/customers/${id}`, method: "DELETE" },
+      { onSuccess: () => navigate("/app/clientes", { replace: true }) },
+    );
+  }
+
+  return (
+    <div className="max-w-3xl space-y-6">
+      <Link
+        to="/app/clientes"
+        className="text-sm text-muted-foreground hover:text-foreground"
+      >
+        ← Clientes
+      </Link>
+
+      <QueryState {...query}>
+        {customer ? (
+          <>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="space-y-2">
+                <PageTitle title={customer.name} />
+                <CustomerStatusBadge status={customer.status} />
+              </div>
+              <div className="flex gap-2">
+                <Can resource="customer" action="update">
+                  <Button variant="outline" onClick={() => setEditing(true)}>
+                    Editar
+                  </Button>
+                </Can>
+                <Can resource="customer" action="delete">
+                  <Button variant="ghost" onClick={() => setRemoving(true)}>
+                    Remover
+                  </Button>
+                </Can>
+              </div>
+            </div>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Dados</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <dl className="space-y-3 text-sm">
+                  <DetailRow label="E-mail" value={customer.email} />
+                  <DetailRow label="Telefone" value={customer.phone} />
+                  <DetailRow label="Documento" value={customer.document} />
+                </dl>
+                {customer.tags.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {customer.tags.map((tag) => (
+                      <Badge key={tag} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
+                {customer.notes ? (
+                  <p className="whitespace-pre-wrap text-sm text-muted-foreground">
+                    {customer.notes}
+                  </p>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            <PortalAccessCard customer={customer} />
+
+            <CustomerFormDialog
+              open={editing}
+              customer={customer}
+              onClose={() => setEditing(false)}
+            />
+            <ConfirmDialog
+              open={removing}
+              title="Remover cliente"
+              description={`${customer.name} sai desta organização e perde o acesso ao portal na hora.`}
+              confirmLabel="Remover"
+              pending={remove.isPending}
+              onConfirm={confirmRemoval}
+              onCancel={() => setRemoving(false)}
+            />
+          </>
+        ) : null}
+      </QueryState>
+    </div>
+  );
+}

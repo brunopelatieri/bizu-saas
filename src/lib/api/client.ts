@@ -9,22 +9,43 @@ export class ApiError extends Error {
   }
 }
 
-/**
- * Sessão recusada dentro de `/app` ou `/admin`: limpa os cookies antes de ir ao login. Sem isso,
- * o cache da sessão no cookie mandaria de volta para `/app`, em ciclo.
- */
-async function leaveExpiredSession() {
-  if (typeof window === "undefined") return;
+/** Telas do portal que não pedem sessão: um 401 aqui não é sessão vencida. */
+const PORTAL_PUBLIC_PATHS = [
+  "/portal/login",
+  "/portal/entrar",
+  "/portal/confirmar",
+  "/portal/cadastro",
+];
 
-  const { pathname, search } = window.location;
-  if (!pathname.startsWith("/app") && !pathname.startsWith("/admin")) return;
-
-  await fetch("/api/auth/sign-out", {
+function signOutAt(path: string) {
+  return fetch(path, {
     method: "POST",
     credentials: "same-origin",
     headers: { "Content-Type": "application/json" },
     body: "{}",
   }).catch(() => {});
+}
+
+/**
+ * Sessão recusada dentro de `/app`, `/admin` ou `/portal`: limpa os cookies antes de ir ao
+ * login da área. Sem isso, o cache da sessão no cookie mandaria de volta, em ciclo.
+ */
+async function leaveExpiredSession() {
+  if (typeof window === "undefined") return;
+
+  const { pathname, search } = window.location;
+
+  if (pathname === "/portal" || pathname.startsWith("/portal/")) {
+    if (PORTAL_PUBLIC_PATHS.includes(pathname)) return;
+
+    await signOutAt("/api/portal/auth/sign-out");
+    window.location.assign("/portal/login");
+    return;
+  }
+
+  if (!pathname.startsWith("/app") && !pathname.startsWith("/admin")) return;
+
+  await signOutAt("/api/auth/sign-out");
 
   window.location.assign(
     `/login?next=${encodeURIComponent(pathname + search)}`,

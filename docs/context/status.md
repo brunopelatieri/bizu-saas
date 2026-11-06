@@ -15,8 +15,8 @@
 | 4 | Tenant, equipe, RBAC, RLS e `audit_log` | concluída |
 | 5 | Admin e planos: `/admin`, planos, trial, limites, `read_only`, job `billing.trial`, `/precos`, seed | concluída |
 | 6 | Billing núcleo + Stripe | concluída; falta o checklist em sandbox real do Stripe |
-| 7 | Módulo Asaas | pendente |
-| 8 | Portal do cliente | pendente |
+| 7 | Módulo Asaas | adiada: os provedores de pagamento seguem desligados (`PAYMENT_PROVIDERS` vazio) por decisão do usuário, e a fase 8 não depende dela |
+| 8 | Portal do cliente | concluída |
 | 9 | 2FA, personificação e segurança | pendente |
 | 10 | LGPD, arquivos e observabilidade | pendente |
 | 11 | Repositório público e README final | pendente |
@@ -33,8 +33,11 @@
   por e-mail em `/convite/:id`, papéis personalizados, `requireTenant`, `requirePermission`,
   `<Can>` e `audit_log` (`tech/21-tenant-rbac.md`).
 - RLS forçado com `withTenant` e `withPlatformScope` (`tech/07-banco-drizzle.md`).
-- `/app/**` com shell client-side: visão geral, equipe, assinatura e configurações funcionam;
-  clientes segue como "em breve". Banner de trial, pagamento pendente e somente leitura.
+- `/app/**` com shell client-side: visão geral, clientes, equipe, assinatura e configurações.
+  Banner de trial, pagamento pendente e somente leitura.
+- Portal do cliente (`tech/25-portal-clientes.md`): instância `portalAuth` com cookies, tabelas
+  e segredo próprios, magic link de uso único, senha opcional, autocadastro por tenant, `/portal/**`
+  e `/app/clientes` com limite do plano.
 - `/admin/**` (proprietário e suporte da plataforma): visão geral, organizações, usuários, planos,
   assinaturas, webhooks e configurações, com `requirePlatform` na API (`tech/22-admin.md`).
 - Planos, preços, trial no onboarding, limites por plano (assentos), estado `read_only`/`locked` e job
@@ -42,10 +45,11 @@
 - Cobrança (`tech/24-billing-cobranca.md`): máquina de estados pura, `PaymentProvider` com registro por
   `PAYMENT_PROVIDERS`, módulo Stripe, checkout, `/api/billing/*`, faturas, caixa de entrada de
   webhooks, jobs `webhook.process`, `billing.dunning`, `billing.period_end` e `billing.reconcile`.
-- `npm run db:seed`: proprietário, suporte, planos e o tenant `acme`.
+- `npm run db:seed`: proprietário, suporte, planos, os tenants `acme` e `beta` e os clientes
+  `julia@cliente.local` (ativa nos dois) e `lead@cliente.local`.
 - `/api/health`, `/api/me`, `/api/tenant`, `/api/team`, `/api/roles`, `/api/invitations`,
-  `/api/auth/*`, `/api/auth-ext/*` e `/api/contact` com rate limit, limite de corpo e headers
-  de segurança.
+  `/api/customers`, `/api/portal/*`, `/api/auth/*`, `/api/auth-ext/*` e `/api/contact` com rate
+  limit, limite de corpo e headers de segurança.
 - Variáveis de ambiente validadas em `src/lib/env.ts` na inicialização.
 - Postgres do Docker com `bizu_owner` e `bizu_app` (`docker/postgres/init.sql`) e Mailpit.
 - E-mail: `sendEmail` grava `email_message` e enfileira `email.send` (pg-boss, retry 5x,
@@ -59,7 +63,15 @@
 
 ## Pendências Técnicas Conhecidas
 
-- Fases 7 a 11 da spec.
+- Fases 7 e 9 a 11 da spec.
+- **Portal:** `POST /api/portal/me/export` e `DELETE /api/portal/me` ficam para a fase 10.
+  `organization.settings.portal_self_signup` liga o autocadastro, mas ainda não tem tela.
+  Quem já tem conta no portal não se autocadastra em outro tenant: pede ao owner. O convite sai
+  sem `Reply-To` do owner. `portal_session`, `portal_verification` e `portal_rate_limit` ficam
+  fora do `maintenance.prune` até a fase 10, como as tabelas equivalentes da equipe.
+- **RISK-008:** cadastro + login em `/api/auth` revelam se o e-mail existe (`tech/16-bugs-riscos.md`).
+- `/api/customers` confere o limite do plano fora da transação do insert: requisições
+  simultâneas podem passar um cliente do limite, como já acontece com `members`.
 - **Stripe sem sandbox real:** o módulo foi validado com fixtures escritas a partir dos tipos do SDK e
   com webhooks assinados pelo SDK contra o build de produção, mas sem conta de teste. Rode o checklist de
   `src/lib/payments/providers/stripe/README.md` e troque as fixtures por capturas anonimizadas.
@@ -67,13 +79,32 @@
 - Reembolso sem tela: sai pelo painel do provedor e chega por webhook.
 - `consent_log` (fase 10) ainda não existe: o aceite de termos é exigido, mas não registrado.
 - `audit_log` grava, mas sem tela de leitura (`/app/auditoria`, `/admin/auditoria`).
-- Teto de tenants por usuário (3) e de papéis personalizados (20) seguem constantes do plugin; só `members` usa o limite do plano (`tech/23-billing-planos.md`).
+- Teto de tenants por usuário (3) e de papéis personalizados (20) seguem constantes do plugin; `members`, `custom_roles` e `customers` usam o limite do plano (`tech/23-billing-planos.md`).
 - Overview do admin sem MRR e jobs mortos; sem `/admin/auditoria`, `/admin/jobs`.
 - Rate limit das rotas próprias em memória até a fase 9.
 - Evoluir blog estático para tabela Drizzle quando virar feature real.
 - Migrar para React Router 8 e `react-router-hono-server` 4 para zerar os alertas
   moderados restantes (`tech/16-bugs-riscos.md`), depois da entrega da spec.
 - Stack Portainer completa (`docker/compose.prod.yml`) na fase 11.
+
+## Desvios da spec na fase 8
+
+| Spec | Entregue | Motivo |
+|---|---|---|
+| `secret: BETTER_AUTH_SECRET` nas duas instâncias | `portalAuth` usa um segredo derivado por HMAC | Com o mesmo segredo, JWT de verificação de equipe confirmaria e-mail no portal, e o `session_data` renomeado passaria pelo cache de sessão |
+| Botão chama `GET /api/portal/auth/magic-link/verify` | `POST`, que remonta o GET; o GET responde 405 | Regra inegociável: nenhum token consumido em GET. Mesmo desenho do `verify-email` da fase 2 |
+| `api.on("/api/portal/auth/*", handler)` | Lista fechada `PORTAL_AUTH_PATHS` | `/sign-in/magic-link` aceitaria `metadata` e `callbackURL` do cliente, e `/sign-up/email` ignoraria o `portal_self_signup` |
+| Cliente criado com `portal_user` já existente | `portal_user` nasce no primeiro envio | Sem acesso, a identidade seria dado pessoal sem uso |
+| `customer` `lead` ao enviar acesso | Enviar acesso promove a `active` | `status` é o portão e `lead` não entra: o fluxo do owner precisa liberar alguém |
+| `callbackURL: /portal?org=` no magic link | `/portal/entrar?token=&org=`, com o tenant escolhido na sessão pelo POST | A página não pode depender do redirect do Better Auth, que é GET |
+| Reset de senha no portal | Sem reset: entra-se por magic link e troca-se em `/portal/conta` | A posse do e-mail já é o fator de recuperação |
+| `requirePortalTenant` abre `withTenant` | Lê `customer` em `withTenant` e guarda em `c.var`; a rota abre a sua | Como `requireTenant`: não segura uma transação durante a requisição |
+| Autocadastro cria `customer` junto com a conta | Cria depois da confirmação do e-mail, se o plano tiver vaga | Cadastro não verificado consumiria o limite do plano |
+| `portalAuth` com troca de e-mail | Sem troca de e-mail no portal | `customer.email` é a chave do vínculo em cada tenant, e a troca pede regra própria |
+| `/portal/entrar` e `/portal/escolher` | Mais `/portal/cadastro` e `/portal/confirmar` | O autocadastro pede tela e confirmação |
+| `GET /api/portal/me` com `status` | Mais `available` e `GET /api/portal/customer` | Tenant suspenso fecha o portal mesmo com cliente `active`, e a tela precisa dos dados do cadastro |
+| Login de conta não verificada responde 403 `EMAIL_NOT_VERIFIED` | No portal, responde o mesmo 401 de senha errada | Achado do security-review: cadastro + login revelariam se o e-mail existe |
+| Tenant `beta` no plano `free` no seed | `beta` em trial, por `startTrial` | Mesmo caminho do onboarding; o seed só precisa dele para provar dois tenants |
 
 ## Desvios da spec na fase 6
 

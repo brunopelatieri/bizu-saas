@@ -2,7 +2,7 @@
 
 - **Escopo:** Rotas `/api/*`, validação Zod e montagem no servidor único.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`
-- **Paths do código:** `src/api/auth.ts`, `src/api/auth-ext.ts`, `src/api/guards.ts`, `src/api/permissions.ts`, `src/api/tenant-errors.ts`, `src/api/me.ts`, `src/api/tenant.ts`, `src/api/team.ts`, `src/api/roles.ts`, `src/api/invitations.ts`, `src/api/verification-guard.ts`, `src/api/rate-limit.ts`, `src/api/request-logger.ts`, `src/api/log.ts`, `src/api/app.ts`, `src/api/ready.ts`, `src/api/webhooks-email.ts`, `src/api/webhooks-payments.ts`, `src/api/billing.ts`, `src/api/admin.ts`, `src/components/contact/contact-form.tsx`, `src/lib/schemas/contact.ts`, `src/server.ts`
+- **Paths do código:** `src/api/auth.ts`, `src/api/auth-ext.ts`, `src/api/guards.ts`, `src/api/permissions.ts`, `src/api/tenant-errors.ts`, `src/api/me.ts`, `src/api/tenant.ts`, `src/api/team.ts`, `src/api/roles.ts`, `src/api/invitations.ts`, `src/api/verification-guard.ts`, `src/api/rate-limit.ts`, `src/api/request-logger.ts`, `src/api/log.ts`, `src/api/app.ts`, `src/api/ready.ts`, `src/api/webhooks-email.ts`, `src/api/webhooks-payments.ts`, `src/api/billing.ts`, `src/api/admin.ts`, `src/api/customers.ts`, `src/api/portal.ts`, `src/api/portal-auth.ts`, `src/components/contact/contact-form.tsx`, `src/lib/schemas/contact.ts`, `src/server.ts`
 
 
 ## 6. Hono API
@@ -21,7 +21,11 @@ Rotas atuais:
 | GET | `/api/me` | Rota privada: `{ user, tenants, permissions, billing, features, limits }`; `billing` traz estado, plano, fim do trial e fim da carência do tenant ativo |
 | GET | `/api/me/invitations` | Convites abertos para o e-mail da sessão |
 | GET, POST, PATCH | `/api/tenant`, `/api/tenant/active` | Criar (aplica plano padrão e trial), ler, editar e trocar o tenant ativo |
-| GET, POST, PUT, PATCH | `/api/admin/*` | Plataforma: visão geral, tenants (suspender, trocar plano), planos e preços, configurações, usuários (banir). Só `requirePlatform`; escrita só `platform_owner` (`tech/22-admin.md`) |
+| GET, POST, PUT, PATCH | `/api/admin/*` | Plataforma: visão geral, tenants (suspender, trocar plano), planos e preços, configurações, usuários (banir; `?scope=portal` lista clientes e `POST /api/admin/portal-users/:id/revoke-sessions` derruba as sessões deles). Só `requirePlatform`; escrita só `platform_owner` (`tech/22-admin.md`) |
+| GET, POST, PATCH, DELETE | `/api/customers`, `/:id` | Clientes do tenant, com `customer:*`; `POST` passa por `assertWithinLimit(tenantId, "customers")`; fora do tenant responde 404; e-mail repetido responde 409 `CUSTOMER_EMAIL_TAKEN` |
+| POST | `/api/customers/:id/invite` | `customer:invite`: cria `portal_user`, promove a `active`, grava `invited_at` e envia `portal-invite`; 409 `CUSTOMER_BLOCKED` |
+| GET, POST, PATCH | `/api/portal/*` | API do cliente, com `requirePortalAuth` e `requirePortalTenant` (`tech/25-portal-clientes.md`) |
+| GET, POST | `/api/portal/auth/*`, `/api/portal/auth-ext/*` | Better Auth do portal, por lista fechada, e rotas com resposta uniforme |
 | GET, POST, PATCH, DELETE | `/api/team/*` | Equipe e convites |
 | GET, POST, PATCH, DELETE | `/api/roles/*` | Papéis personalizados |
 | GET, POST | `/api/invitations/:id`, `/:id/accept` | Lado de quem recebe o convite |

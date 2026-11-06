@@ -1,7 +1,7 @@
 import type postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runBillingTrial } from "@/jobs/billing";
-import { runSeed, SEED_USERS } from "@/db/seed";
+import { runSeed, SEED_CUSTOMERS, SEED_USERS } from "@/db/seed";
 import { checkLimit } from "@/lib/billing/limits";
 import { computeTrialEnd, DAY_MS } from "@/lib/billing/trial";
 import { createMemoryProvider } from "@/lib/email/providers/memory";
@@ -532,13 +532,17 @@ describe("seed", () => {
     if (!seededHere) return;
 
     const emails = Object.values(SEED_USERS).map(({ email }) => email);
+    const customers = Object.values(SEED_CUSTOMERS).map(({ email }) => email);
     await owner.begin(async (tx) => {
       await tx`select set_config('app.bypass_tenant', 'on', true)`;
       await tx`
-        delete from audit_log where tenant_id in (select id from organization where slug = 'acme')
+        delete from audit_log where tenant_id in (
+          select id from organization where slug in ('acme', 'beta')
+        )
       `;
-      await tx`delete from organization where slug = 'acme'`;
+      await tx`delete from organization where slug in ('acme', 'beta')`;
       await tx`delete from "user" where email in ${tx(emails)}`;
+      await tx`delete from portal_user where email in ${tx(customers)}`;
       await tx`delete from plan where slug in ('free', 'basic', 'pro')`;
     });
   });
@@ -588,6 +592,16 @@ describe("seed", () => {
     await owner`update "user" set email_verified = true, role = 'platform_owner' where email = ${email}`;
 
     expect(row).toEqual({ role: "user", email_verified: false });
+  });
+
+  it("não liga cliente ativo à identidade sem e-mail confirmado", async () => {
+    const { email } = SEED_CUSTOMERS.julia;
+    await runSeed("senha-do-seed-123");
+    await owner`update portal_user set email_verified = false where email = ${email}`;
+
+    await expect(runSeed("senha-do-seed-123")).rejects.toThrow("sem e-mail confirmado");
+
+    await owner`update portal_user set email_verified = true where email = ${email}`;
   });
 
   it("recusa produção sem SEED_ALLOW_PRODUCTION", async () => {

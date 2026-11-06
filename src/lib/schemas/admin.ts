@@ -128,7 +128,12 @@ export const tenantsQuerySchema = z.object({
   page,
 });
 
-export const usersQuerySchema = z.object({ q: search, page });
+export const usersQuerySchema = z.object({
+  q: search,
+  page,
+  // `team`: equipe e plataforma. `portal`: clientes e leads, outra identidade.
+  scope: z.enum(["team", "portal"]).default("team"),
+});
 
 export const webhooksQuerySchema = z.object({
   status: z.enum(paymentEventStatuses).optional(),

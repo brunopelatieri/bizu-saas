@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router";
 import {
   type Page,
   useAdminMutation,
@@ -6,12 +7,14 @@ import {
   useIsPlatformOwner,
 } from "@/components/admin/admin-api";
 import { Pager } from "@/components/admin/pager";
+import { PortalUsersCard } from "@/components/admin/portal-users-card";
 import { PageTitle, QueryState } from "@/components/admin/query-state";
 import { ReasonDialog } from "@/components/admin/reason-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -45,7 +48,13 @@ export function AdminUsersPage() {
   const [q, setQ] = useState("");
   const [page, setPage] = useState(1);
   const [banning, setBanning] = useState<AdminUser | null>(null);
-  const query = useAdminQuery<Page<AdminUser>>("/api/admin/users", { q, page });
+  const [searchParams, setSearchParams] = useSearchParams();
+  const scope = searchParams.get("scope") === "portal" ? "portal" : "team";
+  const query = useAdminQuery<Page<AdminUser>>(
+    "/api/admin/users",
+    { q, page, scope: "team" },
+    scope === "team",
+  );
   const ban = useAdminMutation("Usuário banido.");
   const unban = useAdminMutation("Usuário desbanido.");
 
@@ -53,8 +62,21 @@ export function AdminUsersPage() {
     <div className="max-w-5xl space-y-6">
       <PageTitle
         title="Usuários"
-        description="Pessoas de equipe e da plataforma. Banir encerra as sessões na hora."
+        description="Equipe e plataforma de um lado, clientes do portal do outro: são identidades separadas."
       />
+
+      <Tabs
+        value={scope}
+        onValueChange={(next) => {
+          setSearchParams(next === "portal" ? { scope: "portal" } : {});
+          setPage(1);
+        }}
+      >
+        <TabsList>
+          <TabsTrigger value="team">Equipe e plataforma</TabsTrigger>
+          <TabsTrigger value="portal">Portal</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
       <form
         onSubmit={(event) => {
@@ -72,6 +94,9 @@ export function AdminUsersPage() {
         />
       </form>
 
+      {scope === "portal" ? (
+        <PortalUsersCard q={q} page={page} onPage={setPage} />
+      ) : (
       <QueryState {...query}>
         {query.data ? (
           <Card>
@@ -152,6 +177,7 @@ export function AdminUsersPage() {
           </Card>
         ) : null}
       </QueryState>
+      )}
 
       <ReasonDialog
         open={banning !== null}

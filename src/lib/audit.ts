@@ -18,6 +18,13 @@ export type AuditAction =
   | "role.created"
   | "role.updated"
   | "role.deleted"
+  | "customer.created"
+  | "customer.updated"
+  | "customer.deleted"
+  | "customer.invited"
+  | "portal.signed_up"
+  | "portal.profile_updated"
+  | "portal.password_set"
   | "billing.trial_expired"
   | "billing.checkout_started"
   | "billing.subscription_changed"
@@ -35,7 +42,8 @@ export type AuditAction =
   | "admin.user_unbanned"
   | "admin.subscription_canceled"
   | "admin.subscription_synced"
-  | "admin.webhook_reprocessed";
+  | "admin.webhook_reprocessed"
+  | "admin.portal_sessions_revoked";
 
 export type AuditEntry = {
   actor: { type?: AuditActorType; id: string | null };

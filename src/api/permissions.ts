@@ -24,7 +24,10 @@ export type TenantEnv = AuthEnv & {
 const MUTATIONS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
 /** Recusa quem não pode usar agora o tenant ativo da sessão. */
-function refusal(c: Context, tenant: Membership) {
+export function refusal(
+  c: Context,
+  tenant: Pick<Membership, "status" | "accessMode">,
+) {
   if (tenant.status !== "active" || tenant.accessMode === "locked") {
     return c.json(
       { error: "Esta organização está suspensa.", code: "TENANT_SUSPENDED" },
