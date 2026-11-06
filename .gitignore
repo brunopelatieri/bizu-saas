@@ -149,3 +149,6 @@ vite.config.ts.timestamp-*
 
 # Override local do compose (portas etc.)
 docker-compose.override.yml
+
+# Saída do npm run email:preview
+.tmp/

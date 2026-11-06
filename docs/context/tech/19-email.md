@@ -1,23 +1,70 @@
 # E-mail transacional
 
-- **Escopo:** Contrato `EmailProvider`, provedores, layout de template e Mailpit.
-- **Specs relacionadas:** `docs/specs/saas-foundation/spec-email-jobs.md`
-- **Paths do código:** `src/lib/email/types.ts`, `src/lib/email/send.ts`, `src/lib/email/providers/`, `src/lib/email/templates/`
+- **Escopo:** `sendEmail`, fila `email.send`, provedores (`smtp`, `resend`, `memory`), supressão e webhooks de bounce, templates e Mailpit.
+- **Specs relacionadas:** `docs/specs/saas-foundation/spec-email-jobs.md`, `spec-dados.md` (`email_message`, `email_suppression`)
+- **Paths do código:** `src/lib/email/` (`send.ts`, `deliver.ts`, `store.ts`, `address.ts`, `status.ts`, `links.ts`, `types.ts`, `providers/`, `templates/`, `template-catalog.ts`, `preview.ts`), `src/db/schema/email.ts`, `src/api/webhooks-email.ts`, `src/jobs/email.ts`
 
-## Estado atual (fase 1)
+## Fluxo
 
-- `types.ts`: `EmailMessage`, `RenderedEmail`, `EmailEvent` e `EmailProvider`
-  (`id`, `send`, `verifyWebhook?`, `parseWebhook?`).
-- `providers/memory.ts`: `createMemoryProvider()` com `sent[]` e `reset()`; usado por
-  `npm test`. `EMAIL_PROVIDER=memory` é recusado em produção por `env.ts`.
-- `providers/smtp.ts`: nodemailer com `SMTP_*`; em dev aponta para o Mailpit.
-- `send.ts`: `createEmailProvider(env)`, `getEmailProvider()`, `sendEmail(message)` e
-  `setEmailProviderForTests()`. `resend` lança erro até a fase 3.
-- `templates/layout.ts`: `renderLayout({ subject, heading, paragraphs, action,
-  footnote })` devolve `{ subject, html, text }` com HTML escapado.
+```text
+sendEmail(message)
+  → email_message (queued, só hash do destinatário)
+  → pg-boss: fila email.send (singletonKey = email_message.id)
+       → worker: deliverEmail → checa email_suppression → provedor.send
+       → sent  |  failed/suppressed  |  retry 5x (backoff) → failed + email.send.dead
+  → webhook do provedor: delivered | bounced | complained (+ email_suppression)
+```
 
-Hoje `sendEmail` entrega direto. A fase 3 troca o miolo por `email_message` +
-fila `email.send` (retry, supressão de bounces, Resend) sem mudar a assinatura.
+- `sendEmail(message)` devolve `{ id, status, error? }`: `queued` na fila; `sent`/`failed`
+  só na entrega direta (provedor `memory`). Quem chama não espera o envio real.
+- Passe `tags: { template: "nome" }` para `email_message.template` (auditoria); sem a tag
+  vira `custom`.
+- `email_message` guarda `to_hash` (sha256 do endereço em minúsculas), template, provedor,
+  `provider_message_id`, `status` (`queued` → `sent` → `delivered` | `bounced` |
+  `complained`, ou `failed`), `error` (sem endereços) e datas. **Nunca o corpo nem o
+  endereço**. O status só avança: evento atrasado não rebaixa (`status.ts`).
+- O job `email.send` carrega a mensagem renderizada (o corpo não está no banco de
+  domínio). Por isso a fila apaga jobs concluídos em 1 h e a dead letter guarda 7 dias;
+  tokens de link são de uso único e curta duração.
+- Falha definitiva é visível em `email_message.status = failed` (e no job em
+  `pgboss.job` / futuro `/admin/jobs`).
+
+## Provedores
+
+| `EMAIL_PROVIDER` | Arquivo | Uso |
+|---|---|---|
+| `smtp` | `providers/smtp.ts` | nodemailer; Mailpit em dev; sem webhook (bounce chega na caixa do remetente) |
+| `resend` | `providers/resend.ts` | SDK oficial; `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`; bounces e reclamações por webhook |
+| `memory` | `providers/memory.ts` | testes; `sent[]`; recusado em produção |
+
+Postmark e SES não estão implementados: crie `providers/postmark.ts` seguindo
+`providers/README.md` (contrato, webhook, ids).
+
+### Webhook de bounce (Resend)
+
+`POST /api/webhooks/email/resend` (`src/api/webhooks-email.ts`): confere a assinatura
+Svix no corpo bruto (`svix-id`, `svix-timestamp`, `svix-signature`, segredo `whsec_...`),
+aplica `delivered`/`bounced`/`complained` por `provider_message_id` e cria
+`email_suppression` em **hard bounce** (`bounce.type = Permanent`) ou **reclamação**.
+Bounce `Transient` marca `bounced` mas não suprime. Assinatura inválida → 400; provedor
+diferente do configurado → 404. No painel do Resend, cadastre o endpoint
+`https://SEU_DOMINIO/api/webhooks/email/resend` com os eventos `email.delivered`,
+`email.bounced` e `email.complained`.
+
+Endereço suprimido: o job grava `failed`, `error = suppressed`, sem chamar o provedor e
+sem retry.
+
+## Testes
+
+- `setEmailProviderForTests(createMemoryProvider())`: `sendEmail` entrega **na hora**,
+  em memória, sem banco nem pg-boss; `memory.sent` já tem a mensagem quando a promessa
+  resolve. O mesmo vale com `EMAIL_PROVIDER=memory` sem override (CI).
+- `setEmailProviderForTests(memory, { store })` com `createMemoryEmailStore()` permite
+  semear supressões (`store.suppress(hashEmail(email), "hard_bounce")`) e inspecionar
+  `store.messages`.
+- `setEmailProviderForTests(memory, { queue: true })` usa o fluxo real (banco + fila):
+  só em `tests/db/` (`email-queue.test.ts`).
+- Sempre `afterEach(() => setEmailProviderForTests(undefined))`.
 
 ## Templates de autenticação (fase 2)
 
@@ -31,26 +78,55 @@ provedor, então o tempo não revela se o e-mail existe. Links vêm de `appLink`
 ## Como escrever um template
 
 ```ts
-// src/lib/email/templates/verify-email.ts
+// src/lib/email/templates/trial-expired.ts
+import { assertAbsoluteUrl } from "@/lib/email/templates/format";
 import { renderLayout } from "@/lib/email/templates/layout";
 
-export function verifyEmailTemplate(input: { name: string; url: string }) {
+export type TrialExpiredInput = { name: string; tenantName: string; url: string };
+
+export const previewInput: TrialExpiredInput = {
+  name: "Ana",
+  tenantName: "Acme Ltda",
+  url: "http://localhost:5173/app/assinatura",
+};
+
+export function trialExpiredTemplate(input: TrialExpiredInput) {
   return renderLayout({
-    subject: "Confirme seu e-mail",
+    subject: `O período de teste de ${input.tenantName} terminou`,
     heading: `Olá, ${input.name}`,
-    paragraphs: ["Confirme seu e-mail para ativar a conta."],
-    action: { label: "Confirmar e-mail", url: input.url },
-    footnote: "Se não foi você, ignore este e-mail.",
+    paragraphs: ["..."],
+    action: { label: "Escolher um plano", url: assertAbsoluteUrl(input.url) },
   });
 }
 ```
 
-- Links sempre absolutos, montados com `APP_URL`.
+- Cada arquivo exporta `<nome>Template(input)` → `{ subject, html, text }` e
+  `previewInput` (dados fictícios). `template-catalog.ts` descobre todos (inclusive
+  `templates/auth/`); os testes (`templates.test.ts`) e o `npm run email:preview`
+  usam esse catálogo. Template novo sem `previewInput` falha nos testes.
+- Links absolutos: monte com `appUrl("/caminho")` (`links.ts`, usa `APP_URL`);
+  `assertAbsoluteUrl` recusa link relativo.
 - Tokens só em páginas que não consomem no GET (`spec-auth.md`).
 - O layout escapa tudo que recebe: passe texto puro, não HTML.
+- E-mail de tenant usa o nome do tenant no assunto; o `From` continua da plataforma
+  e o `Reply-To` (`message.replyTo`) é do owner.
 
-## Mailpit
+Templates gerais (fase 3): `invite-member`, `portal-invite`, `portal-magic-link`,
+`trial-ending`, `trial-expired`, `invoice-created`, `payment-failed`, `payment-received`,
+`subscription-canceled`, `impersonation-requested`, `impersonation-started`,
+`data-export-ready`, `deletion-scheduled`, `tenant-suspended`. Os de autenticação
+(`verify-email`, `reset-password`…) ficam em `templates/auth/` (fase 2).
 
-`docker compose up -d` sobe o Mailpit: SMTP em `localhost:1025`, interface em
-`http://localhost:8025`. Com `EMAIL_PROVIDER=smtp` e `SMTP_HOST=localhost`, nada sai
-para a internet.
+## Prévia e Mailpit
+
+- `npm run email:preview` grava `.tmp/emails/*.html` (+ `index.html`) com os dados fictícios.
+- `docker compose up -d` sobe o Mailpit: SMTP `localhost:1025`, interface
+  `http://localhost:8025`. Com `EMAIL_PROVIDER=smtp` e `SMTP_HOST=localhost`, nada sai
+  para a internet. Para ver o fluxo completo: `npm run dev` (JOBS_MODE=inline) ou um
+  worker separado, e um `sendEmail` real; o e-mail aparece no Mailpit pela fila.
+
+## Entrega e reputação
+
+SPF, DKIM e DMARC do domínio de envio vêm do provedor (valores reais nas páginas oficiais
+do Resend ou do provedor escolhido; não verificados nesta spec). Transacional não precisa
+de `List-Unsubscribe`.

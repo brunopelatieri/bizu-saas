@@ -1,0 +1,11 @@
+{
+  "type": "email.complained",
+  "created_at": "2026-11-05T14:05:00.000Z",
+  "data": {
+    "created_at": "2026-11-05T14:04:50.000Z",
+    "email_id": "re_complained_0004",
+    "from": "Bizu SaaS <no-reply@exemplo.com.br>",
+    "to": ["eva@example.com"],
+    "subject": "Aviso"
+  }
+}

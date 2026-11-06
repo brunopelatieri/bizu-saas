@@ -6,6 +6,8 @@ import { requireAuth } from "@/api/auth";
 import { authRoutes } from "@/api/auth-ext";
 import { logError } from "@/api/log";
 import { rateLimit } from "@/api/rate-limit";
+import { checkReady } from "@/api/ready";
+import { emailWebhooks } from "@/api/webhooks-email";
 import { getDb } from "@/db";
 import { contactMessages } from "@/db/schema";
 import { contactMessageSchema } from "@/lib/schemas/contact";
@@ -28,6 +30,14 @@ api.use("*", secureHeaders({ strictTransportSecurity: false }));
 const authRateLimit = rateLimit({ limit: 60, windowMs: 60 * 1000 });
 
 api.get("/api/health", (c) => c.json({ ok: true }));
+
+// Prontidão (banco + fila): o motivo da falha não vai na resposta.
+api.get("/api/ready", async (c) => {
+  const { ok, ...checks } = await checkReady();
+  return c.json(checks, ok ? 200 : 503);
+});
+
+api.route("/", emailWebhooks);
 
 // Better Auth em /api/auth/* e rotas próprias em /api/auth-ext/* (src/api/auth-ext.ts).
 api.route("/", authRoutes);

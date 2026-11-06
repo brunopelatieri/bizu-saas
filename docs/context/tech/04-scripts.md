@@ -17,6 +17,8 @@
 | `npm run db:migrate` | Aplica migrations |
 | `npm run db:push` | Push direto do schema (só dev) |
 | `npm run db:studio` | Abre Drizzle Studio |
+| `npm run jobs:install` | Primeiro `start()` do pg-boss com `DIRECT_URL`: tabelas do schema `pgboss`, filas e crons (depois de `db:migrate`; idempotente) |
+| `npm run email:preview` | Renderiza todos os templates de e-mail com dados fictícios em `.tmp/emails/*.html` |
+| `node build/server/index.js --worker` | Só os workers de jobs, sem HTTP (`JOBS_MODE=worker`) |
 
-Scripts previstos nas fases seguintes: `db:seed`, `db:reset`, `jobs:install`,
-`email:preview`.
+Scripts previstos nas fases seguintes: `db:seed`, `db:reset`.

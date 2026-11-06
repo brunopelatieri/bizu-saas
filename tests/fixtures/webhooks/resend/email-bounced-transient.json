@@ -1,0 +1,16 @@
+{
+  "type": "email.bounced",
+  "created_at": "2026-11-05T14:04:00.000Z",
+  "data": {
+    "created_at": "2026-11-05T14:03:58.000Z",
+    "email_id": "re_bounced_0003",
+    "from": "Bizu SaaS <no-reply@exemplo.com.br>",
+    "to": ["duda@example.com"],
+    "subject": "Fatura",
+    "bounce": {
+      "message": "452 4.2.2 Mailbox full.",
+      "subType": "MailboxFull",
+      "type": "Transient"
+    }
+  }
+}

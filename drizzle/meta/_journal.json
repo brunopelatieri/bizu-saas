@@ -36,6 +36,13 @@
       "when": 1793930617647,
       "tag": "0004_sweet_sunspot",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793932700450,
+      "tag": "0005_email_jobs",
+      "breakpoints": true
     }
   ]
 }

@@ -6,9 +6,9 @@
 
 ## Arquivos
 
-- `src/db/schema/<domínio>.ts`: um arquivo por domínio (`auth.ts`, `contact.ts`).
+- `src/db/schema/<domínio>.ts`: um arquivo por domínio (`auth.ts`, `contact.ts`, `email.ts`).
 - `src/db/schema.ts`: reexporta os domínios. `drizzle.config.ts` e o adapter do Better
-  Auth leem este arquivo, então domínio novo entra aqui.
+  Auth leem este arquivo, então domínio novo entra aqui com `export * from "./schema/<domínio>"`.
 - `src/db/index.ts`: `getDb()`, conexão de runtime com `DATABASE_URL` lida de `getEnv()`.
 - `drizzle.config.ts`: usa `DIRECT_URL` (fallback `DATABASE_URL`).
 - `drizzle/`: migrations geradas; `npm run db:generate` e `npm run db:migrate`.
@@ -35,6 +35,26 @@ contact_messages
 Tabelas do Better Auth usam `uuid` e `timestamptz` e seguem `getAuthTables`, com o nome de
 modelo como chave do export (`rateLimit`, não `rate_limit`). O adapter não usa transação:
 os hooks de e-mail gravam por outra conexão e não veriam o usuário ainda não confirmado.
+
+```text
+email_message   (plataforma, sem tenant_id nem RLS)
+  id uuid pk, to_hash (sha256), template, provider, provider_message_id (índice),
+  status (queued|sent|delivered|bounced|complained|failed), error, sent_at,
+  created_at (índice), updated_at
+email_suppression
+  email_hash text pk, reason (hard_bounce|complaint|manual), created_at
+```
+
+Nenhuma das duas guarda o endereço em claro nem o corpo. `tenant_id` em `email_message`
+(opcional na spec) entra quando a fase 4 criar a tabela de tenants.
+
+## Schema `pgboss`
+
+A migration `0005_email_jobs` cria o schema `pgboss` e dá `USAGE` e privilégios padrão
+ao `bizu_app` (`ALTER DEFAULT PRIVILEGES`). As tabelas do pg-boss são criadas por
+`npm run jobs:install` (primeiro `start()` com `DIRECT_URL`), não pelo Drizzle: o
+Drizzle Kit não conhece essas tabelas e não deve gerar migration para elas. Detalhes em
+`tech/20-jobs.md`.
 
 ## Papéis do Postgres
 

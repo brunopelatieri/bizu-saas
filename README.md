@@ -140,9 +140,19 @@ docker compose up -d
 npm run db:migrate
 ```
 
+Instale a fila de jobs (pg-boss, schema `pgboss`; roda com `DIRECT_URL` e é idempotente):
+
+```bash
+npm run jobs:install
+```
+
 ```bash
 npm run dev
 ```
+
+Todo e-mail passa por essa fila e, em desenvolvimento, é capturado pelo Mailpit em
+`http://localhost:8025`. Para revisar os templates sem enviar nada:
+`npm run email:preview` (grava `.tmp/emails/index.html`).
 
 | Serviço | Endereço |
 |---|---|
@@ -229,6 +239,8 @@ npm run start
 | `CREDENTIALS_ENCRYPTION_KEY` | Criptografia de credenciais de provedores por tenant |
 | `AUDIT_SALT` | Hash de IP no log de auditoria |
 | `EMAIL_PROVIDER`, `EMAIL_FROM`, `SMTP_*` | Envio de e-mail; `smtp` com Mailpit no dev |
+| `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | Com `EMAIL_PROVIDER=resend`; webhook em `/api/webhooks/email/resend` |
+| `JOBS_MODE` | `inline` (workers no servidor), `worker` (`node build/server/index.js --worker`) ou `off` (só enfileira) |
 | `PORT` | Porta do servidor único em produção |
 | `TRUSTED_PROXY_HOPS` | Reverse proxies na frente do app; use `1` atrás de um proxy |
 
@@ -249,6 +261,8 @@ npm run test:db      # testes contra o Postgres do Docker
 npm run db:generate  # gera migrations Drizzle
 npm run db:migrate   # aplica migrations
 npm run db:studio    # abre Drizzle Studio
+npm run jobs:install # tabelas e filas do pg-boss (rode após db:migrate)
+npm run email:preview # renderiza os e-mails em .tmp/emails/
 ```
 
 ---
