@@ -1,5 +1,6 @@
 import type { JobWithMetadata } from "pg-boss";
 import type { LgpdExportJob } from "@/jobs/queues";
+import { executeDueDeletions } from "@/lib/lgpd/deletion";
 import { processExport } from "@/lib/lgpd/export";
 
 /**
@@ -8,4 +9,9 @@ import { processExport } from "@/lib/lgpd/export";
  */
 export async function handleLgpdExport(jobs: JobWithMetadata<LgpdExportJob>[]) {
   for (const job of jobs) await processExport(job.data.exportId, job);
+}
+
+/** `lgpd.delete` (cron diário às 05:00 UTC): executa as exclusões cuja carência acabou. */
+export async function handleLgpdDelete() {
+  await executeDueDeletions();
 }

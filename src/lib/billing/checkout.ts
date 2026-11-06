@@ -769,6 +769,37 @@ export async function openPortal(tenantId: string) {
   return { url };
 }
 
+/**
+ * Exclusão da organização: encerra agora a cobrança viva no provedor e aqui, para a assinatura
+ * não seguir cobrando durante a carência. Sem provedor (trial, plano gratuito), não há o que
+ * encerrar. Se o provedor falhar, lança: a exclusão não pode ser agendada com cobrança no ar.
+ */
+export async function cancelSubscriptionForDeletion(
+  tenantId: string,
+  actor: Actor,
+  now = new Date(),
+) {
+  const current = await loadTenantPlan(tenantId);
+  const row = current?.subscription;
+
+  if (!row?.provider || !row.providerSubscriptionRef || !isLiveStatus(row.status)) {
+    return false;
+  }
+
+  const provider = getProvider(row.provider);
+  const ref = row.providerSubscriptionRef;
+
+  if (provider) {
+    await callProvider(() =>
+      provider.cancelSubscription(platformContext(), ref, { atPeriodEnd: false }),
+    );
+  }
+
+  await applyOwnerEvent(tenantId, row.id, { type: "admin.canceled" }, actor, now);
+
+  return true;
+}
+
 /** Só o proprietário da plataforma: encerra agora, no provedor e aqui. */
 export async function adminCancelSubscription(
   subscriptionId: string,

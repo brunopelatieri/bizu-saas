@@ -7,7 +7,7 @@ import {
   handleBillingTrial,
 } from "@/jobs/billing";
 import { handleEmailSend } from "@/jobs/email";
-import { handleLgpdExport } from "@/jobs/lgpd";
+import { handleLgpdDelete, handleLgpdExport } from "@/jobs/lgpd";
 import { handleMaintenancePrune } from "@/jobs/maintenance";
 import { handleWebhookProcess } from "@/jobs/webhooks";
 import {
@@ -47,6 +47,7 @@ export async function registerWorkers(
   await boss.offWork(QUEUE.billingPeriodEnd);
   await boss.offWork(QUEUE.billingReconcile);
   await boss.offWork(QUEUE.lgpdExport);
+  await boss.offWork(QUEUE.lgpdDelete);
   await boss.work(
     QUEUE.emailSend,
     { includeMetadata: true, batchSize: 1, localConcurrency: 4, ...options },
@@ -67,6 +68,7 @@ export async function registerWorkers(
     { includeMetadata: true, batchSize: 1, localConcurrency: 2, ...options },
     handleLgpdExport,
   );
+  await boss.work(QUEUE.lgpdDelete, options, handleLgpdDelete);
 
 }
 
