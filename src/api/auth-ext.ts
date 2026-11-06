@@ -11,6 +11,7 @@ import {
 } from "@/api/verification-guard";
 import { runInBackground } from "@/lib/auth/background";
 import { CLIENT_IP_HEADER } from "@/lib/auth/constants";
+import { purgeExpiredPendingSignup } from "@/lib/auth/pending-signup";
 import { getAuth } from "@/lib/auth/server";
 import { readVerificationClaims } from "@/lib/auth/verification-issue";
 import { getEnv } from "@/lib/env";
@@ -106,6 +107,9 @@ authRoutes.post(
   zValidator("json", signupSchema, validationError),
   async (c) => {
     const { name, email, password } = c.req.valid("json");
+
+    await purgeExpiredPendingSignup(email);
+
     const response = await getAuth().handler(
       new Request(c.req.url, {
         method: "POST",

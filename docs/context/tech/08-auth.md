@@ -54,6 +54,11 @@ se perde e a pessoa pede outro: a falha é fechada.
 
 Reenvio dentro do mesmo segundo gera o mesmo JWT e, portanto, o mesmo hash.
 
+Cadastro pendente expira em 24 h (`src/lib/auth/pending-signup.ts`): não recebe mais link,
+e um novo cadastro apaga a conta e recomeça. Sem isso, quem cadastrasse o e-mail de outra
+pessoa deixaria uma senha à espera do clique do dono (RISK-006). Conta sem verificar criada
+por outro caminho, como uma CLI, cai na mesma regra.
+
 ## Troca de e-mail
 
 `authClient.changeEmail` responde sucesso mesmo para endereço em uso. O link de aprovação
@@ -82,6 +87,8 @@ quando `afterEmailVerification` roda o usuário já tem o novo.
   cache do cookie devolveria para `/app`, em ciclo.
 - `requirePlatform()` vem depois de `requireAuth`; passe `["platform_owner"]` nas rotas que
   o suporte não pode usar. O 2FA obrigatório entra na fase 9.
+- `platform_support` só lê em `/api/auth/admin/*`: o plugin não compara o papel do alvo, e
+  `ban` ou `revoke` permitiriam derrubar o proprietário.
 
 ## Rate limit e IP
 

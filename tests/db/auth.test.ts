@@ -355,6 +355,77 @@ describe("autenticação", () => {
     });
   });
 
+  describe("cadastro pendente vencido", () => {
+    const ATTACKER_PASSWORD = "senha-do-atacante";
+
+    /** Conta não verificada criada há 25 h, com a senha de quem cadastrou. */
+    async function stalePendingSignup(email: string) {
+      await post("/api/auth/sign-up/email", {
+        name: "Atacante",
+        email,
+        password: ATTACKER_PASSWORD,
+        acceptTerms: true,
+        termsVersion: "2026-11",
+      });
+      await waitForBackgroundTasks();
+      await owner`
+        update "user" set created_at = now() - interval '25 hours'
+        where email = ${email}
+      `;
+      mail.reset();
+    }
+
+    it("reenvio e login não geram link novo", async () => {
+      const email = newEmail();
+      await stalePendingSignup(email);
+
+      const resend = await post("/api/auth-ext/resend-verification", { email });
+      const login = await signIn(email, ATTACKER_PASSWORD);
+
+      expect(resend.status).toBe(200);
+      expect(login.status).toBe(403);
+      expect(await templatesSentTo(email)).toEqual([]);
+    });
+
+    it("novo cadastro recria a conta e a senha antiga deixa de valer", async () => {
+      const email = newEmail();
+      await stalePendingSignup(email);
+
+      const signup = await signUp(email);
+      expect(await signup.json()).toEqual({ ok: true });
+      expect(await templatesSentTo(email)).toEqual(["verify-email"]);
+
+      const token = await lastToken(email, "verify-email");
+      expect((await verify(token)).status).toBe(200);
+
+      expect((await signIn(email, ATTACKER_PASSWORD)).status).toBe(401);
+      expect((await signIn(email)).status).toBe(200);
+    });
+
+    it("cadastro pendente dentro do prazo não é apagado", async () => {
+      const email = newEmail();
+      await signUp(email);
+      await lastToken(email, "verify-email");
+      mail.reset();
+
+      await signUp(email);
+
+      expect(await templatesSentTo(email)).toEqual(["existing-user-signup"]);
+    });
+
+    it("conta verificada antiga não é apagada", async () => {
+      const { email } = await verifiedUser();
+      await owner`
+        update "user" set created_at = now() - interval '30 days'
+        where email = ${email}
+      `;
+
+      await signUp(email);
+
+      expect(await isVerified(email)).toBe(true);
+    });
+  });
+
   describe("respostas uniformes", () => {
     it("cadastro é igual para e-mail novo e existente, e avisa o dono", async () => {
       const { email } = await verifiedUser();
@@ -684,6 +755,35 @@ describe("autenticação", () => {
 
       expect(response.ok).toBe(false);
       expect(await templatesSentTo(email)).toEqual([]);
+    });
+
+    it("suporte lê usuários, mas não bane nem revoga sessões", async () => {
+      const target = await verifiedUser();
+      const support = await verifiedUser();
+      await owner`
+        update "user" set role = 'platform_support' where email = ${support.email}
+      `;
+      const [row] = await owner`
+        select id from "user" where email = ${target.email}
+      `;
+      const options = { cookie: support.cookie };
+
+      const list = await get("/api/auth/admin/list-users", options);
+      const ban = await post(
+        "/api/auth/admin/ban-user",
+        { userId: row?.id },
+        options,
+      );
+      const revoke = await post(
+        "/api/auth/admin/revoke-user-sessions",
+        { userId: row?.id },
+        options,
+      );
+
+      expect(list.status).toBe(200);
+      expect(ban.status).toBe(403);
+      expect(revoke.status).toBe(403);
+      expect((await get("/api/me", { cookie: target.cookie })).status).toBe(200);
     });
 
     it("usuário comum não usa rotas do plugin admin", async () => {

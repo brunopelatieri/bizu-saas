@@ -1,4 +1,5 @@
 import { appLink } from "@/lib/auth/links";
+import { isPendingSignupExpired } from "@/lib/auth/pending-signup";
 import {
   readVerificationClaims,
   recordVerificationIssue,
@@ -20,9 +21,15 @@ function verificationLink(token: string) {
 /**
  * Ignora a `url` do Better Auth, que aponta para a API: o link leva à página que só
  * renderiza no GET. Vale para o cadastro e para o novo endereço na troca de e-mail.
+ * Cadastro pendente vencido não recebe link: quem for o dono cadastra de novo.
  */
-export async function sendVerificationLink(user: Recipient, token: string) {
+export async function sendVerificationLink(
+  user: Recipient & { emailVerified: boolean; createdAt: Date },
+  token: string,
+) {
   const changing = Boolean(readVerificationClaims(token).updateTo);
+
+  if (!changing && isPendingSignupExpired(user)) return;
 
   await recordVerificationIssue(user.id, token, changing ? "change" : "verify");
   await sendEmail({

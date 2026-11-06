@@ -2,9 +2,10 @@ import { createAccessControl } from "better-auth/plugins/access";
 import { defaultStatements } from "better-auth/plugins/admin/access";
 
 /**
- * Papéis de plataforma do plugin `admin`, gravados em `user.role`. Suporte não
- * exclui, não troca papel nem define senha. Ninguém personifica por aqui: o caminho
- * HTTP do plugin fica desligado até a política de consentimento (fase 9).
+ * Papéis de plataforma do plugin `admin`, gravados em `user.role`. Suporte só lê: o
+ * plugin não compara o papel do alvo, e com `ban` ou `revoke` o suporte derrubaria o
+ * proprietário. Ninguém personifica por aqui: o caminho HTTP do plugin fica desligado
+ * até a política de consentimento (fase 9).
  */
 export const platformAccessControl = createAccessControl(defaultStatements);
 
@@ -27,7 +28,7 @@ export const platformRoles = {
     session: ["list", "revoke", "delete"],
   }),
   platform_support: platformAccessControl.newRole({
-    user: ["list", "ban", "impersonate", "get"],
-    session: ["list", "revoke"],
+    user: ["list", "impersonate", "get"],
+    session: ["list"],
   }),
 };

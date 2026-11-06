@@ -178,3 +178,14 @@ Acao recomendada:
 
 ---
 
+### RISK-006 — Pré-sequestro de conta dentro de 24 h
+
+Quem cadastra o e-mail de outra pessoa define a senha antes de provar a posse. Se o dono
+clicar no link em até 24 h, a senha do atacante continua valendo na conta verificada. O
+prazo de `src/lib/auth/pending-signup.ts` fecha a conta deixada à espera por tempo
+indeterminado, mas não essa janela.
+
+Para fechar de vez: pedir a senha na página de confirmação, com "esqueci a senha" como saída.
+Muda o fluxo de um clique da spec, por isso depende de decisão de produto.
+
+Falta também um job de limpeza (fase 3): hoje a conta vencida só some no próximo cadastro.

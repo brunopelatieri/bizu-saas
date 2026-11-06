@@ -17,6 +17,8 @@ describe("safeNextPath", () => {
     "//evil.example",
     "/\\evil.example",
     "/app\\..\\evil",
+    "/\t/evil.example",
+    "/\n/evil.example",
   ])("cai no padrão com %s", (next) => {
     expect(safeNextPath(next)).toBe("/app");
   });
