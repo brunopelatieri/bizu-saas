@@ -226,6 +226,10 @@ npm run build
 npm run start
 ```
 
+`npm run start` força `NODE_ENV=production` (sem isso o servidor não escuta) e lê o
+`.env.local` se existir. Em produção os segredos de exemplo são recusados: gere
+`BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY` e `AUDIT_SALT` antes.
+
 ---
 
 ## Variáveis Principais

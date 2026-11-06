@@ -8,7 +8,7 @@
 |--------|--------|
 | `npm run dev` | Inicia RR dev server com SSR + Hono + HMR |
 | `npm run build` | Gera `build/client` e `build/server` |
-| `npm run start` | Roda produção local: `node ./build/server/index.js` |
+| `npm run start` | Roda o build com `NODE_ENV=production` (obrigatório: o `react-router-hono-server` só escuta nesse modo) e `--env-file-if-exists=.env.local`; segredos de exemplo são recusados |
 | `npm run typecheck` | Gera os tipos de rota e verifica `tsconfig.app.json` e `tsconfig.node.json` |
 | `npm run lint` | Lint com Biome em `src/` e `tests/` (caminhos explícitos: worktrees em `.claude/worktrees/` têm `biome.json` próprio) |
 | `npm test` | Testes unitários e de API, sem banco |

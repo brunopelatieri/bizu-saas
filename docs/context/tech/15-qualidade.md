@@ -41,13 +41,15 @@ Testes unitarios e de API ficam ao lado do codigo (`src/**/*.test.ts`): autentic
 protecoes da API, `env.ts` e e-mail com provedor `memory`. Testes com banco real
 ficam em `tests/db/` (`vitest.db.config.ts`, sem paralelismo entre arquivos).
 
-Para smoke test local de producao:
+Para smoke test local de producao, com segredos gerados no `.env.local`:
 
-```powershell
-$env:NODE_ENV="production"
-$env:PORT="3000"
-node build/server/index.js
+```bash
+npm run build && npm run start
 ```
+
+O script define `NODE_ENV=production` (sem isso o servidor encerra sem escutar) e
+carrega o `.env.local`. Confira `/api/health`, `/api/ready` (`{ db, jobs }`), `/api/me`
+(401) e um cadastro em `/cadastro` com o e-mail chegando no Mailpit.
 
 ---
 

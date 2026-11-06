@@ -11,7 +11,7 @@
   "scripts": {
     "dev": "react-router dev",
     "build": "react-router build",
-    "start": "node ./build/server/index.js",
+    "start": "node --env-file-if-exists=.env.local -e \"process.env.NODE_ENV='production'; import('./build/server/index.js')\"",
     "typecheck": "react-router typegen && tsc -p tsconfig.app.json && tsc -p tsconfig.node.json",
     "lint": "biome lint src tests",
     "test": "vitest run",
