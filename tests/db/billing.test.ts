@@ -470,6 +470,30 @@ describe("job billing.trial", () => {
 });
 
 describe("seed", () => {
+  // O plano `free` do seed, ativo, viraria o padrão dos outros arquivos de teste. Em banco
+  // que já tinha o seed (o de desenvolvimento), não há o que desfazer.
+  let seededHere = false;
+
+  beforeAll(async () => {
+    const found = await owner`select 1 from plan where slug = 'free'`;
+    seededHere = found.length === 0;
+  });
+
+  afterAll(async () => {
+    if (!seededHere) return;
+
+    const emails = Object.values(SEED_USERS).map(({ email }) => email);
+    await owner.begin(async (tx) => {
+      await tx`select set_config('app.bypass_tenant', 'on', true)`;
+      await tx`
+        delete from audit_log where tenant_id in (select id from organization where slug = 'acme')
+      `;
+      await tx`delete from organization where slug = 'acme'`;
+      await tx`delete from "user" where email in ${tx(emails)}`;
+      await tx`delete from plan where slug in ('free', 'basic', 'pro')`;
+    });
+  });
+
   it("roda duas vezes sem erro nem duplicar nada", async () => {
     const counts = async () => {
       const [row] = await owner<{ users: number; plans: number; tenants: number }[]>`

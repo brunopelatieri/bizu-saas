@@ -1,5 +1,6 @@
 import { readdir } from "node:fs/promises";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { type PaymentProviderId, paymentProviderIds } from "@/lib/billing/constants";
 import { type Env, getEnv } from "@/lib/env";
 import type { PaymentContext, PaymentProvider } from "@/lib/payments/types";
@@ -34,7 +35,7 @@ async function discover(): Promise<ModuleFile[]> {
         .filter((entry) => entry.isDirectory())
         .map(
           (entry) =>
-            import(path.join(root, entry.name, "index.ts")) as Promise<ModuleFile>,
+            import(pathToFileURL(path.join(root, entry.name, "index.ts")).href) as Promise<ModuleFile>,
         ),
     );
   }
