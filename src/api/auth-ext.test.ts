@@ -30,10 +30,12 @@ describe("hideUnverified", () => {
     expect(await hideUnverified(banned)).toBe(banned);
   });
 
-  it("não quebra em 403 sem JSON", async () => {
+  it("não quebra em 403 sem JSON ou com corpo null", async () => {
     const empty = new Response(null, { status: 403 });
+    const nullBody = betterAuthError(403, "null");
 
     expect(await hideUnverified(empty)).toBe(empty);
+    expect(await hideUnverified(nullBody)).toBe(nullBody);
   });
 
   it("deixa passar o que não é 403", async () => {

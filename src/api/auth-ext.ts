@@ -43,12 +43,12 @@ export function forwardedHeaders(c: Context) {
 export async function hideUnverified(response: Response) {
   if (response.status !== 403) return response;
 
-  const { code } = (await response
+  const body = (await response
     .clone()
     .json()
-    .catch(() => ({}))) as { code?: string };
+    .catch(() => null)) as { code?: string } | null;
 
-  if (code !== "EMAIL_NOT_VERIFIED") return response;
+  if (body?.code !== "EMAIL_NOT_VERIFIED") return response;
 
   // Byte a byte a resposta do Better Auth: a ordem das chaves também distinguiria as duas.
   return new Response(

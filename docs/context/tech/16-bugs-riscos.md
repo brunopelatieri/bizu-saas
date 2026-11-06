@@ -212,6 +212,7 @@ indeterminado, mas não essa janela.
 Decisão do usuário: manter a confirmação em um clique. Pedir a senha na página de
 confirmação fecharia a janela, mas acrescenta atrito ao cadastro de todo mundo, e o ataque
 exige alvo específico e o clique da vítima dentro do prazo. Reavalie se o produto derivado
-guardar dados sensíveis já no cadastro.
+guardar dados sensíveis já no cadastro. O reenvio fixo na tela de login (RISK-008) facilita
+esse clique: o servidor não mudou, mas o dono chega ao link com menos esforço.
 
 Falta também um job de limpeza (fase 3): hoje a conta vencida só some no próximo cadastro.
