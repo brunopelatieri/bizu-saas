@@ -61,7 +61,13 @@ describe("RLS", () => {
 
   describe("inventário", () => {
     it("acha as tabelas de tenant no schema", () => {
-      expect(tenantTables.map(({ name }) => name)).toContain("audit_log");
+      expect(tenantTables.map(({ name }) => name)).toEqual(
+        expect.arrayContaining([
+          "audit_log",
+          "impersonation_grant",
+          "tenant_payment_credential",
+        ]),
+      );
     });
 
     it.each(tenantTables.map(({ name, ...config }) => [name, config] as const))(

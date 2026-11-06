@@ -129,6 +129,100 @@ describe("rotas de equipe sobre o servidor Node", () => {
     });
   });
 
+  describe("rotas da fase 9", () => {
+    const anyId = randomUUID();
+    const json = { "Content-Type": "application/json" };
+
+    it("DELETE /api/tenant/support-grant/:id sem corpo revoga", async () => {
+      const created = await request("POST", "/api/tenant/support-grant", {
+        headers: json,
+        body: JSON.stringify({ hours: 1 }),
+      });
+      const { grant } = (await created.json()) as { grant: { id: string } };
+
+      const response = await request("DELETE", `/api/tenant/support-grant/${grant.id}`);
+
+      expect(response.status).toBe(200);
+    });
+
+    it("DELETE /api/me/sessions/:id sem corpo chega à regra de negócio", async () => {
+      expect((await request("DELETE", `/api/me/sessions/${anyId}`)).status).toBe(404);
+    });
+
+    it("POST /api/me/sessions/revoke-others sem corpo responde", async () => {
+      expect((await request("POST", "/api/me/sessions/revoke-others")).status).toBe(200);
+    });
+
+    it("POST /api/admin/stop-impersonating sem corpo chega à regra de negócio", async () => {
+      expect((await request("POST", "/api/admin/stop-impersonating")).status).toBe(400);
+    });
+
+    it("DELETE /api/tenant sem personificação segue para o 404", async () => {
+      expect((await request("DELETE", "/api/tenant")).status).toBe(404);
+    });
+
+    it("CSRF sobre HTTP de verdade: POST de outro site responde 403", async () => {
+      const response = await request("POST", "/api/tenant/support-grant", {
+        headers: { ...json, Origin: "https://atacante.exemplo" },
+        body: JSON.stringify({ hours: 1 }),
+      });
+
+      expect(response.status).toBe(403);
+    });
+
+    it("CSRF: DELETE de outro site responde 403", async () => {
+      const response = await request("DELETE", `/api/customers/${anyId}`, {
+        headers: { Origin: "https://atacante.exemplo" },
+      });
+
+      expect(response.status).toBe(403);
+    });
+
+    it("webhook não passa pelo CSRF: quem autentica é a assinatura", async () => {
+      setProvidersForTests([createStubProvider()]);
+      setWebhookQueueForTests(async () => {});
+
+      const signed = await fetch(`${base}/api/webhooks/payments/${STUB_ID}`, {
+        method: "POST",
+        headers: {
+          ...json,
+          Origin: "https://provedor.exemplo",
+          "X-Stub-Signature": "ok",
+          "X-Forwarded-For": "10.41.2.1",
+        },
+        body: JSON.stringify({ id: randomUUID(), type: "evento" }),
+      });
+      const email = await fetch(`${base}/api/webhooks/email/inexistente`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain",
+          Origin: "https://provedor.exemplo",
+          "X-Forwarded-For": "10.41.2.2",
+        },
+        body: "{}",
+      });
+
+      setProvidersForTests(undefined);
+      setWebhookQueueForTests(undefined);
+
+      expect(signed.status).not.toBe(403);
+      expect(email.status).not.toBe(403);
+    });
+
+    it("POST /api/csp-report com o tipo do navegador responde 204", async () => {
+      const response = await fetch(`${base}/api/csp-report`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/csp-report",
+          "X-Forwarded-For": "10.41.2.3",
+        },
+        body: "{}",
+      });
+
+      expect(response.status).toBe(204);
+    });
+  });
+
   describe("rotas de cobrança", () => {
     const anyId = randomUUID();
     let platformCookie: string;

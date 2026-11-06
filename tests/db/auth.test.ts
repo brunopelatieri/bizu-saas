@@ -16,6 +16,7 @@ import { getAuth } from "@/lib/auth/server";
 import { hashToken } from "@/lib/auth/verification-issue";
 import { createMemoryProvider } from "@/lib/email/providers/memory";
 import { setEmailProviderForTests } from "@/lib/email/send";
+import { comparableHeaders } from "./tenant-helpers";
 
 /**
  * Fluxos de autenticação pela API, com Postgres real e e-mail em memória
@@ -135,8 +136,7 @@ function sleep(ms: number) {
 
 /** Tudo o que um cliente pode comparar, menos o relógio. */
 async function observable(response: Response) {
-  const headers = Object.fromEntries(response.headers);
-  delete headers.date;
+  const headers = comparableHeaders(response);
   return { status: response.status, body: await response.text(), headers };
 }
 

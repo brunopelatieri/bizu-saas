@@ -40,6 +40,10 @@ const anyId = randomUUID();
 
 const endpoints = [
   ["PATCH", "/api/tenant", "organization:update"],
+  ["GET", "/api/tenant/support-grant", "support:grant"],
+  ["POST", "/api/tenant/support-grant", "support:grant"],
+  ["DELETE", `/api/tenant/support-grant/${anyId}`, "support:grant"],
+  ["GET", "/api/audit", "audit:read"],
   ["POST", "/api/team/invitations", "invitation:create"],
   ["POST", `/api/team/invitations/${anyId}/resend`, "invitation:create"],
   ["DELETE", `/api/team/invitations/${anyId}`, "invitation:cancel"],
@@ -131,10 +135,54 @@ describe("RBAC", () => {
     expect(response.status).toBe(401);
   });
 
+  describe("personificação", () => {
+    const body = { userId: anyId, tenantId: anyId };
+
+    it("exige sessão", async () => {
+      expect((await call("POST", "/api/admin/impersonate", { body })).status).toBe(401);
+    });
+
+    it.each(roles)("%s de tenant recebe PLATFORM_FORBIDDEN", async (role) => {
+      const response = await call("POST", "/api/admin/impersonate", {
+        cookie: users[role]?.cookie,
+        body,
+      });
+
+      expect(response.status).toBe(403);
+      expect(await response.json()).toMatchObject({ code: "PLATFORM_FORBIDDEN" });
+    });
+
+    it.each(["platform_owner", "platform_support"] as const)(
+      "%s passa da autorização",
+      async (role) => {
+        const staff = await makePlatformUser(owner, role);
+
+        const response = await call("POST", "/api/admin/impersonate", {
+          cookie: staff.cookie,
+          body,
+        });
+
+        expect(response.status).toBe(404);
+      },
+    );
+
+    it("corpo inválido responde 400", async () => {
+      const staff = await makePlatformUser(owner, "platform_support");
+
+      const response = await call("POST", "/api/admin/impersonate", {
+        cookie: staff.cookie,
+        body: { userId: "x" },
+      });
+
+      expect(response.status).toBe(400);
+    });
+  });
+
   describe("área da plataforma", () => {
     const reads = [
       ["GET", "/api/admin/webhooks"],
       ["GET", "/api/admin/subscriptions"],
+      ["GET", "/api/admin/audit"],
     ] as const;
     const writes = [
       ["POST", `/api/admin/webhooks/${anyId}/reprocess`],

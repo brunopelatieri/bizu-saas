@@ -49,6 +49,19 @@ export function call(
   });
 }
 
+/** Cabeçalhos para comparar respostas: o nonce da CSP muda a cada uma, por definição. */
+export function comparableHeaders(response: Response) {
+  const headers = Object.fromEntries(response.headers);
+  const policy = "content-security-policy-report-only";
+
+  delete headers.date;
+  if (headers[policy]) {
+    headers[policy] = headers[policy].replace(/'nonce-[^']+'/, "'nonce'");
+  }
+
+  return headers;
+}
+
 function sessionCookies(response: Response) {
   return response.headers
     .getSetCookie()
