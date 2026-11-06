@@ -109,7 +109,7 @@ Conferidos no código do Better Auth 1.7.18. Em cada caso seguiu a alternativa m
 | `consent_log` no cadastro | Aceite exigido, sem registro | A tabela chega na fase 10 |
 | Rate limit em Postgres nas rotas próprias | `rateLimit` em memória | `rate_limit_bucket` é da fase 9 |
 | `platform_support` só sem `delete`, `set-role` e `set-password` | Também sem `ban` e sem `session.revoke` | O plugin não compara o papel do alvo: o suporte baniria o proprietário. `spec-tenant-rbac.md` não dá essas ações ao suporte |
-| Cadastro pendente sem prazo | Expira em 24 h: sem link novo, e novo cadastro recria a conta | Conta pendente guarda a senha de quem cadastrou (`tech/16-bugs-riscos.md`, RISK-006) |
+| Cadastro pendente sem prazo | Expira em 24 h: sem link novo, e novo cadastro recria a conta | Conta pendente guarda a senha de quem cadastrou. A janela de 24 h é risco aceito pelo usuário, que manteve a confirmação em um clique (`tech/16-bugs-riscos.md`, RISK-006) |
 
 ## Não verificado (marcar antes de implementar)
 
