@@ -1,6 +1,7 @@
 import type { MetaFunction } from "react-router";
 import { OrganizationCard } from "@/components/app/organization-card";
 import { RolesCard } from "@/components/app/roles-card";
+import { SettingsNav } from "@/components/app/settings-nav";
 import { ChangeEmailCard } from "@/components/auth/change-email-card";
 import { Can } from "@/components/auth/can";
 
@@ -15,6 +16,7 @@ export default function Settings() {
       <h1 className="text-2xl font-bold tracking-tight text-foreground">
         Configurações
       </h1>
+      <SettingsNav />
       <OrganizationCard />
       <Can resource="role" action="create">
         <RolesCard />

@@ -1,11 +1,12 @@
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { secureHeaders } from "hono/secure-headers";
 import { zValidator } from "@hono/zod-validator";
 import { adminRoutes } from "@/api/admin";
 import { authRoutes } from "@/api/auth-ext";
 import { billingRoutes } from "@/api/billing";
+import { auditRoutes } from "@/api/audit-log";
 import { customerRoutes } from "@/api/customers";
+import { impersonationRoutes } from "@/api/impersonation";
 import { invitationRoutes } from "@/api/invitations";
 import { logError } from "@/api/log";
 import { meRoutes } from "@/api/me";
@@ -13,6 +14,12 @@ import { portalRoutes } from "@/api/portal";
 import { rateLimit } from "@/api/rate-limit";
 import { checkReady } from "@/api/ready";
 import { rolesRoutes } from "@/api/roles";
+import {
+  cspReportRoutes,
+  csrfGuard,
+  securityHeaders,
+} from "@/api/security";
+import { sessionRoutes } from "@/api/sessions";
 import { teamRoutes } from "@/api/team";
 import { tenantRoutes } from "@/api/tenant";
 import { emailWebhooks } from "@/api/webhooks-email";
@@ -32,9 +39,9 @@ import { contactMessageSchema } from "@/lib/schemas/contact";
  */
 export const api = new Hono();
 
-// Em todas as rotas, inclusive as páginas SSR, que passam por este middleware.
-// HSTS fica com o reverse proxy, que conhece o domínio e seus subdomínios.
-api.use("*", secureHeaders({ strictTransportSecurity: false }));
+// Em todas as rotas, inclusive as páginas SSR, que passam por este middleware e recebem
+// aqui o nonce da CSP. Ordem: cabeçalhos e CSP, CSRF, rate limit, autenticação.
+api.use("*", securityHeaders);
 
 api.get("/api/health", (c) => c.json({ ok: true }));
 
@@ -47,6 +54,10 @@ api.get("/api/ready", async (c) => {
 // Antes de tudo que lê o corpo: webhook é verificado sobre os bytes brutos.
 api.route("/", emailWebhooks);
 api.route("/", paymentWebhooks);
+api.route("/", cspReportRoutes);
+
+// Depois dos webhooks e do relatório de CSP, que não vêm de uma página do app.
+api.use("/api/*", csrfGuard);
 
 // Better Auth em /api/auth/* e rotas próprias em /api/auth-ext/* (src/api/auth-ext.ts).
 api.route("/", authRoutes);
@@ -54,6 +65,7 @@ api.route("/", authRoutes);
 // Better Auth do portal em /api/portal/auth/* e a API do cliente (src/api/portal.ts).
 api.route("/", portalRoutes);
 
+api.route("/", sessionRoutes);
 api.route("/", meRoutes);
 api.route("/", tenantRoutes);
 api.route("/", teamRoutes);
@@ -61,6 +73,9 @@ api.route("/", customerRoutes);
 api.route("/", rolesRoutes);
 api.route("/", invitationRoutes);
 api.route("/", billingRoutes);
+api.route("/", auditRoutes);
+// Antes de `adminRoutes`: a saída da personificação vem de quem não tem papel de plataforma.
+api.route("/", impersonationRoutes);
 api.route("/", adminRoutes);
 
 api.post(

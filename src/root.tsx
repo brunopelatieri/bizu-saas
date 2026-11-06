@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useContext } from "react";
 import {
   isRouteErrorResponse,
   Links,
@@ -13,6 +13,7 @@ import { QueryProvider } from "@/providers/query-provider";
 import { ThemeProvider } from "@/providers/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { CspNonceContext } from "@/lib/csp-nonce";
 import { themeInitScript } from "@/lib/theme";
 import { siteConfig } from "@/lib/constants/navigation";
 import stylesheet from "@/index.css?url";
@@ -41,13 +42,19 @@ export const meta: MetaFunction = () => [
 ];
 
 export function Layout({ children }: { children: ReactNode }) {
+  const nonce = useContext(CspNonceContext);
+
   return (
     <html lang="pt-BR" className="dark" suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: script estático do tema, sem entrada do usuário */}
-        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+        <script
+          nonce={nonce}
+          suppressHydrationWarning
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: script estático do tema, sem entrada do usuário
+          dangerouslySetInnerHTML={{ __html: themeInitScript }}
+        />
         <Meta />
         <Links />
       </head>

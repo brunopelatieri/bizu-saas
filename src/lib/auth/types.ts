@@ -27,6 +27,8 @@ export type MeResponse = {
   features: string[];
   /** Só os limites definidos pelo plano; chave ausente = ilimitado. */
   limits: Record<string, number>;
+  /** Falta 2FA para seguir: a API responde 403 até a pessoa configurar. */
+  security: { tenantRequires2fa: boolean; platformRequires2fa: boolean };
 };
 
 /** Usuário independente de provedor, usado pela interface e pela API. */
@@ -53,6 +55,7 @@ type SessionData = {
     name: string;
     emailVerified: boolean;
     role?: string | null;
+    twoFactorEnabled?: boolean | null;
   };
   session: { impersonatedBy?: string | null };
 };
@@ -63,7 +66,7 @@ function toPlatformRole(role: string | null | undefined): PlatformRole {
 
 /**
  * Converte a sessão do Better Auth em `AuthUser`. Usada pela API e pelo cliente.
- * O tenant ativo vem de `GET /api/me`; 2FA (fase 9) ainda não existe.
+ * O tenant ativo vem de `GET /api/me`.
  */
 export function toAuthUser({ user, session }: SessionData): AuthUser {
   return {
@@ -72,7 +75,7 @@ export function toAuthUser({ user, session }: SessionData): AuthUser {
     name: user.name,
     emailVerified: user.emailVerified,
     platformRole: toPlatformRole(user.role),
-    twoFactorEnabled: false,
+    twoFactorEnabled: user.twoFactorEnabled ?? false,
     activeTenant: null,
     impersonatedBy: session.impersonatedBy ?? null,
   };

@@ -1,12 +1,13 @@
 import { createHash, createHmac } from "node:crypto";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
-import { magicLink } from "better-auth/plugins";
+import { magicLink, twoFactor } from "better-auth/plugins";
 import { getDb } from "@/db";
 import {
   portalAccount,
   portalRateLimit,
   portalSession,
+  portalTwoFactor,
   portalUser,
   portalVerification,
 } from "@/db/schema";
@@ -17,6 +18,7 @@ import {
   PORTAL_COOKIE_PREFIX,
   PORTAL_INVITE_TTL_SECONDS,
   PORTAL_MAGIC_LINK_TTL_SECONDS,
+  TRUST_DEVICE_SECONDS,
 } from "@/lib/auth/constants";
 import {
   type PortalLinkContext,
@@ -34,6 +36,21 @@ import { recordPortalLogin, soleTenantId } from "@/lib/portal/access";
 export function derivePortalSecret(secret: string) {
   return createHmac("sha256", secret).update("bizu-portal-auth").digest("base64");
 }
+
+/**
+ * 2FA do portal: desligado por padrão, sem tela. O plugin e a tabela ficam prontos, mas
+ * ninguém ativa por HTTP; quem o ligar por tenant abre estas rotas (`spec-auth.md`).
+ */
+export const PORTAL_TWO_FACTOR_PATHS = [
+  "/two-factor/enable",
+  "/two-factor/disable",
+  "/two-factor/get-totp-uri",
+  "/two-factor/verify-totp",
+  "/two-factor/send-otp",
+  "/two-factor/verify-otp",
+  "/two-factor/verify-backup-code",
+  "/two-factor/generate-backup-codes",
+];
 
 /** O plugin grava `sha256(token)` em base64url, sem preenchimento. */
 function magicLinkIdentifier(token: string) {
@@ -57,8 +74,11 @@ function createPortalAuth() {
         portal_account: portalAccount,
         portal_verification: portalVerification,
         portal_rate_limit: portalRateLimit,
+        portal_two_factor: portalTwoFactor,
       },
     }),
+
+    disabledPaths: PORTAL_TWO_FACTOR_PATHS,
 
     emailAndPassword: {
       enabled: true,
@@ -137,6 +157,11 @@ function createPortalAuth() {
     },
 
     plugins: [
+      twoFactor({
+        issuer: "Bizu SaaS Portal",
+        twoFactorTable: "portal_two_factor",
+        trustDeviceMaxAge: TRUST_DEVICE_SECONDS,
+      }),
       // Sem `organization` nem `admin`: nada de equipe ou plataforma passa por aqui.
       magicLink({
         storeToken: "hashed",

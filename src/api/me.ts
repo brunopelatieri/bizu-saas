@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import type { AuthEnv } from "@/api/auth";
-import { requireAuth } from "@/api/auth";
+import { missingPlatform2fa, requireAuth } from "@/api/auth";
 import { authRateLimit } from "@/api/guards";
 import { handleTenantError } from "@/api/tenant-errors";
 import { permissionsOf } from "@/lib/auth/permissions";
@@ -27,6 +27,9 @@ async function resolveActiveTenant(
 ) {
   const current = memberships.find(({ id }) => id === activeId);
   if (current) return current;
+
+  // A sessão de suporte vale para um tenant só: nunca escorrega para outro da mesma pessoa.
+  if (user.impersonatedBy) return null;
 
   const preferredId = await preferredTenantId(user.id);
   const preferred = memberships.find(({ id }) => id === preferredId) ?? null;
@@ -82,6 +85,10 @@ meRoutes.get("/api/me", authRateLimit, requireAuth, async (c) => {
     billing: billing?.billing ?? null,
     features: billing?.features ?? [],
     limits: billing?.limits ?? {},
+    security: {
+      tenantRequires2fa: Boolean(tenant?.require2fa && !user.twoFactorEnabled),
+      platformRequires2fa: missingPlatform2fa(user),
+    },
   });
 });
 

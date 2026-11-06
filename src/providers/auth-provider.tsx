@@ -21,6 +21,7 @@ const NO_TENANTS: TenantSummary[] = [];
 const NO_PERMISSIONS: string[] = [];
 const NO_FEATURES: string[] = [];
 const NO_LIMITS: Record<string, number> = {};
+const NO_REQUIREMENTS = { tenantRequires2fa: false, platformRequires2fa: false };
 
 type AuthContextValue = {
   user: AuthUser | null;
@@ -39,10 +40,16 @@ type AuthContextValue = {
   /** `GET /api/me` ainda não respondeu. */
   accountLoading: boolean;
   accountError: Error | null;
-  /** Lança `AuthActionError`; `code` traz `EMAIL_NOT_VERIFIED` e afins. */
-  signIn: (values: LoginInput) => Promise<void>;
+  /** Falta 2FA para seguir: a API responde 403 até a pessoa configurar. */
+  security: MeResponse["security"];
+  /**
+   * Lança `AuthActionError`; `code` traz `EMAIL_NOT_VERIFIED` e afins. Devolve
+   * `twoFactor: true` quando a senha passou, mas a sessão ainda depende do desafio em `/2fa`.
+   */
+  signIn: (values: LoginInput) => Promise<{ twoFactor: boolean }>;
   /** Não abre sessão: a conta só entra depois de confirmar o e-mail. */
   signUp: (values: SignupInput) => Promise<void>;
+  /** Na personificação, encerra só ela e devolve o suporte à própria sessão. */
   signOut: () => Promise<void>;
   /** Relê a sessão depois de uma mudança feita fora do `authClient`. */
   refresh: () => Promise<void>;
@@ -73,8 +80,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const me = account.data;
 
   const signIn = useCallback(async ({ email, password }: LoginInput) => {
-    const { error } = await authClient.signIn.email({ email, password });
+    const { data, error } = await authClient.signIn.email({ email, password });
     if (error) throw toAuthActionError(error);
+
+    return {
+      twoFactor: Boolean(
+        (data as { twoFactorRedirect?: boolean } | null)?.twoFactorRedirect,
+      ),
+    };
   }, []);
 
   const signUp = useCallback(async (values: SignupInput) => {
@@ -85,10 +98,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (error) throw toAuthActionError(error);
   }, []);
 
+  const impersonating = Boolean(data?.session.impersonatedBy);
+
   const signOut = useCallback(async () => {
+    if (impersonating) {
+      await apiFetch("/api/admin/stop-impersonating", {
+        method: "POST",
+        body: "{}",
+      });
+      // Recarrega para nenhum estado do cliente personificado sobrar na sessão do suporte.
+      window.location.assign("/admin");
+      return;
+    }
+
     await authClient.signOut();
     queryClient.clear();
-  }, [queryClient]);
+  }, [impersonating, queryClient]);
 
   const reloadAccount = useCallback(async () => {
     await queryClient.invalidateQueries({ queryKey: ["me"] });
@@ -124,6 +149,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       billing: me?.billing ?? null,
       features: me?.features ?? NO_FEATURES,
       limits: me?.limits ?? NO_LIMITS,
+      security: me?.security ?? NO_REQUIREMENTS,
       accountLoading: Boolean(data) && account.isPending,
       // Com dados em mãos, uma releitura que falha não derruba a tela.
       accountError: me ? null : account.error,

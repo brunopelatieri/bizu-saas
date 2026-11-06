@@ -15,6 +15,7 @@ import {
   type TenantEnv,
   teamActor,
 } from "@/api/permissions";
+import { blockMutationsWhileImpersonating } from "@/api/impersonation";
 import { rateLimit } from "@/api/rate-limit";
 import { handleTenantError } from "@/api/tenant-errors";
 import { audit } from "@/lib/audit";
@@ -43,6 +44,8 @@ teamRoutes.use(
   authRateLimit,
   requireAuth,
   requireTenant,
+  // Convite também: com ele, quem personifica o owner deixaria um acesso para depois.
+  blockMutationsWhileImpersonating,
 );
 
 /** Convite dispara e-mail: o limite segura quem tentaria usar o app para enviar spam. */

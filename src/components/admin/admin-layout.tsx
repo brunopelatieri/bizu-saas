@@ -22,13 +22,14 @@ import {
 import { useAuth } from "@/providers/auth-provider";
 
 const NAV = { main: adminMainNav, bottom: adminBottomNav };
+const TWO_FACTOR_PATH = "/admin/configuracoes/seguranca";
 
 /**
  * Casca de `/admin`, a mesma de `/app` com outro menu. O gate é só o caminho da
  * interface: quem barra os dados é `requirePlatform`, em toda rota de `/api/admin/*`.
  */
 export function AdminLayout() {
-  const { user, loading } = useAuth();
+  const { user, loading, security } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { pathname } = useLocation();
@@ -43,6 +44,11 @@ export function AdminLayout() {
 
   if (!user || user.platformRole === "user") {
     return <Navigate to="/app" replace />;
+  }
+
+  // Só encurta o caminho: é `requirePlatform` quem responde 403 `PLATFORM_2FA_REQUIRED`.
+  if (security.platformRequires2fa && pathname !== TWO_FACTOR_PATH) {
+    return <Navigate to={TWO_FACTOR_PATH} replace />;
   }
 
   return (

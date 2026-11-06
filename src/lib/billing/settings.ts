@@ -2,6 +2,9 @@ import { inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { platformSetting } from "@/db/schema";
 
+export const impersonationPolicies = ["consent", "allow_without_consent"] as const;
+export type ImpersonationPolicy = (typeof impersonationPolicies)[number];
+
 /** Configurações da plataforma, editadas em `/admin/configuracoes`. */
 export type PlatformSettings = {
   /** Plano que o tenant recebe ao nascer. `null`: o primeiro plano gratuito ativo. */
@@ -10,12 +13,15 @@ export type PlatformSettings = {
   trialDays: number;
   /** Dias entre o fim do trial e o `read_only`. */
   graceDays: number;
+  /** `consent`: o suporte só entra no tenant com `impersonation_grant` válido. */
+  impersonationPolicy: ImpersonationPolicy;
 };
 
 export const SETTING_DEFAULTS: PlatformSettings = {
   trialPlanId: null,
   trialDays: 14,
   graceDays: 7,
+  impersonationPolicy: "consent",
 };
 
 /** Chave em `platform_setting` de cada campo (`spec-dados.md`). */
@@ -23,12 +29,17 @@ export const SETTING_KEYS = {
   trialPlanId: "trial_plan_id",
   trialDays: "trial_days",
   graceDays: "grace_days",
+  impersonationPolicy: "impersonation_policy",
 } as const satisfies Record<keyof PlatformSettings, string>;
 
 const asCount = (value: unknown, fallback: number) =>
   typeof value === "number" && Number.isInteger(value) && value >= 0
     ? value
     : fallback;
+
+/** Só o valor exato libera: qualquer outro cai em `consent`, que é o fechado. */
+const asPolicy = (value: unknown): ImpersonationPolicy =>
+  value === "allow_without_consent" ? value : SETTING_DEFAULTS.impersonationPolicy;
 
 /** Valor ausente ou malformado cai no padrão: a plataforma nunca fica sem configuração. */
 export function parseSettings(
@@ -41,6 +52,7 @@ export function parseSettings(
     trialPlanId: typeof planId === "string" ? planId : null,
     trialDays: asCount(byKey.get(SETTING_KEYS.trialDays), SETTING_DEFAULTS.trialDays),
     graceDays: asCount(byKey.get(SETTING_KEYS.graceDays), SETTING_DEFAULTS.graceDays),
+    impersonationPolicy: asPolicy(byKey.get(SETTING_KEYS.impersonationPolicy)),
   };
 }
 

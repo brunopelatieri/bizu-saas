@@ -14,6 +14,7 @@ import {
   requireTenant,
   type TenantEnv,
 } from "@/api/permissions";
+import { blockMutationsWhileImpersonating } from "@/api/impersonation";
 import { clientKey, rateLimit } from "@/api/rate-limit";
 import { handleTenantError } from "@/api/tenant-errors";
 import { audit } from "@/lib/audit";
@@ -50,6 +51,7 @@ billingRoutes.use(
   authRateLimit,
   requireAuth,
   requireTenant,
+  blockMutationsWhileImpersonating,
 );
 
 const canRead = requirePermission("billing", "read");

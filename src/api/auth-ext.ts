@@ -1,20 +1,25 @@
 import { createHash } from "node:crypto";
 import { zValidator } from "@hono/zod-validator";
+import { getSessionCookie } from "better-auth/cookies";
 import type { Context } from "hono";
 import { Hono } from "hono";
+import { createMiddleware } from "hono/factory";
 import {
   jsonBodyLimit,
   MINUTE,
   sameOrigin,
   validationError,
 } from "@/api/guards";
+import { resolveSession } from "@/api/auth";
+import { logError } from "@/api/log";
 import { clientKey, rateLimit } from "@/api/rate-limit";
 import {
   INVALID_LINK_MESSAGE,
   verificationGuard,
 } from "@/api/verification-guard";
+import { audit } from "@/lib/audit";
 import { runInBackground } from "@/lib/auth/background";
-import { CLIENT_IP_HEADER } from "@/lib/auth/constants";
+import { AUTH_COOKIE_PREFIX, CLIENT_IP_HEADER } from "@/lib/auth/constants";
 import { purgeExpiredPendingSignup } from "@/lib/auth/pending-signup";
 import { getAuth } from "@/lib/auth/server";
 import { readVerificationClaims } from "@/lib/auth/verification-issue";
@@ -75,7 +80,57 @@ const rateLimitByEmail = createRateLimitByEmail();
  */
 export const authRoutes = new Hono();
 
-authRoutes.use("/api/auth/*", jsonBodyLimit, sameOrigin);
+/** Do Better Auth, a sessão personificada só lê a si mesma e sai. */
+const OPEN_WHILE_IMPERSONATING = new Set([
+  "/api/auth/get-session",
+  "/api/auth/sign-out",
+]);
+
+/**
+ * Senha, e-mail, 2FA e o que vier em versões novas do plugin: lista do que passa, não do
+ * que é barrado. Falha fechada: sem saber quem é, a rota não abre.
+ */
+const closedWhileImpersonating = createMiddleware(async (c, next) => {
+  const { headers } = c.req.raw;
+
+  if (
+    OPEN_WHILE_IMPERSONATING.has(c.req.path) ||
+    !getSessionCookie(headers, { cookiePrefix: AUTH_COOKIE_PREFIX })
+  ) {
+    return next();
+  }
+
+  let resolved: Awaited<ReturnType<typeof resolveSession>>;
+
+  try {
+    resolved = await resolveSession(headers);
+  } catch (error) {
+    logError("Falha ao validar sessão", error);
+    return c.json({ error: "Autenticação indisponível." }, 503);
+  }
+
+  const impersonatedBy = resolved?.user.impersonatedBy;
+  if (!resolved || !impersonatedBy) return next();
+
+  await audit("platform.impersonation_blocked_action", {
+    actor: { type: "platform", id: impersonatedBy },
+    impersonatorId: impersonatedBy,
+    tenantId: resolved.activeOrganizationId,
+    target: { type: "user", id: resolved.user.id },
+    metadata: { method: c.req.method, path: c.req.path },
+    ip: clientKey(c),
+  });
+
+  return c.json(
+    {
+      error: "Esta ação não fica disponível durante a personificação.",
+      code: "IMPERSONATION_BLOCKED",
+    },
+    403,
+  );
+});
+
+authRoutes.use("/api/auth/*", jsonBodyLimit, sameOrigin, closedWhileImpersonating);
 authRoutes.use("/api/auth-ext/*", jsonBodyLimit, sameOrigin);
 
 authRoutes.post(

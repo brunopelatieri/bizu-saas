@@ -1,4 +1,5 @@
 import { config } from "dotenv";
+import type { SecureHeadersVariables } from "hono/secure-headers";
 import { createHonoServer } from "react-router-hono-server/node";
 import { api } from "@/api/app";
 import { requestLogger } from "@/api/request-logger";
@@ -57,12 +58,14 @@ if (workerOnly) {
 // Em modo worker não há servidor HTTP; o export existe só para o formato do módulo.
 export default workerOnly
   ? (undefined as unknown as Awaited<ReturnType<typeof createHonoServer>>)
-  : await createHonoServer({
+  : await createHonoServer<{ Variables: SecureHeadersVariables }>({
       // O logger padrão grava `?token=` das páginas de verificação e reset.
       defaultLogger: false,
       // O `bodyLimit` do Hono remonta a `Request` quando não há `Content-Length`, como
       // em todo DELETE do navegador. Sem isto, responde 500 (`tests/db/tenant-http.test.ts`).
       overrideGlobalObjects: true,
+      // O nonce da CSP nasce em `securityHeaders`, na mesma requisição (`entry.server.tsx`).
+      getLoadContext: (c) => ({ cspNonce: c.get("secureHeadersNonce") }),
       configure(server) {
         server.use("*", requestLogger);
         // Rotas de negócio (/api/*) são resolvidas antes do handler SSR do RR7.

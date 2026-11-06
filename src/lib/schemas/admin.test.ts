@@ -114,7 +114,12 @@ describe("parseSettings", () => {
         { key: "grace_days", value: "sete" },
         { key: "trial_plan_id", value: "abc" },
       ]),
-    ).toEqual({ trialPlanId: "abc", trialDays: 30, graceDays: 7 });
+    ).toEqual({
+      trialPlanId: "abc",
+      trialDays: 30,
+      graceDays: 7,
+      impersonationPolicy: "consent",
+    });
   });
 });
 

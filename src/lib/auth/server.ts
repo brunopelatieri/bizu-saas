@@ -1,18 +1,20 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
-import { admin, organization } from "better-auth/plugins";
+import { admin, organization, twoFactor } from "better-auth/plugins";
 import { getDb } from "@/db";
 import * as schema from "@/db/schema";
 import { runInBackground } from "@/lib/auth/background";
-import { audit } from "@/lib/audit";
+import { type AuditAction, audit } from "@/lib/audit";
 import {
   AUTH_COOKIE_PREFIX,
   CLIENT_IP_HEADER,
   INVITATION_TTL_SECONDS,
   MAX_CUSTOM_ROLES,
   MAX_TENANTS_PER_USER,
+  TRUST_DEVICE_SECONDS,
 } from "@/lib/auth/constants";
 import {
+  emailChangeCompleted,
   sendChangeEmailApproval,
   sendChangeEmailDone,
   sendExistingUserNotice,
@@ -30,6 +32,12 @@ import {
 import { getEnv } from "@/lib/env";
 import { preferredTenantId } from "@/lib/tenant/membership";
 
+/** Só o plugin grava `two_factor_enabled`, então a rota diz o que mudou. */
+const TWO_FACTOR_AUDIT: Record<string, AuditAction> = {
+  "/two-factor/verify-totp": "auth.2fa_enabled",
+  "/two-factor/disable": "auth.2fa_disabled",
+};
+
 function createAuth() {
   const env = getEnv();
 
@@ -42,12 +50,19 @@ function createAuth() {
     database: drizzleAdapter(getDb(), { provider: "pg", schema }),
 
     // Sem rota HTTP: reenvio e reset passam por /api/auth-ext (resposta uniforme e
-    // limite por e-mail); personificação, pela política de consentimento da fase 9;
+    // limite por e-mail); personificação, pela política de consentimento (`impersonation.ts`);
     // escrita sobre usuários, por /api/admin/*, com as regras e a auditoria de lá (o plugin
-    // não compara o papel do alvo). `auth.api.*` continua disponível no servidor.
+    // não compara o papel do alvo); sessões, por /api/me/sessions, com auditoria e sem
+    // expor tokens. `auth.api.*` continua disponível no servidor.
     disabledPaths: [
       "/send-verification-email",
       "/request-password-reset",
+      "/list-sessions",
+      "/revoke-session",
+      "/revoke-sessions",
+      "/revoke-other-sessions",
+      "/two-factor/send-otp",
+      "/two-factor/verify-otp",
       "/admin/impersonate-user",
       "/admin/stop-impersonating",
       "/admin/set-role",
@@ -88,13 +103,14 @@ function createAuth() {
       sendVerificationEmail: ({ user, token }) =>
         sendVerificationLink(user, token),
       afterEmailVerification: async (user, request) => {
+        const ip = request?.headers.get(CLIENT_IP_HEADER);
+
         runInBackground(sendChangeEmailDone(user, request));
-        runInBackground(
-          audit("auth.email_verified", {
-            actor: { id: user.id },
-            ip: request?.headers.get(CLIENT_IP_HEADER),
-          }),
-        );
+        runInBackground(audit("auth.email_verified", { actor: { id: user.id }, ip }));
+
+        if (emailChangeCompleted(request)) {
+          runInBackground(audit("auth.email_changed", { actor: { id: user.id }, ip }));
+        }
       },
     },
 
@@ -118,6 +134,31 @@ function createAuth() {
 
     // Sessão nova abre no último tenant usado, se a pessoa ainda for membro.
     databaseHooks: {
+      user: {
+        create: {
+          after: async (user, context) => {
+            runInBackground(
+              audit("auth.signed_up", {
+                actor: { id: user.id },
+                ip: context?.request?.headers.get(CLIENT_IP_HEADER),
+              }),
+            );
+          },
+        },
+        update: {
+          after: async (user, context) => {
+            const action = context?.path && TWO_FACTOR_AUDIT[context.path];
+            if (!action) return;
+
+            runInBackground(
+              audit(action, {
+                actor: { id: user.id },
+                ip: context.request?.headers.get(CLIENT_IP_HEADER),
+              }),
+            );
+          },
+        },
+      },
       session: {
         create: {
           before: async (session) => ({
@@ -154,6 +195,7 @@ function createAuth() {
         adminRoles: ["platform_owner", "platform_support"],
         impersonationSessionDuration: 3600,
       }),
+      twoFactor({ issuer: "Bizu SaaS", trustDeviceMaxAge: TRUST_DEVICE_SECONDS }),
       // Só por `auth.api.*`: `/api/auth/organization/*` não responde (`auth-ext.ts`).
       // `status`, `access_mode` e `settings` do tenant não passam pelo plugin.
       organization({

@@ -29,6 +29,7 @@ export default [
   route("esqueci-senha", "routes/auth/forgot-password.tsx"),
   route("redefinir-senha", "routes/auth/reset-password.tsx"),
   route("convite/:id", "routes/auth/invite.tsx"),
+  route("2fa", "routes/auth/two-factor.tsx"),
 
   // ---------------------------------------------------------------------------
   // Área do tenant (owner e equipe) — client-only (SEM loader de servidor).
@@ -45,7 +46,11 @@ export default [
       route("assinatura", "routes/app.subscription.tsx"),
       route("assinatura/faturas", "routes/app.subscription.invoices.tsx"),
       route("assinatura/retorno", "routes/app.subscription.return.tsx"),
+      route("auditoria", "routes/app.audit.tsx"),
       route("configuracoes", "routes/app.settings.tsx"),
+      route("configuracoes/seguranca", "routes/app.settings.security.tsx"),
+      route("configuracoes/sessoes", "routes/app.settings.sessions.tsx"),
+      route("configuracoes/suporte", "routes/app.settings.support.tsx"),
     ]),
 
     // Plataforma (proprietário e suporte). O gate de papel é do `AdminLayout` e da
@@ -59,7 +64,9 @@ export default [
       route("planos/:id", "routes/admin/plan.tsx"),
       route("assinaturas", "routes/admin/subscriptions.tsx"),
       route("webhooks", "routes/admin/webhooks.tsx"),
+      route("auditoria", "routes/admin/audit.tsx"),
       route("configuracoes", "routes/admin/settings.tsx"),
+      route("configuracoes/seguranca", "routes/admin/security.tsx"),
     ]),
   ]),
 

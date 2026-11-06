@@ -5,6 +5,7 @@ import { logError } from "@/api/log";
 import { clientKey } from "@/api/rate-limit";
 import {
   type Action,
+  isOwner,
   permissionsOf,
   type Resource,
   type RoleCatalog,
@@ -81,6 +82,16 @@ export const requireTenant = createMiddleware<TenantEnv>(async (c, next) => {
   const refused = refusal(c, tenant);
   if (refused) return refused;
 
+  if (tenant.require2fa && !c.get("user").twoFactorEnabled) {
+    return c.json(
+      {
+        error: "Esta organização exige verificação em duas etapas.",
+        code: "TENANT_2FA_REQUIRED",
+      },
+      403,
+    );
+  }
+
   c.set("tenant", tenant);
   c.set("roleCatalog", catalog);
   c.set("permissions", permissionsOf(catalog, tenant.role));
@@ -111,6 +122,21 @@ export function requirePermission<R extends Resource>(
     await next();
   });
 }
+
+/** Vem depois de `requireTenant`. Para o que nem um papel personalizado pode receber. */
+export const requireOwner = createMiddleware<TenantEnv>(async (c, next) => {
+  if (!isOwner(c.get("tenant").role)) {
+    return c.json(
+      {
+        error: "Só o proprietário pode fazer isso.",
+        code: "PERMISSION_DENIED",
+      },
+      403,
+    );
+  }
+
+  await next();
+});
 
 export function teamActor(c: Context<TenantEnv>): TeamActor {
   return {

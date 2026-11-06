@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { requireAuth } from "@/api/auth";
 import { jsonBodyLimit, MINUTE, sameOrigin, validId } from "@/api/guards";
+import { blockWhileImpersonating } from "@/api/impersonation";
 import type { TenantEnv } from "@/api/permissions";
 import { clientKey, rateLimit } from "@/api/rate-limit";
 import { handleTenantError } from "@/api/tenant-errors";
@@ -50,6 +51,7 @@ invitationRoutes.post(
   "/api/invitations/:id/accept",
   rateLimit({ name: "invitation-accept", limit: 10, windowMs: MINUTE }),
   requireAuth,
+  blockWhileImpersonating,
   validId,
   async (c) => {
     const invitationId = c.req.valid("param").id;

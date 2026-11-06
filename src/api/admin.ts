@@ -25,6 +25,7 @@ import {
   suspendTenant,
   unsuspendTenant,
 } from "@/lib/admin/tenants";
+import { impersonationAccess } from "@/lib/admin/impersonation";
 import { listSubscriptions } from "@/lib/admin/subscriptions";
 import {
   assertBannable,
@@ -33,6 +34,7 @@ import {
   revokePortalSessions,
 } from "@/lib/admin/users";
 import { type AuditAction, audit } from "@/lib/audit";
+import { listPlatformAudit } from "@/lib/audit-log";
 import { getAuth } from "@/lib/auth/server";
 import {
   adminCancelSubscription,
@@ -55,6 +57,7 @@ import {
   usersQuerySchema,
   webhooksQuerySchema,
 } from "@/lib/schemas/admin";
+import { adminAuditQuerySchema } from "@/lib/schemas/security";
 import { notFound } from "@/lib/tenant/errors";
 import { z } from "zod";
 
@@ -113,8 +116,21 @@ adminRoutes.get(
   async (c) => c.json(await listTenants(c.req.valid("query"))),
 );
 
-adminRoutes.get("/api/admin/tenants/:id", validId, async (c) =>
-  c.json(await getTenantDetail(c.req.valid("param").id)),
+adminRoutes.get("/api/admin/tenants/:id", validId, async (c) => {
+  const { id } = c.req.valid("param");
+  const detail = await getTenantDetail(id);
+  const { allowed, policy, grant } = await impersonationAccess(id);
+
+  return c.json({
+    ...detail,
+    impersonation: { allowed, policy, grantExpiresAt: grant?.expiresAt ?? null },
+  });
+});
+
+adminRoutes.get(
+  "/api/admin/audit",
+  zValidator("query", adminAuditQuerySchema, validationError),
+  async (c) => c.json(await listPlatformAudit(c.req.valid("query"))),
 );
 
 adminRoutes.post(
@@ -257,8 +273,13 @@ adminRoutes.patch(
       c.get("user").id,
     );
 
+    const { impersonationPolicy } = c.req.valid("json");
+
     await auditAdmin(c, "admin.settings_updated", {
       target: { type: "settings", id: "platform" },
+      metadata: impersonationPolicy
+        ? { impersonation_policy: impersonationPolicy }
+        : undefined,
     });
 
     return c.json({ settings });

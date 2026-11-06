@@ -76,8 +76,11 @@ export function LoginForm({ nextPath }: { nextPath: string }) {
     setUnverifiedEmail(null);
 
     try {
-      await signIn(values);
-      navigate(nextPath);
+      const { twoFactor } = await signIn(values);
+
+      navigate(
+        twoFactor ? `/2fa?next=${encodeURIComponent(nextPath)}` : nextPath,
+      );
     } catch (error) {
       if (error instanceof AuthActionError && error.code === "EMAIL_NOT_VERIFIED") {
         setUnverifiedEmail(values.email);

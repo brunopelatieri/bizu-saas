@@ -16,6 +16,8 @@ export type Membership = {
   accessMode: TenantAccessMode;
   memberId: string;
   role: string;
+  /** `organization.settings.require_2fa`. */
+  require2fa: boolean;
 };
 
 const membershipColumns = {
@@ -26,6 +28,7 @@ const membershipColumns = {
   accessMode: organization.accessMode,
   memberId: member.id,
   role: member.role,
+  require2fa: sql<boolean>`coalesce(${organization.settings}->>'require_2fa' = 'true', false)`,
 };
 
 export function listMemberships(userId: string): Promise<Membership[]> {
