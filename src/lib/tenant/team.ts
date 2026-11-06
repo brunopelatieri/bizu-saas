@@ -127,6 +127,45 @@ export async function findManageableInvitation(
 }
 
 /**
+ * Reconvidar cancela o convite anterior, e o plugin faz isso sem olhar o papel dele nem
+ * `invitation:cancel`. Sem esta checagem, reconvidar derrubaria um convite que a pessoa
+ * não pode revogar. A resposta não diz qual é o papel do convite existente.
+ */
+export async function assertCanReplaceInvitation(
+  tenantId: string,
+  email: string,
+  actor: TeamActor,
+) {
+  const rows = await withTenant(tenantId, (tx) =>
+    tx
+      .select({ role: invitation.role })
+      .from(invitation)
+      .where(
+        and(
+          eq(invitation.organizationId, tenantId),
+          eq(invitation.email, email),
+          eq(invitation.status, "pending"),
+          gt(invitation.expiresAt, new Date()),
+        ),
+      ),
+  );
+
+  const replaceable = rows.every(
+    ({ role }) =>
+      actor.permissions.includes("invitation:cancel") &&
+      canActOnRole(actor.permissions, actor.catalog, role),
+  );
+
+  if (!replaceable) {
+    throw new TenantRuleError(
+      409,
+      "ALREADY_INVITED",
+      "Esta pessoa já tem um convite pendente.",
+    );
+  }
+}
+
+/**
  * Trava os membros do tenant até o fim da transação: dois owners se rebaixando ao mesmo
  * tempo veriam um ao outro e deixariam a organização sem nenhum.
  */

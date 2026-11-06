@@ -545,6 +545,51 @@ describe("escalada de permissão", () => {
     expect(canceled.status).toBe(404);
   });
 
+  it("reconvidar não derruba convite de papel maior", async () => {
+    const tenantOwner = await createUser(owner);
+    const tenant = await createTenant(tenantOwner);
+    const admin = await createUser(owner);
+    await addMember(owner, tenant.id, admin, "admin");
+    const email = newEmail();
+    await invite(tenantOwner, email, "owner");
+    const id = await invitationLink(email);
+
+    const response = await invite(admin, email, "member");
+
+    expect(response.status).toBe(409);
+    expect((await json(response)).code).toBe("ALREADY_INVITED");
+    expect((await call("GET", `/api/invitations/${id}`)).status).toBe(200);
+  });
+
+  it("reconvidar exige poder revogar o convite anterior", async () => {
+    const tenantOwner = await createUser(owner);
+    const tenant = await createTenant(tenantOwner);
+    await createRole(tenantOwner, "so-convida", ["invitation:create"]);
+    const inviter = await createUser(owner);
+    await addMember(owner, tenant.id, inviter, "so-convida");
+    const email = newEmail();
+    await invite(tenantOwner, email, "so-convida");
+    const id = await invitationLink(email);
+
+    const response = await invite(inviter, email, "so-convida");
+
+    expect(response.status).toBe(409);
+    expect((await call("GET", `/api/invitations/${id}`)).status).toBe(200);
+  });
+
+  it("admin reconvida quando pode gerir o convite anterior", async () => {
+    const tenantOwner = await createUser(owner);
+    const tenant = await createTenant(tenantOwner);
+    const admin = await createUser(owner);
+    await addMember(owner, tenant.id, admin, "admin");
+    const email = newEmail();
+    await invite(tenantOwner, email, "member");
+
+    const response = await invite(admin, email, "admin");
+
+    expect(response.status).toBe(201);
+  });
+
   it("colaborador não vê os ids dos convites", async () => {
     const tenantOwner = await createUser(owner);
     const tenant = await createTenant(tenantOwner);

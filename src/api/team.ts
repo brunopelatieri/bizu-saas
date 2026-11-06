@@ -23,6 +23,7 @@ import { getAuth } from "@/lib/auth/server";
 import { changeRoleSchema, inviteSchema } from "@/lib/schemas/team";
 import {
   assertCanGrant,
+  assertCanReplaceInvitation,
   assertKnownRole,
   changeMemberRole,
   findManageableInvitation,
@@ -71,6 +72,7 @@ teamRoutes.post(
 
     assertKnownRole(actor.catalog, role);
     assertCanGrant(actor, role);
+    await assertCanReplaceInvitation(organizationId, email, actor);
 
     const invitation = await getAuth().api.createInvitation({
       headers: c.req.raw.headers,
