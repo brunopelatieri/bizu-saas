@@ -2,7 +2,7 @@
 
 - **Escopo:** Topologia, endpoints, credenciais, convenções e riscos do deploy.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-testes-operacao.md`
-- **Paths do código:** `src/server.ts`, `src/lib/env.ts`, `docker-compose.yml`, `docker/postgres/init.sql`
+- **Paths do código:** `src/server.ts`, `src/lib/env.ts`, `docker-compose.yml`, `docker/postgres/init.sql`, `docker/backup/`, `src/lib/logger.ts`, `src/lib/observability.ts`
 - **Detalhe completo:** `docs/context/tech/14-deploy.md`
 
 ## Topologia
@@ -44,7 +44,8 @@ A demo em `https://bizu.bru.ia.br` roda na Vercel a partir de outro repositório
 - Comando do container: `node build/server/index.js`.
 - `DATABASE_URL` é usada em runtime (`bizu_app`, sem `BYPASSRLS`); `DIRECT_URL`, pelo
   Drizzle Kit e seed (`bizu_owner`). Os papéis vêm de `docker/postgres/init.sql`.
-- `docker-compose.yml` sobe Postgres e Mailpit de desenvolvimento.
+- `docker-compose.yml` sobe Postgres e Mailpit de desenvolvimento; o perfil `backup` (`docker/backup/`)
+  e o MinIO comentado são opcionais.
 - Migrations rodam fora do container da aplicação, como etapa separada.
 - Atrás de reverse proxy, defina `TRUSTED_PROXY_HOPS=1` (um valor por proxy na frente).
 - HSTS é configurado no reverse proxy, não no app. Só inclua subdomínios se todos usarem HTTPS.
@@ -61,5 +62,9 @@ Somente listados; nenhum foi resolvido aqui.
 - **Migrations:** o runtime não inclui `drizzle-kit` nem `drizzle/`; o serviço `migrate`
   entra com `docker/compose.prod.yml` na fase 11.
 - **Stack Portainer:** ainda não existe stack com app, Postgres e reverse proxy.
-- **Backup:** faltam backup e restore documentados para a VPS.
-- **Observabilidade:** sem logs estruturados.
+- **Backup:** o perfil `backup` do compose cifra o dump e os arquivos com `age`, mas copiar o volume
+  para fora da VPS e testar a restauração todo mês é de quem opera (`tech/14-deploy.md`). Backup
+  antigo traz de volta quem foi excluído depois: reaplicar as exclusões ao restaurar.
+- **Observabilidade:** logs JSON com `request_id` (pino) e Sentry opcional por `SENTRY_DSN`; sem
+  coletor nem métricas (tracing fica para depois).
+- **Arquivos:** em container, `STORAGE_LOCAL_DIR` precisa de volume; ou `STORAGE_PROVIDER=s3`.

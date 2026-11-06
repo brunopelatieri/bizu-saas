@@ -16,6 +16,7 @@ estão nas rules e no cabeçalho de cada arquivo.
 | Schema, migration, query | `tech/07-banco-drizzle.md` |
 | Login, sessão, provedor de autenticação | `tech/08-auth.md` |
 | 2FA, sessões, personificação, CSP, CSRF, rate limit, criptografia de credenciais, leitura da auditoria | `tech/26-seguranca.md` |
+| LGPD: consentimento, `/legal/*`, exportação, exclusão com carência, retenção, arquivos (`StorageProvider`), logs, Sentry, backup | `tech/27-lgpd-arquivos.md`, `lgpd.md` |
 | Tenant, equipe, convite, papéis, permissões, auditoria | `tech/21-tenant-rbac.md` |
 | Admin da plataforma: `/admin`, `/api/admin/*`, suspender, banir, planos na tela | `tech/22-admin.md` |
 | Planos, preços, trial, limites, features, estado `read_only`, `checkLimit`, seed | `tech/23-billing-planos.md` |
@@ -27,7 +28,7 @@ estão nas rules e no cabeçalho de cada arquivo.
 | E-mail transacional, templates, bounces, Mailpit | `tech/19-email.md` |
 | Jobs em segundo plano, pg-boss, filas, `JOBS_MODE`, worker | `tech/20-jobs.md` |
 | Componentes base | `tech/12-shadcn-ui.md` |
-| Docker, VPS, variáveis de ambiente | `infra-deploy.md`, `tech/14-deploy.md` |
+| Docker, VPS, variáveis de ambiente, backup e restauração | `infra-deploy.md`, `tech/14-deploy.md` |
 | Lint, testes, CI | `tech/15-qualidade.md` |
 | Bug ou risco conhecido | `tech/16-bugs-riscos.md` |
 

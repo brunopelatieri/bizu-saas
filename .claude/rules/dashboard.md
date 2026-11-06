@@ -24,6 +24,8 @@ paths:
   - "src/lib/constants/permission-labels.ts"
   - "src/components/auth/can.tsx"
   - "src/components/auth/protected-route.tsx"
+  - "src/components/privacy/**"
+  - "src/components/legal/**"
 ---
 
 # Áreas autenticadas client-only: /app, /admin e /portal
@@ -41,5 +43,6 @@ paths:
 - Tenant ativo, tenants e permissões vêm de `useAuth()`, que lê `GET /api/me`. Nada na URL identifica o tenant.
 - `/portal/**` tem layout e sessão próprios (`PortalLayout`, `usePortalAuth()`), sem nada de `/app`: o tenant ativo vem de `GET /api/portal/me`, e o único `org` na URL é o do login. Nenhuma tela do portal consome token no GET.
 - Mantenha o layout responsivo: sidebar colapsável no desktop e `Sheet` no mobile.
+- Privacidade: `/app/configuracoes/privacidade` e a seção de `/portal/conta` usam `src/components/privacy/` e `ConsentGate`/`ConsentDialog`; sem loader no servidor, `<Can>` só esconde o botão de excluir a organização (quem decide é a API).
 
-Para entender este domínio, leia: docs/context/tech/11-dashboard.md e docs/context/tech/22-admin.md
+Para entender este domínio, leia: docs/context/tech/11-dashboard.md e docs/context/tech/22-admin.md, docs/context/tech/27-lgpd-arquivos.md

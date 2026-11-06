@@ -1,0 +1,56 @@
+# LGPD, arquivos e observabilidade
+
+- **Escopo:** Consentimento e textos legais, exportação e exclusão de dados pessoais, retenção, módulo de arquivos (`StorageProvider`), logs com `request_id`, Sentry opcional e backup.
+- **Specs relacionadas:** `docs/specs/saas-foundation/spec-seguranca.md` (LGPD), `spec-dados.md`, `spec-email-jobs.md`, `spec-rotas-api.md`, `spec-testes-operacao.md`
+- **Paths do código:** `src/lib/lgpd/` (`consent.ts`, `export.ts`, `deletion.ts`, `identity.ts`, `link.ts`, `zip.ts`), `src/lib/legal/` (versões, markdown, `documents.server.ts`, `termos.md`, `privacidade.md`), `src/api/lgpd.ts`, `src/api/files.ts`, `src/lib/files/`, `src/lib/storage/`, `src/lib/logger.ts`, `src/lib/observability.ts`, `src/lib/monitoring/sentry/`, `src/jobs/lgpd.ts`, `src/jobs/maintenance.ts`, `src/db/schema/lgpd.ts`, `src/db/schema/files.ts`, `src/components/privacy/`, `docker/backup/`
+
+A tabela de retenção e a base legal estão em `docs/context/lgpd.md`.
+
+## Consentimento e textos legais
+
+- `consent_log` (sem tenant): uma linha por aceite ou recusa, com `kind` (`terms`, `privacy`, `marketing`), `version`, `accepted`, `ip_hash` (mesmo hash do `audit_log`) e `user_agent`. O estado atual é a linha mais recente de cada tipo.
+- O cadastro grava o aceite **no hook de criação do usuário** (`databaseHooks.user.create.after`, nas duas instâncias): a rota abre um contexto com `withSignupConsent` (AsyncLocalStorage) e o hook lê. Cadastro de e-mail que já existe não cria usuário, então não grava aceite em nome do dono da conta. Falha ao gravar vai para `logError`, sem derrubar o cadastro.
+- `src/lib/legal/versions.ts` (`LEGAL_VERSIONS`) é a versão vigente. Subir a versão faz `GET /api/me` e `GET /api/portal/me` devolverem `consentRequired` (`["terms", "privacy"]`) até a pessoa aceitar. O `ConsentGate` (`/app` e `/admin`) e o `ConsentDialog` (`/portal`) mostram o modal, que chama `POST /api/me/consent` ou `POST /api/portal/me/consent`. A versão enviada precisa ser a vigente (409 `STALE_LEGAL_VERSION` senão). Sessão de suporte (personificação) nunca recebe nem aceita.
+- Marketing é opcional: checkbox no cadastro (`marketing` no `signupSchema`) e `POST /api/me/consent/marketing`; `GET /api/me/consent` devolve o estado para a tela de privacidade.
+- `/legal/termos` e `/legal/privacidade` (`src/routes/legal.tsx`): SSR com `meta`, markdown de `src/lib/legal/*.md` convertido em blocos de dados (`markdown.ts`, que nunca gera HTML) e placeholders `{{VERSION}}`, `{{APP_NAME}}`, `{{APP_URL}}`, `{{DPO_EMAIL}}`. O controlador fica como `[NOME DO CONTROLADOR, CNPJ E ENDEREÇO]` no próprio markdown: **troque antes de ir ao ar**. `platform_setting.dpo_email` (editável em `/admin/configuracoes`) preenche `{{DPO_EMAIL}}`.
+- Links dos textos: rodapé público, cadastro da equipe e do portal.
+- O seed (`npm run db:seed`) aceita os textos vigentes para as contas de exemplo.
+
+## Exportação
+
+- `POST /api/me/export` e `POST /api/portal/me/export` criam `data_export` (`pending`) e enfileiram `lgpd.export` (3 tentativas, `singletonKey` = id do pedido). Um pendente por pessoa (índice único parcial; 409 `EXPORT_PENDING`); pendente há mais de 1 hora é de um job morto e libera novo pedido. Rate limit: 3 por hora, por pessoa.
+- O job (`processExport`) monta o zip em memória (`zip.ts`, sem dependência): `perfil.json`, `organizacoes-e-papeis.json` (ou `cadastros-nas-organizacoes.json` no portal), `consentimentos.json`, `auditoria.json` (sem `ip_hash`), `clientes-<slug>.json` para cada organização de que a pessoa é owner, e `LEIA-ME.txt`. Grava no `StorageProvider` sob `exports/<chave aleatória>` e envia `data-export-ready`. Idempotente.
+- Download: `GET /api/me/export/:id/download?sig=...` (portal: `/api/portal/me/export/:id/download`). Exige **a assinatura** (HMAC-SHA256 de `id.expira`, com segredo derivado de `BETTER_AUTH_SECRET`, 7 dias) **e a sessão do dono do pedido**; link vazado sozinho não baixa nada. Não é consumido no GET (baixar duas vezes no prazo é legítimo). Sem personificação.
+- `GET /api/me/export` lista os últimos 5 pedidos, com o link assinado dos prontos e vigentes (é por ele que a tela baixa, mesmo se o e-mail falhar).
+
+## Exclusão com carência
+
+- `deletion_request` (`user`, `portal_user` ou `tenant`), 30 dias, um pedido `pending` por assunto (índice único parcial). `DELETE /api/me` pede a senha e, com 2FA, o código TOTP (`confirmIdentity`: mesma mensagem para qualquer falha; 5 tentativas por 15 minutos por usuário). Recusa conta da plataforma (403 `PLATFORM_ACCOUNT`) e quem é o **único owner** de organização ativa (409 `LAST_OWNER`): transferir ou excluir a organização antes. Agenda, envia `deletion-scheduled`, encerra as outras sessões e audita `lgpd.deletion_requested`. Pedir de novo é idempotente.
+- `DELETE /api/portal/me`: com senha, confirma e agenda; sem senha, envia `deletion-confirm` com link para `/portal/conta?confirmar-exclusao=<token>`, e o **botão** da página faz `POST /api/portal/me/deletion/confirm` (token em `portal_verification`, só o hash, uso único, 1 hora, só para a sessão da própria pessoa).
+- `DELETE /api/tenant` (owner, sem personificação): encerra a assinatura no provedor **antes** da transação (falha do provedor = nada agendado), passa a organização a `deleting`/`locked`, agenda e avisa os owners. Vale também em `read_only` e `locked` por cobrança (exceção em `refusal`, `src/api/permissions.ts`), mas não suspensa pela plataforma. `POST /api/tenant/deletion/cancel { tenantId }` fica fora do `requireTenant` (que recusa organização inativa): o owner desiste e o acesso volta (`read_only` se a assinatura foi encerrada).
+- Cancelar: `POST /api/me/deletion/cancel`, `POST /api/portal/me/deletion/cancel`. `GET /api/me/deletion` e `GET /api/portal/me/deletion` alimentam as telas.
+- Job `lgpd.delete` (cron 05:00 UTC, 3 tentativas): `executeDueDeletions` roda cada pedido vencido em transação com `withPlatformScope("lgpd")`, linha travada (`FOR UPDATE`), idempotente. Usuário vira `deleted+<id>@invalid` / "Usuário removido", perde conta (senha), 2FA, sessões, vínculos, convites e exportações; portal: idem, mais `customer` anonimizado em todas as organizações; organização: nome/slug trocados, membros, papéis, credenciais e arquivos removidos, `customer` e `billing_profile` anonimizados. **Ficam** `invoice`, `subscription`, `audit_log` e `consent_log` (sem apontar para ninguém). Objetos do armazenamento saem depois do commit. Se a pessoa virou a única owner de uma organização durante a carência, o pedido vira `failed` (não deixa a organização órfã).
+- Auditoria: `lgpd.export_requested`, `lgpd.deletion_requested`, `lgpd.deletion_canceled`, `lgpd.deletion_executed`.
+
+## Módulo de arquivos
+
+- `StorageProvider` (`src/lib/storage/types.ts`): `put(key, Buffer, { contentType })`, `get(key)` (stream ou `null`), `delete(key)`, `signedUrl?`. O registro (`src/lib/storage/index.ts`) acha `providers/<id>/index.ts` e `STORAGE_PROVIDER` escolhe; `getStorage()` devolve o provedor.
+- Chaves (`keys.ts`): segmentos `[A-Za-z0-9_-][A-Za-z0-9._-]*` separados por `/`, sem `..`, vazio, barra invertida ou inicial; `newStorageKey(prefixo)` gera 192 bits aleatórios. O nome original só existe em `file.name`.
+- `local` (padrão): `STORAGE_LOCAL_DIR`, caminho resolvido e conferido contra a raiz, escrita atômica. `s3`: `@aws-sdk/client-s3`, MinIO com `S3_ENDPOINT` (endereçamento por caminho). Como trocar: `STORAGE_PROVIDER=s3` e as variáveis `S3_*`; para um provedor novo, crie `providers/<id>/index.ts` (`default: StorageModule`) e acrescente o id em `StorageProviderId` e no enum de `env.ts`. Objetos já gravados **não migram sozinhos**: troque o provedor antes do primeiro upload, ou copie os objetos (as chaves são portáveis).
+- `file` (tenant, RLS forçado): `owner_type`/`owner_id` dizem a quem o arquivo pertence no domínio do projeto (o núcleo não confere que o dono existe). `POST /api/files` (multipart, campo `file`, `ownerType`/`ownerId` opcionais), `GET /api/files/:id`, `DELETE /api/files/:id`, sob `requireAuth` + `requireTenant` + `requirePermission("file", ...)`.
+- Segurança: `bodyLimit` de `MAX_UPLOAD_MB`; lista fechada de MIME (`src/lib/files/types.ts`: sem HTML nem SVG) e conferência da assinatura de PNG, JPEG, GIF, WebP e PDF; download sempre `Content-Disposition: attachment` com `nosniff`; id de outro tenant é 404.
+- `storage_mb` do plano soma `file.size` (`assertStorageAvailable` confere os bytes do upload antes de gravar; corrida de dois uploads simultâneos pode passar um arquivo do limite, como em `members`). Sem tela genérica de upload.
+- A exportação usa o `StorageProvider` direto, não a tabela `file`.
+- Remover o S3: `STORAGE_PROVIDER=local`, apagar `src/lib/storage/providers/s3/`, `npm uninstall @aws-sdk/client-s3`. Prova: `npm run check:module-removal -- s3`.
+
+## Observabilidade
+
+- `src/lib/logger.ts`: pino, JSON, `LOG_LEVEL`. `redact` mascara `req.headers.cookie`, `authorization`, `set-cookie`, e `email`, `document`, `password`, `token`, `secret`, `phone` na raiz e até dois níveis. `request_id` entra em toda linha escrita durante a requisição (AsyncLocalStorage). Em desenvolvimento usa `pino-pretty` se estiver instalado. Sob Vitest o padrão é `silent` (use `captureLogs()` de `src/lib/logger-capture.ts`).
+- `requestLogger` (`src/api/request-logger.ts`): aceita `x-request-id` seguro (8 a 64 caracteres) ou gera um UUID, devolve na resposta e loga uma linha por requisição só com o caminho (sem query). `/assets/*`, `/api/health` e `/api/ready` ficam em `debug`.
+- `logError` (`src/api/log.ts`) usa o logger e `describeError`: erro do Drizzle perde a mensagem (que traz os parâmetros da query), os demais perdem e-mails e credenciais de URL. Nunca `console.error` com dado pessoal.
+- Sentry: módulo opcional `src/lib/monitoring/sentry/`. Só carrega com `SENTRY_DSN`; recebe o erro já sanitizado (`toSafeError`), sem usuário, cookie, cabeçalho, corpo nem SQL (`dataCollection` zerado no Sentry 11). Remover: tirar a variável, apagar a pasta, `npm uninstall @sentry/node`; prova: `npm run check:module-removal -- sentry`.
+- `/admin` mostra webhooks com falha e **jobs mortos** (soma das filas `*.dead`; `—` se a fila não responder).
+
+## Backup
+
+Serviço `backup` do `docker-compose.yml` (perfil `backup`, `docker/backup/`): `pg_dump -Fc` e `STORAGE_LOCAL_DIR` cifrados com `age` para a chave pública `BACKUP_AGE_RECIPIENT`. Procedimento de restauração e teste: `docs/context/tech/14-deploy.md`.

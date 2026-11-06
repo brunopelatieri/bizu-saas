@@ -151,3 +151,8 @@ Templates gerais (fase 3): `invite-member`, `portal-invite`, `portal-magic-link`
 SPF, DKIM e DMARC do domínio de envio vêm do provedor (valores reais nas páginas oficiais
 do Resend ou do provedor escolhido; não verificados nesta spec). Transacional não precisa
 de `List-Unsubscribe`.
+
+## Templates da fase 10
+
+- `data-export-ready` (link assinado de 7 dias) e `deletion-scheduled` (conta, conta do portal ou organização) são enviados por `src/lib/lgpd/export.ts` e `deletion.ts`; `deletion-confirm` (novo) leva o link de confirmação da exclusão do cliente do portal, que só vale com o clique.
+- A exclusão apaga `email_message` do e-mail anonimizado (busca por `to_hash`).

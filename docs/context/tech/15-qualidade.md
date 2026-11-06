@@ -53,3 +53,10 @@ carrega o `.env.local`. Confira `/api/health`, `/api/ready` (`{ db, jobs }`), `/
 
 ---
 
+### Fase 10 (LGPD, arquivos, observabilidade)
+
+- Unitários (`npm test`): chaves e provedor `local` do `StorageProvider` (confinamento, `..` recusado), assinatura do link de download (válida, expirada, de outro pedido, de outro segredo), zip, redação do logger e do `logError`, `request_id`, markdown dos textos legais, versões.
+- `npm run test:db`: `tests/db/lgpd.test.ts` (consentimento e re-aceite), `lgpd-export.test.ts` (zip, e-mail, download com sessão e assinatura), `lgpd-deletion.test.ts` (último owner, senha e 2FA, carência, cancelamento, anonimização idempotente, portal, organização), `files.test.ts`, `maintenance.test.ts` (retenção por tabela, com datas controladas), `rls-lgpd.test.ts`, mais as linhas novas de `rbac.test.ts` e `tenant-http.test.ts`.
+- `npm run check:module-removal -- stripe|sentry|s3` prova que cada módulo opcional sai sem quebrar typecheck nem testes.
+- Teste de banco que lê `deletion_request` ou `data_export` com `bizu_owner` precisa do bypass (RLS forçado).
+- Teste de banco que enfileira (`/api/me/export`) chama `registerQueues(await getBoss())` antes, porque quem cria as filas é o worker. Servidor de smoke com `JOBS_MODE=inline` aberto contra o mesmo banco rouba esses jobs: encerre-o.

@@ -293,8 +293,18 @@ npm run start
 | `TRUSTED_PROXY_HOPS` | Reverse proxies na frente do app; use `1` atrás de um proxy |
 | `RATE_LIMIT_STORE` | `memory` em dev; `postgres` é obrigatório em produção, e `memory` derruba a subida |
 | `CSP_REPORT_ONLY` | `true` (padrão) só relata violações em `/api/csp-report`; `false` bloqueia. Valide em report-only antes de virar |
+| `STORAGE_PROVIDER`, `STORAGE_LOCAL_DIR`, `S3_*` | Módulo de arquivos: `local` (padrão, pasta `.data/storage`) ou `s3` (MinIO com `S3_ENDPOINT`) |
+| `MAX_UPLOAD_MB` | Teto de um upload em `/api/files` (padrão 10) |
+| `LOG_LEVEL`, `SENTRY_DSN` | Logs JSON (pino) com `request_id`; Sentry opcional, sem DSN nada é carregado |
 
 A lista completa, com os módulos de pagamento, está em `.env.example`.
+
+### LGPD, arquivos e backup
+
+- Antes de ir ao ar, troque o controlador nos textos de `src/lib/legal/*.md` e informe o e-mail do encarregado em `/admin/configuracoes`. Os textos são modelos: peça revisão jurídica. Retenção e base legal: [docs/context/lgpd.md](docs/context/lgpd.md).
+- Cada pessoa exporta os próprios dados e agenda a exclusão (30 dias) em `/app/configuracoes/privacidade` e `/portal/conta`; o job `lgpd.delete` anonimiza. O owner também exclui a organização.
+- Com `docker compose --profile backup up -d backup` (chave pública `age` em `BACKUP_AGE_RECIPIENT`), o banco e os arquivos locais saem cifrados todo dia. Restauração e teste mensal: `docs/context/tech/14-deploy.md`.
+- MinIO local opcional: bloco comentado no `docker-compose.yml`.
 
 Em produção, contas de plataforma (`platform_owner`, `platform_support`) só usam `/admin` com 2FA:
 no primeiro acesso, a tela de segurança pede a ativação. Vulnerabilidades: veja [SECURITY.md](SECURITY.md).
@@ -356,6 +366,7 @@ npm run email:preview # renderiza os e-mails em .tmp/emails/
 | `docs/context/ai-engineering.md` | Método de trabalho, economia de tokens e adaptação do template |
 | `docs/context/tech/` | Especificação técnica, um arquivo por seção |
 | `docs/context/infra-deploy.md` | Topologia, credenciais e riscos de deploy |
+| `docs/context/lgpd.md` | Retenção, base legal e encarregado |
 | `.claude/rules/`, `.cursor/rules/` | Regras por domínio para agentes |
 | `.claude/skills/` | Skills de contexto e de fluxo |
 

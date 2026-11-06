@@ -83,3 +83,8 @@ de todos os tenants.
 ## Ainda não existe
 
 Overview sem MRR e jobs mortos; `/admin/jobs`; detalhe de usuário; revogar sessões.
+
+## Fase 10
+
+- `/admin/configuracoes` edita também `dpoEmail` (aparece em `/legal/*`) e `auditRetentionDays` (30 a 3650, padrão 365).
+- `/admin` mostra "Jobs mortos": soma das filas `*.dead` do pg-boss (`src/lib/admin/jobs.ts`), `—` se a fila não responder.

@@ -111,3 +111,9 @@ deve voltar em escopo controlado.
 
 ---
 
+## LGPD, arquivos e logs (fase 10)
+
+- `src/api/lgpd.ts` (`lgpdRoutes`, `portalLgpdRoutes`): exportação (`/api/me/export`, `/api/portal/me/export`), exclusão (`DELETE /api/me`, `DELETE /api/portal/me`) e cancelamento. `DELETE /api/tenant` e `POST /api/tenant/deletion/cancel` ficam em `src/api/tenant.ts`; `GET/POST /api/me/consent*` em `src/api/me.ts`.
+- `src/api/files.ts`: `POST /api/files` (multipart, `bodyLimit` de `MAX_UPLOAD_MB`), `GET` e `DELETE /api/files/:id`, com `requirePermission("file", ...)`.
+- Rotas de exclusão: `sameOrigin` → `jsonBodyLimit` → `authRateLimit` → `requireAuth` → `blockWhileImpersonating` → `rateLimit` por usuário → `zValidator`. O DELETE leva corpo JSON (`password`, `totp`).
+- `requestLogger` gera o `x-request-id` e loga só o caminho; `logError` usa o pino com redact. Ver `tech/27-lgpd-arquivos.md`.

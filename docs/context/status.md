@@ -18,7 +18,7 @@
 | 7 | Módulo Asaas | adiada: os provedores de pagamento seguem desligados (`PAYMENT_PROVIDERS` vazio) por decisão do usuário, e a fase 8 não depende dela |
 | 8 | Portal do cliente | concluída |
 | 9 | 2FA, personificação e segurança | concluída; `CSP_REPORT_ONLY` segue em `true` até validar em produção |
-| 10 | LGPD, arquivos e observabilidade | pendente |
+| 10 | LGPD, arquivos e observabilidade | concluída; falta preencher controlador e encarregado nos textos legais (`docs/context/lgpd.md`) |
 | 11 | Repositório público e README final | pendente |
 
 ## Estado atual do código
@@ -57,33 +57,40 @@
   `POST /api/webhooks/email/:provider`; 14 templates gerais; `npm run email:preview`
   (`tech/19-email.md`, `tech/20-jobs.md`).
 - Jobs: pg-boss 12 no schema `pgboss` (`npm run jobs:install`), `JOBS_MODE=inline|worker|off`,
-  `maintenance.prune`, `GET /api/ready`. Filas de LGPD entram na fase 10.
+  `maintenance.prune` (retenção completa), `lgpd.export`, `lgpd.delete`, `GET /api/ready`.
+- LGPD (`tech/27-lgpd-arquivos.md`, `lgpd.md`): `consent_log` gravado no cadastro das duas instâncias,
+  re-aceite por versão (`consentRequired`), `/legal/termos` e `/legal/privacidade`, exportação em zip
+  com link assinado, exclusão de conta, de cliente do portal e de organização com 30 dias de carência
+  e anonimização pelo job, `/app/configuracoes/privacidade` e seção em `/portal/conta`.
+- Módulo de arquivos (`src/lib/storage/`): `StorageProvider` `local` e `s3`, tabela `file`, `/api/files`,
+  `storage_mb` contado. Sem tela de upload.
+- Observabilidade: logs JSON com `request_id` e redação (pino), Sentry opcional, jobs mortos no `/admin`;
+  backup cifrado com `age` no perfil `backup` do compose.
 - Biome, Vitest (`npm test` sem banco, `npm run test:db` com banco) e CI com Postgres.
 - Dockerfile multi-stage para VPS.
 
 ## Pendências Técnicas Conhecidas
 
-- Fases 7 e 9 a 11 da spec.
-- **Portal:** `POST /api/portal/me/export` e `DELETE /api/portal/me` ficam para a fase 10.
-  `organization.settings.portal_self_signup` liga o autocadastro, mas ainda não tem tela.
+- Fases 7 e 11 da spec.
+- **Portal:** `organization.settings.portal_self_signup` liga o autocadastro, mas ainda não tem tela.
   Quem já tem conta no portal não se autocadastra em outro tenant: pede ao owner. O convite sai
-  sem `Reply-To` do owner. `portal_session`, `portal_verification` e `portal_rate_limit` ficam
-  fora do `maintenance.prune` até a fase 10, como as tabelas equivalentes da equipe.
+  sem `Reply-To` do owner. `portal_rate_limit` e `rate_limit` (tabelas do Better Auth) seguem fora do
+  `maintenance.prune`; sessões e verificações das duas instâncias já saem.
 - `/api/customers` confere o limite do plano fora da transação do insert: requisições
   simultâneas podem passar um cliente do limite, como já acontece com `members`.
 - **Stripe sem sandbox real:** o módulo foi validado com fixtures escritas a partir dos tipos do SDK e
   com webhooks assinados pelo SDK contra o build de produção, mas sem conta de teste. Rode o checklist de
   `src/lib/payments/providers/stripe/README.md` e troque as fixtures por capturas anonimizadas.
-- `payment_event` fora do `maintenance.prune` (fase 10); `platform_setting.alert_email` não existe.
+- `platform_setting.alert_email` não existe.
 - Reembolso sem tela: sai pelo painel do provedor e chega por webhook.
-- `consent_log` (fase 10) ainda não existe: o aceite de termos é exigido, mas não registrado.
+- **LGPD:** os textos de `src/lib/legal/*.md` são modelos (controlador entre colchetes, `dpo_email` vazio): preencher e revisar com um advogado antes de ir ao ar. A exportação não inclui arquivos do módulo `file` nem faturas. O portal não tem o interruptor de marketing que a equipe tem. Backup antigo restaura quem foi excluído (RISK-011).
 - `.env.local` antigo precisa de `CREDENTIALS_ENCRYPTION_KEY` em base64 de 32 bytes: o valor de exemplo anterior agora derruba a subida.
 - Portal com o plugin `twoFactor` e a tabela, sem tela; rotas fechadas até haver decisão por tenant.
 - `rotateCredentials()` é função, sem comando nem job: a spec fala em "rotação por job", e o fluxo (b) ainda não existe.
 - Exportação CSV da auditoria segue fora (feature `audit_export`).
 - Fontes vêm do Google Fonts: hospedá-las no app tiraria duas origens da CSP e o IP do visitante do caminho até o Google.
 - Teto de tenants por usuário (3) e de papéis personalizados (20) seguem constantes do plugin; `members`, `custom_roles` e `customers` usam o limite do plano (`tech/23-billing-planos.md`).
-- Overview do admin sem MRR e jobs mortos; sem `/admin/jobs`.
+- Overview do admin sem MRR; mostra o contador de jobs mortos, mas não há `/admin/jobs` com a lista e o botão de reexecutar.
 - Evoluir blog estático para tabela Drizzle quando virar feature real.
 - Migrar para React Router 8 e `react-router-hono-server` 4 para zerar os alertas
   moderados restantes (`tech/16-bugs-riscos.md`), depois da entrega da spec.
@@ -152,4 +159,24 @@ Decisões registradas com o motivo. Detalhes em `tech/24-billing-cobranca.md`.
 | Pausa sem regra de acesso | `paused` + `read_only`; retomar após o período pago cobra um ciclo novo | Achado do security-review: `pause_collection: void` anula as faturas e o plano seguiria de graça |
 | Upgrade imediato | Imediato, mas só com a diferença paga (`error_if_incomplete`) | Achado do security-review: cartão recusado daria o plano maior até o fim da carência |
 | Checkout `não personificado` | Sem a checagem | Personificação é da fase 9; desde ela, `blockMutationsWhileImpersonating` |
+
+## Desvios da spec na fase 10
+
+Detalhes em `tech/27-lgpd-arquivos.md`.
+
+| Spec | Entregue | Motivo |
+|---|---|---|
+| `consent_log` na migration `0017` | `0017_arquivos` (tabela `file`) e `0018_lgpd` (`consent_log`, `deletion_request`, `data_export`) | O módulo de arquivos veio primeiro: a exportação depende do `StorageProvider` |
+| `data_export` fora da lista do pedido | Criada (está em `spec-dados.md`) | O job `lgpd.export` precisa guardar o estado e a chave do arquivo |
+| `DELETE /api/me` com "fresh session" | Senha (e código 2FA) a cada pedido, com limite de 5 por 15 min por usuário | A sessão do Better Auth não distingue "recente" sem o plugin; a prova de identidade explícita é mais forte |
+| Cliente do portal sem senha: "confirmação por magic link" | Link próprio de confirmação (`deletion-confirm`, token de uso único em `portal_verification`, consumido por `POST`) | O magic link do plugin cria sessão, não confirma uma ação; template novo, fora da lista da spec |
+| `maintenance.prune` semanal | Segue diário (04:30 UTC) | O cron já existia e a retenção por dias não depende da frequência |
+| `/admin/jobs` com lista e "Reexecutar" | Só o contador de jobs mortos no `/admin` | Fora do escopo pedido; o botão fica para depois |
+| `StorageProvider.signedUrl?` | Declarado na interface, nenhum provedor implementa | Todo download passa pelo app (sessão, tenant e permissão); URL pré-assinada do S3 exigiria `@aws-sdk/s3-request-presigner` |
+| `POST /api/me/export` devolve `{ exportId }` | Mesmo corpo, com status `202` | O trabalho é assíncrono |
+| Exclusão de tenant "suspende" | Estado `deleting` + `locked` (e `DELETE /api/tenant` vale em `read_only` e `locked` por cobrança) | Distingue suspensão da plataforma de exclusão pedida pelo owner; titular não pode ficar preso por inadimplência |
+| Consentimento "hook ou rota própria" | Hook `user.create.after` com contexto da rota (`withSignupConsent`) | Só grava se o usuário nasce: e-mail existente não ganha aceite de terceiro |
+| Sentry com `sendDefaultPii: false` | `dataCollection` zerado | Opção do `@sentry/node` 11 |
+| `usage_counter` | Não criada; `storage_mb` soma `file.size` na hora | Fora do escopo: a soma é barata e exata |
+| Backup "com `pg_dump`" | Exige usuário que atravesse o RLS (superusuário ou `BYPASSRLS` + `pg_read_all_data`) | `FORCE ROW LEVEL SECURITY` também vale para `bizu_owner`; sem isso o dump sairia vazio ou falharia |
 

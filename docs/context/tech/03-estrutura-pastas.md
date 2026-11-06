@@ -56,5 +56,7 @@
 Autenticação: `src/lib/auth/` (servidor, cliente, e-mails, papéis), `src/routes/auth/` e
 `src/lib/email/templates/auth/`. Schema por domínio em `src/db/schema/`.
 
+LGPD e arquivos: `src/lib/lgpd/`, `src/lib/legal/` (textos), `src/lib/files/`, `src/lib/storage/providers/<id>/` (módulos `local` e `s3`); logs em `src/lib/logger.ts` e `src/lib/observability.ts`, Sentry em `src/lib/monitoring/sentry/`; backup em `docker/backup/` (`tech/27-lgpd-arquivos.md`).
+
 Cobrança: `src/lib/billing/` (núcleo) e `src/lib/payments/providers/<id>/` (módulos).
 Pasta prevista pelas fases seguintes: `docker/compose.prod.yml`.

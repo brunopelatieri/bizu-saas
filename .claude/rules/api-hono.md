@@ -4,6 +4,10 @@ paths:
   - "src/lib/payments/**"
   - "src/server.ts"
   - "src/lib/schemas/**"
+  - "src/lib/lgpd/**"
+  - "src/lib/files/**"
+  - "src/lib/logger.ts"
+  - "src/lib/observability.ts"
 ---
 
 # API Hono em processo único, com contratos Zod
@@ -32,5 +36,7 @@ paths:
 - Teste rotas com `api.request()` em `src/api/*.test.ts`; com banco real, em `tests/db/`.
 - Leia variáveis por `getEnv()` (`src/lib/env.ts`), não por `process.env` espalhado.
 - CORS só volta em escopo controlado, se a API for exposta a outra origem.
+- Rotas de LGPD (`src/api/lgpd.ts`) e de arquivos (`src/api/files.ts`) agem sobre os dados de quem está na sessão: o sujeito vem da sessão, nunca do corpo. Exclusão de conta ou organização pede senha e, com 2FA, o código (`confirmIdentity`), tem `rateLimit` por usuário e `blockWhileImpersonating`.
+- Log só pelo logger (`src/lib/logger.ts`, pino com `redact`) ou por `logError`; o `request_id` entra sozinho. Campo novo com dado pessoal entra em `REDACT_PATHS` ou nem é logado.
 
-Para entender este domínio, leia: docs/context/tech/06-hono-api.md
+Para entender este domínio, leia: docs/context/tech/06-hono-api.md, docs/context/tech/27-lgpd-arquivos.md
