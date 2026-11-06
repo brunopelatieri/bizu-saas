@@ -1,0 +1,23 @@
+{
+  "id": "evt_test_checkout",
+  "object": "event",
+  "api_version": "2026-10-28.endive",
+  "created": 1793620800,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "checkout.session.completed",
+  "data": {
+    "object": {
+      "id": "cs_test_1",
+      "object": "checkout.session",
+      "customer": "cus_test_1",
+      "mode": "subscription",
+      "status": "complete",
+      "subscription": "sub_test_1"
+    }
+  }
+}

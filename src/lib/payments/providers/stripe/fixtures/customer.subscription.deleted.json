@@ -1,0 +1,69 @@
+{
+  "id": "evt_test_sub_deleted",
+  "object": "event",
+  "api_version": "2026-10-28.endive",
+  "created": 1793620800,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "customer.subscription.deleted",
+  "data": {
+    "object": {
+      "id": "sub_test_1",
+      "object": "subscription",
+      "billing_cycle_anchor": 1793620800,
+      "cancel_at": null,
+      "cancel_at_period_end": false,
+      "canceled_at": null,
+      "collection_method": "charge_automatically",
+      "created": 1793620800,
+      "currency": "brl",
+      "customer": "cus_test_1",
+      "items": {
+        "object": "list",
+        "data": [
+          {
+            "id": "si_test_1",
+            "object": "subscription_item",
+            "created": 1793620800,
+            "current_period_start": 1793620800,
+            "current_period_end": 1796212800,
+            "price": {
+              "id": "price_test_pro",
+              "object": "price",
+              "active": true,
+              "currency": "brl",
+              "product": "prod_test_pro",
+              "recurring": {
+                "interval": "month",
+                "interval_count": 1
+              },
+              "type": "recurring",
+              "unit_amount": 9900
+            },
+            "quantity": 1,
+            "subscription": "sub_test_1"
+          }
+        ],
+        "has_more": false,
+        "total_count": 1,
+        "url": "/v1/subscription_items?subscription=sub_test_1"
+      },
+      "latest_invoice": "in_test_1",
+      "livemode": false,
+      "metadata": {
+        "tenantId": "11111111-1111-4111-8111-111111111111",
+        "subscriptionId": "22222222-2222-4222-8222-222222222222",
+        "planPriceId": "33333333-3333-4333-8333-333333333333"
+      },
+      "pause_collection": null,
+      "start_date": 1793620800,
+      "status": "canceled",
+      "trial_end": null,
+      "trial_start": null
+    }
+  }
+}

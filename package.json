@@ -22,7 +22,8 @@
     "db:seed": "tsx --tsconfig tsconfig.app.json src/db/seed.ts",
     "test:db": "vitest run --config vitest.db.config.ts",
     "jobs:install": "tsx --tsconfig tsconfig.app.json src/jobs/install.ts",
-    "email:preview": "tsx --tsconfig tsconfig.app.json src/lib/email/preview.ts"
+    "email:preview": "tsx --tsconfig tsconfig.app.json src/lib/email/preview.ts",
+    "check:module-removal": "node scripts/check-module-removal.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",

@@ -1,0 +1,28 @@
+{
+  "id": "evt_test_dispute",
+  "object": "event",
+  "api_version": "2026-10-28.endive",
+  "created": 1793620800,
+  "livemode": false,
+  "pending_webhooks": 1,
+  "request": {
+    "id": null,
+    "idempotency_key": null
+  },
+  "type": "charge.dispute.created",
+  "data": {
+    "object": {
+      "id": "dp_test_1",
+      "object": "dispute",
+      "amount": 9900,
+      "charge": "ch_test_1",
+      "created": 1793620800,
+      "currency": "brl",
+      "livemode": false,
+      "metadata": {},
+      "payment_intent": "pi_test_1",
+      "reason": "fraudulent",
+      "status": "needs_response"
+    }
+  }
+}
