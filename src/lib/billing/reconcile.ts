@@ -3,12 +3,14 @@ import type { SubscriptionEventSource } from "@/db/schema/billing";
 import type { AuditEntry } from "@/lib/audit";
 import {
   applyDecision,
+  findPriceByRef,
   lockSubscription,
+  planDivergence,
   setAlert,
   snapshotOf,
 } from "@/lib/billing/apply";
 import { loadSettings } from "@/lib/billing/settings";
-import { transition } from "@/lib/billing/state-machine";
+import { type AppliedDecision, transition } from "@/lib/billing/state-machine";
 import { findFreePlanId } from "@/lib/billing/subscription";
 import { getProvider, platformContext } from "@/lib/payments/registry";
 
@@ -66,14 +68,17 @@ export async function syncSubscription(
       now,
     );
 
-    if (decision.outcome === "ignored") {
+    const detail = `local=${row.status} remoto=${remote.status}`;
+    const plan = planDivergence(
+      row,
+      await findPriceByRef(tx, row.provider, remote.priceRef),
+    );
+    const noChange = decision.outcome === "ignored" && decision.reason === "no_change";
+
+    if (decision.outcome === "ignored" && !(noChange && plan)) {
       // Encerrada aqui e viva lá não se corrige sozinha: precisa de alguém olhando.
       if (decision.reason === "subscription_ended" && remote.status !== "canceled") {
-        await setAlert(tx, row, {
-          kind: "divergence",
-          at: now.toISOString(),
-          detail: `local=${row.status} remoto=${remote.status}`,
-        });
+        await setAlert(tx, row, { kind: "divergence", at: now.toISOString(), detail });
         return { skipped: false, diverged: true };
       }
 
@@ -83,14 +88,28 @@ export async function syncSubscription(
       return { skipped: false, diverged: false };
     }
 
-    const updated = await applyDecision(tx, row, decision, {
+    const applied: AppliedDecision =
+      decision.outcome === "applied"
+        ? decision
+        : {
+            outcome: "applied",
+            status: row.status,
+            reason: "reconciled_plan",
+            patch: {},
+          };
+    const updated = await applyDecision(tx, row, applied, {
       source: options.source,
       actor: options.actor ?? { type: "system", id: null },
+      // Encerrada ou migrada para o gratuito, o plano do provedor não vale mais.
+      extra:
+        applied.patch.planId || applied.status === "canceled"
+          ? undefined
+          : (plan ?? undefined),
     });
     await setAlert(tx, updated, {
       kind: "divergence",
       at: now.toISOString(),
-      detail: `local=${row.status} remoto=${remote.status}`,
+      detail: plan ? `${detail} plano` : detail,
     });
 
     return { skipped: false, diverged: true };

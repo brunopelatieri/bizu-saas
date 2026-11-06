@@ -8,7 +8,10 @@ import type { WebhookProcessJob } from "@/jobs/queues";
 import { auditInTransaction } from "@/lib/audit";
 import {
   applyDecision,
+  findPriceByRef,
   lockSubscription,
+  planDivergence,
+  type PlanTarget,
   setAlert,
   snapshotOf,
   type SubscriptionRow,
@@ -29,6 +32,7 @@ import type {
   NormalizedEvent,
   PaymentContext,
   PaymentProvider,
+  RemoteInvoice,
 } from "@/lib/payments/types";
 
 /**
@@ -65,30 +69,50 @@ async function confirm(
   const { webhookSignature } = provider.capabilities;
   if (webhookSignature === "hmac" || webhookSignature === "ecdsa") return event;
 
+  // Só a API responde a quem a fatura pertence: o corpo pode citar uma fatura paga de verdade
+  // com os metadados de outro tenant.
+  const fromApi = ({ subscriptionRef, customerRef, metadata }: RemoteInvoice) => ({
+    subscriptionRef,
+    customerRef,
+    metadata,
+  });
+
   switch (event.type) {
     case "invoice.paid": {
       const remote = await provider.fetchInvoice(ctx, event.invoiceRef);
       return remote.status === "paid"
-        ? { ...event, amountCents: remote.amountCents }
+        ? { ...event, ...fromApi(remote), amountCents: remote.amountCents }
         : ignoredEvent("not_confirmed");
     }
     case "invoice.payment_failed":
-    case "invoice.created":
+    case "invoice.created": {
+      const remote = await provider.fetchInvoice(ctx, event.invoiceRef);
+      return { ...event, ...fromApi(remote) };
+    }
     case "chargeback.opened": {
       await provider.fetchInvoice(ctx, event.invoiceRef);
-      return event;
+      return { ...event, customerRef: undefined, metadata: undefined };
     }
     case "refund.completed": {
       const remote = await provider.fetchInvoice(ctx, event.invoiceRef);
-      return remote.status === "refunded" ? event : ignoredEvent("not_confirmed");
+      return remote.status === "refunded"
+        ? { ...event, customerRef: undefined, metadata: undefined }
+        : ignoredEvent("not_confirmed");
     }
     case "subscription.updated": {
       const remote = await provider.fetchSubscription(ctx, event.subscriptionRef);
-      return { ...event, status: remote.status };
+      return {
+        ...event,
+        status: remote.status,
+        customerRef: undefined,
+        metadata: undefined,
+      };
     }
     case "subscription.canceled": {
       const remote = await provider.fetchSubscription(ctx, event.subscriptionRef);
-      return remote.status === "canceled" ? event : ignoredEvent("not_confirmed");
+      return remote.status === "canceled"
+        ? { ...event, customerRef: undefined, metadata: undefined }
+        : ignoredEvent("not_confirmed");
     }
     case "ignored":
       return event;
@@ -168,28 +192,19 @@ async function resolveSubscription(
   return null;
 }
 
-type PlanTarget = { planId: string; planPriceId: string };
-
-/** O plano de um preço deste provedor, por id (metadados) ou referência no provedor. */
-async function findPrice(
+/** O preço escolhido no checkout, se for deste provedor. */
+async function findPriceById(
   tx: Tx,
   provider: SubscriptionRow["provider"],
-  by: { id?: string; ref?: string },
+  planPriceId: string | undefined,
 ): Promise<PlanTarget | null> {
-  if (!provider) return null;
-
-  const id = uuid.safeParse(by.id);
-  const filter = by.ref
-    ? eq(planPrice.providerPriceRef, by.ref)
-    : id.success
-      ? eq(planPrice.id, id.data)
-      : null;
-  if (!filter) return null;
+  const id = uuid.safeParse(planPriceId);
+  if (!provider || !id.success) return null;
 
   const [row] = await tx
     .select({ planId: planPrice.planId, planPriceId: planPrice.id })
     .from(planPrice)
-    .where(and(eq(planPrice.provider, provider), filter));
+    .where(and(eq(planPrice.provider, provider), eq(planPrice.id, id.data)));
 
   return row ?? null;
 }
@@ -276,8 +291,8 @@ async function onInvoicePaid(
   // Ativação: o plano escolhido no checkout só vale quando o dinheiro entra.
   const activating = row.status !== "active" || row.planPriceId === null;
   const extra = activating
-    ? ((await findPrice(tx, row.provider, { id: event.metadata?.planPriceId })) ??
-      (await findPrice(tx, row.provider, { ref: event.priceRef })))
+    ? ((await findPriceById(tx, row.provider, event.metadata?.planPriceId)) ??
+      (await findPriceByRef(tx, row.provider, event.priceRef)))
     : null;
 
   await applySubscriptionDecision(tx, row, decision, {
@@ -289,15 +304,41 @@ async function onInvoicePaid(
   // Reativação por checkout novo: a assinatura antiga não pode seguir cobrando.
   const replaced = row.providerSubscriptionRef;
   if (replaced && event.subscriptionRef && replaced !== event.subscriptionRef) {
-    after.push(() => cancelReplaced(row.provider, replaced));
+    after.push(() => cancelReplaced(row, replaced, now));
   }
 
   return { applied: true, tenantId: row.tenantId, after };
 }
 
-async function cancelReplaced(providerId: string | null, ref: string) {
-  const provider = providerId ? getProvider(providerId) : null;
-  await provider?.cancelSubscription(platformContext(), ref, { atPeriodEnd: false });
+/** Se falhar, a antiga segue cobrando em silêncio: precisa virar alerta, não só log. */
+async function cancelReplaced(row: SubscriptionRow, ref: string, now: Date) {
+  try {
+    const provider = row.provider ? getProvider(row.provider) : null;
+    await provider?.cancelSubscription(platformContext(), ref, { atPeriodEnd: false });
+  } catch (error) {
+    logError("Falha ao cancelar assinatura substituída", error);
+    await withPlatformScope("webhook: alerta de duplicidade", (tx) =>
+      setAlert(tx, row, {
+        kind: "duplicate_subscription",
+        at: now.toISOString(),
+        detail: "assinatura_antiga_nao_cancelada",
+      }),
+    );
+  }
+}
+
+function failedMail(change: InvoiceChange, graceEndsAt: Date | null) {
+  const { tenantId, amountCents, currency } = change.invoice;
+
+  return () =>
+    notifyOwners(tenantId, "payment-failed", (owner) =>
+      paymentFailedTemplate({
+        ...owner,
+        amountCents,
+        currency,
+        graceEndsAt: graceEndsAt ?? undefined,
+      }),
+    );
 }
 
 async function onPaymentFailed(
@@ -331,29 +372,28 @@ async function onPaymentFailed(
     if (decision.reason !== "out_of_order") {
       await touchProviderClock(tx, row, event.occurredAt);
     }
-    return { applied: false, tenantId: row.tenantId, after: [] };
+
+    // `subscription.updated` pode ter levado a `past_due` antes: a ordem não é garantida,
+    // e quem avisa da falha é a fatura. Só a primeira falha dela vira e-mail.
+    const firstFailure =
+      decision.reason === "already_past_due" && change.previous !== "failed";
+
+    return {
+      applied: firstFailure,
+      tenantId: row.tenantId,
+      after: firstFailure ? [failedMail(change, row.graceUntil)] : [],
+    };
   }
 
   const updated = await applySubscriptionDecision(tx, row, decision, {
     paymentEventId,
     occurredAt: event.occurredAt,
   });
-  const { amountCents, currency } = change.invoice;
 
   return {
     applied: true,
     tenantId: row.tenantId,
-    after: [
-      () =>
-        notifyOwners(row.tenantId, "payment-failed", (owner) =>
-          paymentFailedTemplate({
-            ...owner,
-            amountCents,
-            currency,
-            graceEndsAt: updated.graceUntil ?? undefined,
-          }),
-        ),
-    ],
+    after: [failedMail(change, updated.graceUntil)],
   };
 }
 
@@ -415,21 +455,12 @@ async function onSubscriptionUpdated(
     now,
   );
 
-  // Troca de plano feita no portal do provedor. Downgrade agendado aqui já está lá e só
-  // entra no fim do período; a assinatura local espera.
+  // Troca de plano feita no portal do provedor.
   const ended =
     decision.outcome === "applied" && decision.status === "canceled";
-  const price =
-    !ended && event.priceRef
-      ? await findPrice(tx, row.provider, { ref: event.priceRef })
-      : null;
   const changedPlan =
-    price &&
-    price.planPriceId !== row.planPriceId &&
-    price.planPriceId !== row.metadata.pendingPlanPriceId &&
-    row.providerSubscriptionRef === event.subscriptionRef &&
-    row.status !== "trialing"
-      ? price
+    !ended && row.providerSubscriptionRef === event.subscriptionRef
+      ? planDivergence(row, await findPriceByRef(tx, row.provider, event.priceRef))
       : null;
 
   if (decision.outcome === "ignored") {

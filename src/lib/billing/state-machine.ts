@@ -94,6 +94,11 @@ export type Decision = { outcome: "ignored"; reason: string } | AppliedDecision;
 
 const ignored = (reason: string): Decision => ({ outcome: "ignored", reason });
 
+/** Há cobrança viva no provedor? `canceled`, `unpaid` e `expired` só voltam por checkout. */
+export function isLiveStatus(status: SubscriptionStatus) {
+  return ["active", "trialing", "past_due", "paused"].includes(status);
+}
+
 /**
  * Pode iniciar um checkout? Só sem cobrança viva no provedor: quem já paga troca de
  * plano, quem está em `past_due` paga a fatura aberta.
@@ -400,11 +405,18 @@ function providerSynced(
       ...failed,
       reason: "reconciled_past_due",
       patch: { ...patch, ...failed.patch },
+      applyPendingPrice: period.applyPendingPrice,
     };
   }
 
   if (remote === "paused" && local === "active") {
-    return { outcome: "applied", status: "paused", reason: "reconciled_paused", patch };
+    return {
+      outcome: "applied",
+      status: "paused",
+      reason: "reconciled_paused",
+      patch,
+      applyPendingPrice: period.applyPendingPrice,
+    };
   }
 
   if (Object.keys(patch).length === 0) return ignored("no_change");
@@ -514,9 +526,7 @@ export function transition(
 
     case "cancel.requested":
       if (current.cancelAtPeriodEnd) return ignored("already_scheduled");
-      if (!["active", "past_due", "trialing"].includes(current.status)) {
-        return ignored("not_cancelable");
-      }
+      if (!isLiveStatus(current.status)) return ignored("not_cancelable");
       return {
         outcome: "applied",
         status: current.status,

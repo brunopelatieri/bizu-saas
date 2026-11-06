@@ -12,7 +12,12 @@ import {
   type RemoteSubscriptionStatus,
 } from "@/lib/payments/types";
 import { createStripeClient, type StripeClient } from "./client";
-import { parseEvents, SUBSCRIPTION_STATUS, verifySignature } from "./webhook";
+import {
+  metadataOf,
+  parseEvents,
+  SUBSCRIPTION_STATUS,
+  verifySignature,
+} from "./webhook";
 
 /**
  * Módulo Stripe. Como instalar, testar e remover: `README.md`, nesta pasta. Pix avulso
@@ -80,7 +85,7 @@ function remoteSubscription(subscription: Stripe.Subscription): RemoteSubscripti
     currentPeriodStart: time(item?.current_period_start),
     currentPeriodEnd: time(item?.current_period_end),
     cancelAtPeriodEnd:
-      subscription.cancel_at_period_end || subscription.cancel_at !== null,
+      subscription.cancel_at_period_end || Boolean(subscription.cancel_at),
     priceRef: item?.price.id,
   };
 }
@@ -94,7 +99,9 @@ function remoteInvoice(invoice: Stripe.Invoice): RemoteInvoice {
         : invoice.status === "uncollectible"
           ? "failed"
           : "open";
-  const subscription = invoice.parent?.subscription_details?.subscription;
+  const details = invoice.parent?.subscription_details;
+  const subscription = details?.subscription;
+  const customer = invoice.customer;
 
   return {
     ref: invoice.id,
@@ -103,6 +110,8 @@ function remoteInvoice(invoice: Stripe.Invoice): RemoteInvoice {
     currency: invoice.currency.toUpperCase(),
     subscriptionRef:
       typeof subscription === "string" ? subscription : subscription?.id,
+    customerRef: typeof customer === "string" ? customer : customer?.id,
+    metadata: metadataOf(details?.metadata),
     paidAt: invoice.status_transitions.paid_at
       ? new Date(invoice.status_transitions.paid_at * 1000)
       : undefined,

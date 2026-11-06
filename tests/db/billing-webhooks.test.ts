@@ -57,6 +57,7 @@ let saved: SavedSettings;
 let showFreePlans: () => Promise<void>;
 let basic: Awaited<ReturnType<typeof createPaidPlan>>;
 let pro: Awaited<ReturnType<typeof createPaidPlan>>;
+let featured: Awaited<ReturnType<typeof createPaidPlan>>;
 let user: TestUser;
 let tenantId: string;
 
@@ -117,6 +118,7 @@ beforeAll(async () => {
   showFreePlans = await hideFreePlans(owner);
   basic = await createPaidPlan(owner, 9900);
   pro = await createPaidPlan(owner, 29900);
+  featured = await createPaidPlan(owner, 59900, { features: ["recurso_pago"] });
   await setSettings(owner, { trialPlanId: basic.id, trialDays: 14, graceDays: 7 });
   setEmailProviderForTests(mail);
   setWebhookQueueForTests(async (id) => {
@@ -268,6 +270,40 @@ describe("checkout até active", () => {
 
     expect(response.status).toBe(409);
     expect((await bodyOf(response)).code).toBe("BILLING_PROFILE_REQUIRED");
+  });
+
+  it("em unpaid, não troca de provedor com a assinatura antiga viva", async () => {
+    await subscribe(tenantId);
+    await updateSubscription(owner, tenantId, {
+      status: "unpaid",
+      provider: "asaas",
+    });
+
+    const response = await call("POST", "/api/billing/checkout", {
+      cookie: user.cookie,
+      body: { planPriceId: basic.priceId, method: "card" },
+    });
+
+    expect(response.status).toBe(409);
+    expect((await bodyOf(response)).code).toBe("PROVIDER_MISMATCH");
+  });
+
+  it("checkout abandonado sem assinatura prévia não concede o plano", async () => {
+    const person = await createUser(owner);
+    const tenant = await createTenant(person, "Sem Assinatura");
+    await asPlatform(owner, (tx) =>
+      tx`delete from subscription where tenant_id = ${tenant.id}`,
+    );
+    await call("PUT", "/api/billing/profile", { cookie: person.cookie, body: PROFILE });
+
+    const checkout = await call("POST", "/api/billing/checkout", {
+      cookie: person.cookie,
+      body: { planPriceId: featured.priceId, method: "card" },
+    });
+    expect(checkout.status).toBe(200);
+
+    const me = await bodyOf(await call("GET", "/api/me", { cookie: person.cookie }));
+    expect(me.features).toEqual([]);
   });
 
   it("recusa forma de pagamento que o provedor não tem", async () => {
@@ -480,6 +516,18 @@ describe("recebimento do webhook", () => {
     expect(blocked.status).toBe(429);
   });
 
+  it("assinatura válida passa mesmo com o IP bloqueado por forjadores", async () => {
+    const ip = "10.77.0.4";
+
+    for (let i = 0; i < 21; i += 1) {
+      await sendWebhook([], { signature: "errada", ip });
+    }
+
+    const legit = await sendWebhook([{ type: "ignored", reason: "x" }], { ip });
+
+    expect(legit.status).toBe(200);
+  });
+
   it("volume legítimo do mesmo IP não é limitado", async () => {
     const ip = "10.77.0.2";
 
@@ -640,6 +688,32 @@ describe("job webhook.process", () => {
     expect(me.billing).toMatchObject({ state: "past_due" });
   });
 
+  it("past_due antes da fatura: o e-mail de falha sai igual, uma vez", async () => {
+    const ref = await subscribe(tenantId);
+    const invoiceRef = `in_${randomUUID()}`;
+    const failed = {
+      type: "invoice.payment_failed",
+      invoiceRef,
+      subscriptionRef: ref,
+      reason: "recusado",
+      amountCents: 9900,
+    };
+    mail.sent.length = 0;
+
+    await sendWebhook([
+      { type: "subscription.updated", subscriptionRef: ref, status: "past_due" },
+    ]);
+    await drain();
+    expect((await subscriptionState(owner, tenantId)).status).toBe("past_due");
+    expect(mail.sent).toEqual([]);
+
+    await sendWebhook([failed]);
+    await sendWebhook([{ ...failed, attempt: 2 }]);
+    await drain();
+
+    expect(templates()).toEqual(["payment-failed"]);
+  });
+
   it("invoice.created grava a fatura e avisa uma vez só", async () => {
     const ref = await subscribe(tenantId);
     const invoiceRef = `in_${randomUUID()}`;
@@ -740,6 +814,35 @@ describe("job webhook.process", () => {
       old,
       { atPeriodEnd: false },
     ]);
+  });
+
+  it("falha ao cancelar a assinatura substituída vira alerta", async () => {
+    await subscribe(tenantId);
+    const row = await subscriptionState(owner, tenantId);
+    await updateSubscription(owner, tenantId, { status: "unpaid" });
+    setProvidersForTests([
+      createStubProvider({
+        cancelSubscription: async () => {
+          throw new Error("provedor fora do ar");
+        },
+      }),
+    ]);
+
+    await sendWebhook([
+      {
+        type: "invoice.paid",
+        invoiceRef: `in_${randomUUID()}`,
+        subscriptionRef: subscriptionRef(),
+        amountCents: 9900,
+        paidAt: new Date().toISOString(),
+        metadata: { subscriptionId: row.id },
+      },
+    ]);
+    await drain();
+
+    const after = await subscriptionState(owner, tenantId);
+    expect(after.status).toBe("active");
+    expect(after.metadata.alert?.kind).toBe("duplicate_subscription");
   });
 
   it("suspensão vence: pagamento não destrava tenant locked", async () => {
@@ -986,13 +1089,30 @@ describe("verificação só por token: confiar, mas conferir", () => {
     expect((await subscriptionState(owner, tenantId)).status).toBe("trialing");
   });
 
-  it("a API confirma: vale o valor dela, não o do corpo", async () => {
+  it("fatura paga de verdade, com metadados de outro tenant, não ativa a vítima", async () => {
     const ref = await paidEvent();
+    // A API não reconhece esta fatura como do tenant citado no corpo.
     tokenStub.remoteInvoice = {
       ref,
       status: "paid",
       amountCents: 29900,
       currency: "BRL",
+      subscriptionRef: "sub_de_quem_pagou",
+    };
+
+    expect(await drain()).toEqual(["ignored"]);
+    expect((await subscriptionState(owner, tenantId)).status).toBe("trialing");
+  });
+
+  it("a API confirma: vale o valor dela, não o do corpo", async () => {
+    const ref = await paidEvent();
+    const row = await subscriptionState(owner, tenantId);
+    tokenStub.remoteInvoice = {
+      ref,
+      status: "paid",
+      amountCents: 29900,
+      currency: "BRL",
+      metadata: { subscriptionId: row.id, planPriceId: pro.priceId },
     };
 
     await drain();

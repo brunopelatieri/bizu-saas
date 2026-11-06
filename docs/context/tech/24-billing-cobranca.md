@@ -61,7 +61,10 @@ Regras que não saem da tabela:
   referência, ou a reconciliação tentaria encerrar de novo.
 - **Segundo checkout pago** com assinatura viva não substitui a primeira: vira alerta
   `duplicate_subscription`. Reativação troca a referência e cancela a antiga no provedor, depois
-  do commit.
+  do commit; se isso falhar, fica o mesmo alerta. Em `unpaid`, o checkout não troca de provedor
+  (409 `PROVIDER_MISMATCH`): a assinatura antiga ficaria sem dono.
+- **`paid` da API** (`isLiveStatus`) só vale para cobrança viva: `canceled` e `unpaid` guardam a
+  referência, mas a tela oferece checkout.
 - **Evento de outra assinatura não mexe nesta:** `subscription.canceled` da substituída é
   `other_subscription`.
 - **`locked` vence:** só `full` vira `read_only` e só `read_only` volta a `full`.
@@ -86,6 +89,7 @@ clique duplo abre o mesmo checkout.
 | Downgrade | O preço novo entra no provedor sem proração, e o plano local espera em `pending_plan_id` até o fim do período. Assim a próxima fatura não sai com o preço antigo |
 | Comparação | Por valor mensal: anual vale `valor / 12` |
 | Para gratuito | Não existe: é cancelar. No fim do período, migra sozinho |
+| Desfazer downgrade | Escolher o plano atual: o provedor volta ao preço e `pending_plan_id` zera. Com downgrade agendado, upgrade responde 409 `PENDING_DOWNGRADE`, porque prorratearia a partir do preço menor |
 
 O downgrade entra no primeiro que chegar: renovação com período novo (`periodPatch`) ou o job
 `billing.period_end`. `subscription.updated` com o preço agendado não antecipa o plano.
@@ -97,7 +101,7 @@ O downgrade entra no primeiro que chegar: renovação com período novo (`period
 | Situação | Resposta |
 |---|---|
 | Provedor fora de `PAYMENT_PROVIDERS` | 404, nada gravado |
-| 20 assinaturas erradas no minuto, por IP | 429. Só o erro conta: o provedor legítimo manda volume |
+| 20 assinaturas erradas no minuto, por IP | 429, sem gravar. Checado depois da verificação: assinatura válida nunca é barrada |
 | Assinatura inválida | 400 e rastro em `payment_event`, sem corpo |
 | Novo | 200, grava `pending` e enfileira |
 | Repetido | 200 `duplicate`. Se a linha ainda está `pending`, reenfileira |
@@ -110,7 +114,8 @@ feito. E-mail e cancelamento da assinatura substituída saem depois do commit; f
 ao log e não repete o evento. Rede só antes da transação.
 
 - **Confiar, mas conferir:** com `webhookSignature` `token` ou `none`, `confirm` só aceita o evento
-  depois de `fetchInvoice`/`fetchSubscription`, e vale o valor da API, não o do corpo.
+  depois de `fetchInvoice`/`fetchSubscription`. Valor, assinatura, cliente e metadados vêm da API:
+  o corpo poderia citar uma fatura paga de verdade com os metadados de outro tenant.
 - **Resolução:** `provider_subscription_ref` → `metadata.subscriptionId` com o mesmo provedor →
   fatura conhecida → cliente, só em evento sem `subscriptionRef`.
 
@@ -123,8 +128,8 @@ ao log e não repete o evento. Rede só antes da transação.
 | `billing.period_end` | de hora em hora | encerra cancelamentos e aplica downgrades vencidos |
 | `billing.reconcile` | 04:00 diário | compara com `fetchSubscription` e devolve à fila os eventos `pending` há mais de 10 min |
 
-A reconciliação **corrige** e deixa alerta (`metadata.alert`, `/admin/assinaturas`), com
-`subscription_event` de `source = job`. A exceção é assinatura encerrada aqui e viva no provedor:
+A reconciliação **corrige** status, período e plano (`priceRef`), e deixa alerta
+(`metadata.alert`, `/admin/assinaturas`), com `subscription_event` de `source = job`. A exceção é assinatura encerrada aqui e viva no provedor:
 só alerta, porque reabrir é decisão de alguém.
 
 ## API do owner

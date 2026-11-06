@@ -58,8 +58,9 @@ features. Falha em `startTrial` vai para `logError` e não derruba o onboarding.
 | `past_due` | pagamento falhou, ainda na carência: acesso total, com aviso (`graceUntil` em `/api/me`) |
 | `active` | o resto |
 
-`/api/me` devolve `billing` (`state`, `plan`, `trialEndsAt`, `trialDaysLeft`), `features[]` e
-`limits{}` (só os definidos) do plano da assinatura. Em `locked`, features e limites vêm vazios.
+`/api/me` devolve `billing` (`state`, `plan`, `trialEndsAt`, `trialDaysLeft`, `graceUntil`), `features[]`
+e `limits{}` (só os definidos) do plano da assinatura. Em `locked`, features e limites vêm vazios; em
+`expired`, `canceled` e `unpaid`, as features.
 O banner de `/app` (`BillingBanner`) só informa; quem barra é a API.
 
 ## Limites e features

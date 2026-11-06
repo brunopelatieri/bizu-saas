@@ -26,7 +26,7 @@ const stateSql = sql<BillingState>`case
   when ${subscription.status} = 'past_due' then 'past_due'
   else 'active' end`;
 
-const escapeLike = (value: string) => value.replace(/[\\%_]/g, "\\$&");
+export const escapeLike = (value: string) => value.replace(/[\\%_]/g, "\\$&");
 
 export type AdminTenantRow = {
   id: string;

@@ -24,6 +24,7 @@ import {
   type PaymentMethod,
   SUBSCRIPTION_STATUS_LABELS,
 } from "@/lib/billing/constants";
+import { useAuth } from "@/providers/auth-provider";
 import { useQueryClient } from "@tanstack/react-query";
 
 const formatDate = (iso: string | null) =>
@@ -69,7 +70,6 @@ function SubscriptionCard({
   const pending =
     cancel.isPending || reactivate.isPending || pause.isPending || portal.isPending;
   const { status, cancelAtPeriodEnd, paid, pendingPlan, plan } = subscription;
-  const live = paid && ["active", "past_due", "trialing"].includes(status);
   const line = periodLine(subscription);
 
   return (
@@ -129,7 +129,7 @@ function SubscriptionCard({
                 Pausar
               </Button>
             ) : null}
-            {live && !cancelAtPeriodEnd ? (
+            {paid && !cancelAtPeriodEnd ? (
               <Button
                 size="sm"
                 variant="outline"
@@ -169,6 +169,7 @@ export function SubscriptionPage() {
   const can = useCan();
   const canManage = can("billing", "manage");
   const queryClient = useQueryClient();
+  const { refresh } = useAuth();
   const subscription = useSubscription();
   const plans = useBillingPlans();
   const [inline, setInline] = useState<Extract<
@@ -181,9 +182,11 @@ export function SubscriptionPage() {
   const current = view?.subscription ?? null;
   const provider = plans.data?.providers.find(({ id }) => id === current?.provider);
 
+  // O banner e os limites vêm de `/api/me`: o pagamento confirmado precisa chegar lá também.
   const refreshPaid = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["billing"] });
-  }, [queryClient]);
+    void refresh();
+  }, [queryClient, refresh]);
 
   function startCheckout(price: BillingPrice, method: PaymentMethod) {
     checkout.mutate(

@@ -33,6 +33,11 @@ export async function loadTenantBilling(
     accessMode: tenant.accessMode,
     subscriptionStatus: current?.subscription.status ?? null,
   });
+  // Assinatura encerrada não dá as features do plano, mesmo antes do `read_only` chegar: um
+  // checkout abandonado nasce `expired` com o plano escolhido.
+  const planApplies =
+    state !== "locked" &&
+    !["expired", "canceled", "unpaid"].includes(current?.subscription.status ?? "");
   const trialEndsAt =
     state === "trialing" ? (current?.subscription.trialEndsAt ?? null) : null;
 
@@ -57,7 +62,7 @@ export async function loadTenantBilling(
           ? (current?.subscription.graceUntil?.toISOString() ?? null)
           : null,
     },
-    features: state === "locked" ? [] : (current?.plan.features ?? []),
+    features: planApplies ? (current?.plan.features ?? []) : [],
     limits: state === "locked" ? {} : limits,
   };
 }

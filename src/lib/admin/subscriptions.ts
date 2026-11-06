@@ -2,9 +2,8 @@ import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { withPlatformScope } from "@/db/rls";
 import { organization, plan, subscription } from "@/db/schema";
 import type { SubscriptionStatus } from "@/db/schema/billing";
+import { escapeLike } from "@/lib/admin/tenants";
 import { PAGE_SIZE } from "@/lib/schemas/admin";
-
-const escapeLike = (value: string) => value.replace(/[\\%_]/g, "\\$&");
 
 /** `/admin/assinaturas`: quem precisa de atenção, sem referências do provedor. */
 export async function listSubscriptions(input: {

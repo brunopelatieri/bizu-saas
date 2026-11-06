@@ -106,6 +106,9 @@ export type RemoteInvoice = {
   amountCents: number;
   currency: string;
   subscriptionRef?: string;
+  customerRef?: string;
+  /** Além da spec: sem assinatura no webhook, só o que a API devolve identifica o tenant. */
+  metadata?: Partial<PaymentMetadata>;
   paidAt?: Date;
 };
 

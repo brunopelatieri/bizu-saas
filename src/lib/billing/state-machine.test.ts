@@ -4,6 +4,7 @@ import {
   type BillingEvent,
   canStartCheckout,
   type Decision,
+  isLiveStatus,
   nextInvoiceStatus,
   type SubscriptionSnapshot,
   transition,
@@ -230,7 +231,16 @@ describe("cancelamento do owner", () => {
     ).toBe("already_scheduled");
   });
 
-  it.each(["unpaid", "expired", "canceled", "paused"] as const)(
+  it("pausada também agenda, para o provedor e aqui ficarem iguais", () => {
+    const decision = applied(
+      transition(snapshot("paused"), { type: "cancel.requested" }, NOW),
+    );
+
+    expect(decision.status).toBe("paused");
+    expect(decision.patch.cancelAtPeriodEnd).toBe(true);
+  });
+
+  it.each(["unpaid", "expired", "canceled"] as const)(
     "%s não cancela",
     (status) => {
       expect(
@@ -597,6 +607,22 @@ describe("provider.synced", () => {
     ).toBe("past_due");
   });
 
+  it.each(["past_due", "paused"] as const)(
+    "%s com período novo leva junto o preço do downgrade",
+    (status) => {
+      const decision = applied(
+        transition(
+          snapshot("active", { currentPeriodEnd: NOW, pendingPlanId: "barato" }),
+          synced(status, { periodEnd: LATER }),
+          NOW,
+        ),
+      );
+
+      expect(decision.patch.planId).toBe("barato");
+      expect(decision.applyPendingPrice).toBe(true);
+    },
+  );
+
   it("cancelada no provedor encerra aqui", () => {
     expect(
       applied(transition(snapshot("active"), synced("canceled"), NOW)).status,
@@ -607,6 +633,16 @@ describe("provider.synced", () => {
     expect(reasonOf(transition(snapshot("canceled"), synced("active"), NOW))).toBe(
       "subscription_ended",
     );
+  });
+});
+
+describe("isLiveStatus", () => {
+  it.each(["active", "trialing", "past_due", "paused"] as const)("%s é viva", (status) => {
+    expect(isLiveStatus(status)).toBe(true);
+  });
+
+  it.each(["unpaid", "canceled", "expired"] as const)("%s não é", (status) => {
+    expect(isLiveStatus(status)).toBe(false);
   });
 });
 

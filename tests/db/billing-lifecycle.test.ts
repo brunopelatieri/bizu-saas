@@ -463,6 +463,39 @@ describe("troca de plano", () => {
     });
   });
 
+  it("o owner desfaz o downgrade: o provedor volta ao preço atual", async () => {
+    await change(pro.priceId);
+    await change(basic.priceId);
+
+    const response = await change(pro.priceId);
+
+    expect(response.status).toBe(200);
+
+    const after = await subscriptionState(owner, tenantId);
+    expect(after).toMatchObject({ plan_id: pro.id, pending_plan_id: null });
+    expect(after.metadata.pendingPlanPriceId).toBeUndefined();
+
+    const [, , input] = (stub.calls.updateSubscription?.[2] ?? []) as [
+      unknown,
+      string,
+      { price: { id: string }; prorate: boolean },
+    ];
+    expect(input.price.id).toBe(pro.priceId);
+    expect(input.prorate).toBe(false);
+  });
+
+  it("com downgrade agendado, upgrade espera: prorratearia do preço menor", async () => {
+    const top = await createPaidPlan(owner, 59900);
+    await change(pro.priceId);
+    await change(basic.priceId);
+
+    const response = await change(top.priceId);
+
+    expect(response.status).toBe(409);
+    expect((await bodyOf(response)).code).toBe("PENDING_DOWNGRADE");
+    expect(stub.calls.updateSubscription).toHaveLength(2);
+  });
+
   it("mesmo plano é recusado", async () => {
     const response = await change(basic.priceId);
 
@@ -490,6 +523,24 @@ describe("troca de plano", () => {
 
     expect(response.status).toBe(409);
     expect((await bodyOf(response)).code).toBe("NO_ACTIVE_SUBSCRIPTION");
+  });
+});
+
+describe("cancelamento de assinatura pausada", () => {
+  it("agenda aqui e no provedor, sem ficar pela metade", async () => {
+    await call("POST", "/api/billing/pause", { cookie: user.cookie });
+
+    const response = await call("POST", "/api/billing/cancel", {
+      cookie: user.cookie,
+      body: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(stub.calls.cancelSubscription).toHaveLength(1);
+    expect(await subscriptionState(owner, tenantId)).toMatchObject({
+      status: "paused",
+      cancel_at_period_end: true,
+    });
   });
 });
 
@@ -606,6 +657,49 @@ describe("billing.reconcile", () => {
     });
   });
 
+  it("plano trocado no provedor e webhook perdido: corrige e alerta", async () => {
+    const row = await inSync();
+    stub.remoteSubscription = {
+      ...remote("active"),
+      currentPeriodEnd: row.current_period_end ?? undefined,
+      priceRef: pro.priceRef,
+    };
+
+    const result = await runBillingReconcile(new Date(), only());
+
+    expect(result.diverged).toBe(1);
+    expect(await subscriptionState(owner, tenantId)).toMatchObject({
+      status: "active",
+      plan_id: pro.id,
+      plan_price_id: pro.priceId,
+    });
+    expect(
+      (await subscriptionState(owner, tenantId)).metadata.alert?.detail,
+    ).toContain("plano");
+  });
+
+  it("downgrade agendado não é divergência de plano", async () => {
+    await call("POST", "/api/billing/change-plan", {
+      cookie: user.cookie,
+      body: { planPriceId: pro.priceId },
+    });
+    await call("POST", "/api/billing/change-plan", {
+      cookie: user.cookie,
+      body: { planPriceId: basic.priceId },
+    });
+    const row = await subscriptionState(owner, tenantId);
+    stub.remoteSubscription = {
+      ...remote("active"),
+      currentPeriodEnd: row.current_period_end ?? undefined,
+      priceRef: basic.priceRef,
+    };
+
+    const result = await runBillingReconcile(new Date(), only());
+
+    expect(result.diverged).toBe(0);
+    expect((await subscriptionState(owner, tenantId)).plan_id).toBe(pro.id);
+  });
+
   it("cancelada no provedor encerra aqui", async () => {
     await inSync();
     stub.remoteSubscription = remote("canceled");
@@ -662,9 +756,10 @@ describe("billing.reconcile", () => {
 });
 
 describe("admin", () => {
-  it("cancela na hora, no provedor e aqui", async () => {
+  it("cancela na hora, no provedor e aqui, e avisa o tenant", async () => {
     const platformOwner = await makePlatformUser(owner, "platform_owner");
     const row = await subscriptionState(owner, tenantId);
+    mail.sent.length = 0;
 
     const response = await call(
       "POST",
@@ -679,6 +774,7 @@ describe("admin", () => {
     ]);
     expect((await subscriptionState(owner, tenantId)).status).toBe("canceled");
     expect(await accessModeOf(owner, tenantId)).toBe("read_only");
+    expect(templates()).toEqual(["subscription-canceled"]);
 
     const [event] = await asPlatform(owner, (tx) =>
       tx<{ source: string }[]>`
@@ -807,6 +903,19 @@ describe("leitura e permissões do owner", () => {
     const webhook = await sendWebhook([]);
     expect(webhook.status).toBe(404);
   });
+
+  it.each(["unpaid", "canceled"])(
+    "%s não conta como pago: a tela precisa oferecer checkout",
+    async (status) => {
+      await updateSubscription(owner, tenantId, { status });
+
+      const body = await bodyOf(
+        await call("GET", "/api/billing/subscription", { cookie: user.cookie }),
+      );
+
+      expect(body.subscription).toMatchObject({ status, paid: false });
+    },
+  );
 
   it("/api/billing/subscription não expõe referências do provedor", async () => {
     const response = await call("GET", "/api/billing/subscription", {

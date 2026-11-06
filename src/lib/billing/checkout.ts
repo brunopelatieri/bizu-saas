@@ -19,11 +19,13 @@ import {
   type SubscriptionRow,
 } from "@/lib/billing/apply";
 import type { PaymentMethod } from "@/lib/billing/constants";
+import { safeUrl } from "@/lib/billing/invoices";
 import { notifyCanceled } from "@/lib/billing/notify";
 import { prorationCents } from "@/lib/billing/proration";
 import {
   type BillingEvent,
   canStartCheckout,
+  isLiveStatus,
   transition,
 } from "@/lib/billing/state-machine";
 import { loadTenantPlan } from "@/lib/billing/subscription";
@@ -189,7 +191,11 @@ export async function getSubscriptionView(tenantId: string) {
       },
       planPriceId: row.planPriceId,
       provider: row.provider,
-      paid: row.providerSubscriptionRef !== null && !currentPlan.isFree,
+      // Encerrada guarda a referência antiga, mas só volta por checkout novo.
+      paid:
+        row.providerSubscriptionRef !== null &&
+        !currentPlan.isFree &&
+        isLiveStatus(row.status),
       trialEndsAt: row.trialEndsAt,
       currentPeriodEnd: row.currentPeriodEnd,
       cancelAtPeriodEnd: row.cancelAtPeriodEnd,
@@ -338,6 +344,16 @@ export async function startCheckout(
     );
   }
 
+  // Em `unpaid` a assinatura ainda existe no provedor antigo: trocar aqui perderia o vínculo
+  // e ninguém a cancelaria depois do pagamento.
+  if (row.status === "unpaid" && row.provider && row.provider !== provider.id) {
+    throw new TenantRuleError(
+      409,
+      "PROVIDER_MISMATCH",
+      "Regularize a assinatura no meio de pagamento atual.",
+    );
+  }
+
   const ctx = platformContext();
   const sameProvider = row.provider === provider.id;
   const customerRef =
@@ -401,7 +417,7 @@ export async function startCheckout(
         dueAt: result.expiresAt,
         pixPayload: result.pixPayload,
         boletoLine: result.boletoLine,
-        hostedUrl: result.boletoUrl,
+        hostedUrl: safeUrl(result.boletoUrl),
       })
       .onConflictDoNothing()
       .returning({ id: invoice.id }),
@@ -439,9 +455,7 @@ async function liveSubscription(tenantId: string) {
   if (!current || !row?.providerSubscriptionRef || !row.provider) {
     throw REFUSED.noSubscription;
   }
-  if (["canceled", "expired", "unpaid"].includes(row.status)) {
-    throw REFUSED.noSubscription;
-  }
+  if (!isLiveStatus(row.status)) throw REFUSED.noSubscription;
 
   const provider = getProvider(row.provider);
   if (!provider) throw REFUSED.noProvider;
@@ -626,19 +640,53 @@ export async function changePlan(
       "Regularize o pagamento antes de trocar de plano.",
     );
   }
+
+  const next = toPlanPrice(chosen.price);
+  const ctx = platformContext();
+
   if (chosen.price.id === row.planPriceId) {
-    throw new TenantRuleError(409, "SAME_PLAN", "Este já é o plano atual.");
+    if (!row.pendingPlanId) {
+      throw new TenantRuleError(409, "SAME_PLAN", "Este já é o plano atual.");
+    }
+
+    // Desfaz o downgrade agendado: o provedor volta ao preço que o tenant está pagando.
+    await callProvider(() => update(ctx, ref, { price: next, prorate: false }));
+    await withTenant(tenantId, async (tx) => {
+      const locked = await lockSubscription(tx, row.id);
+      if (!locked) throw REFUSED.noSubscription;
+
+      await applyDecision(
+        tx,
+        locked,
+        {
+          outcome: "applied",
+          status: locked.status,
+          reason: "downgrade_undone",
+          patch: { pendingPlanId: null },
+        },
+        { source: "owner", ...actorEntry(actor) },
+      );
+    });
+
+    return { effectiveAt: "now", periodEnd: row.currentPeriodEnd };
   }
 
   const [currentPrice] = row.planPriceId
     ? await getDb().select().from(planPrice).where(eq(planPrice.id, row.planPriceId))
     : [];
-  const next = toPlanPrice(chosen.price);
   const current = currentPrice ? toPlanPrice(currentPrice) : null;
   const upgrade = !current || monthlyCents(next) > monthlyCents(current);
-  const ctx = platformContext();
 
   if (upgrade) {
+    // O provedor já está no preço menor: prorratearia a partir dele e cobraria a mais.
+    if (row.pendingPlanId) {
+      throw new TenantRuleError(
+        409,
+        "PENDING_DOWNGRADE",
+        "Mantenha o plano atual antes de escolher um plano maior.",
+      );
+    }
+
     const prorate = provider.capabilities.proration;
     await callProvider(() => update(ctx, ref, { price: next, prorate }));
     if (!prorate && current) {
@@ -656,8 +704,7 @@ export async function changePlan(
           outcome: "applied",
           status: locked.status,
           reason: "plan_upgraded",
-          // Upgrade cancela o downgrade que estivesse agendado.
-          patch: { pendingPlanId: null },
+          patch: {},
         },
         {
           source: "owner",
@@ -742,7 +789,7 @@ export async function adminCancelSubscription(
     );
   }
 
-  return withPlatformScope("admin: cancela assinatura", async (tx) => {
+  const updated = await withPlatformScope("admin: cancela assinatura", async (tx) => {
     const row = await lockSubscription(tx, subscriptionId);
     if (!row) throw notFound("Assinatura não encontrada.");
 
@@ -756,9 +803,16 @@ export async function adminCancelSubscription(
       actor: { type: "platform", id: actorId },
     });
   });
+
+  // O webhook do provedor vai encontrar tudo feito e não avisa ninguém.
+  await notifyCanceled(updated.tenantId, updated.planId, now).catch((error) =>
+    logError("Falha ao avisar cancelamento", error),
+  );
+
+  return updated;
 }
 
-/** Lista de `/admin/assinaturas`, sem referências do provedor na resposta. */
+/** O alvo de "Buscar do provedor". Sem par no provedor não há o que comparar. */
 export async function loadSubscriptionForSync(subscriptionId: string) {
   const [row] = await withPlatformScope("admin: carrega assinatura", (tx) =>
     tx.select().from(subscription).where(eq(subscription.id, subscriptionId)),

@@ -67,7 +67,16 @@ function PriceRow({
         ) : null}
       </p>
 
-      {current ? (
+      {current && subscription?.pendingPlan && canManage ? (
+        <Button
+          size="sm"
+          variant="outline"
+          disabled={pending}
+          onClick={() => onChangePlan(price)}
+        >
+          Manter este plano
+        </Button>
+      ) : current ? (
         <Badge variant="secondary">Plano atual</Badge>
       ) : !canManage ? null : changeable ? (
         <Button

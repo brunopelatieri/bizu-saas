@@ -152,19 +152,6 @@ export async function listPaymentEvents(input: {
   });
 }
 
-export async function countFailedEvents() {
-  const [row] = await withPlatformScope("admin: conta webhooks falhos", (tx) =>
-    tx
-      .select({ total: count() })
-      .from(paymentEvent)
-      .where(
-        and(eq(paymentEvent.status, "failed"), eq(paymentEvent.verified, true)),
-      ),
-  );
-
-  return row?.total ?? 0;
-}
-
 /**
  * Volta o evento para a fila. Evento já processado não repete (duplicaria e-mail), e o que
  * falhou na assinatura nunca foi confiável.

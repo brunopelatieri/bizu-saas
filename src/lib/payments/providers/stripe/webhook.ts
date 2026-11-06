@@ -53,7 +53,7 @@ export const SUBSCRIPTION_STATUS: Record<
   canceled: "canceled",
 };
 
-function metadataOf(
+export function metadataOf(
   metadata: Stripe.Metadata | null | undefined,
 ): Partial<PaymentMetadata> {
   return {
@@ -63,14 +63,13 @@ function metadataOf(
   };
 }
 
-/** A linha do preço da assinatura; as de proração vêm junto numa troca de plano. */
+/**
+ * A linha do preço da assinatura. Fatura só de proração (upgrade) não tem: o período dela é
+ * a sobra do mês, não o período da assinatura.
+ */
 function subscriptionLine(invoice: Stripe.Invoice) {
-  const lines = invoice.lines?.data ?? [];
-
-  return (
-    lines.find(
-      (line) => line.parent?.subscription_item_details?.proration === false,
-    ) ?? lines[0]
+  return invoice.lines?.data?.find(
+    (line) => line.parent?.subscription_item_details?.proration === false,
   );
 }
 
@@ -170,7 +169,7 @@ function parseSubscription(
     currentPeriodStart: fromUnix(item?.current_period_start),
     currentPeriodEnd: fromUnix(item?.current_period_end),
     cancelAtPeriodEnd:
-      subscription.cancel_at_period_end || subscription.cancel_at !== null,
+      subscription.cancel_at_period_end || Boolean(subscription.cancel_at),
     priceRef: item?.price?.id,
   };
 }

@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { Tx } from "@/db/rls";
-import { organization, subscription } from "@/db/schema";
+import { organization, planPrice, subscription } from "@/db/schema";
 import type {
   SubscriptionAlert,
   SubscriptionEventSource,
@@ -30,6 +30,36 @@ export function snapshotOf(row: SubscriptionRow): SubscriptionSnapshot {
     providerSubscriptionRef: row.providerSubscriptionRef,
     lastProviderEventAt: last ? new Date(last) : null,
   };
+}
+
+export type PlanTarget = { planId: string; planPriceId: string };
+
+/** O plano por trás da referência de preço do provedor. */
+export async function findPriceByRef(
+  tx: Tx,
+  provider: SubscriptionRow["provider"],
+  ref: string | undefined,
+): Promise<PlanTarget | null> {
+  if (!provider || !ref) return null;
+
+  const [row] = await tx
+    .select({ planId: planPrice.planId, planPriceId: planPrice.id })
+    .from(planPrice)
+    .where(and(eq(planPrice.provider, provider), eq(planPrice.providerPriceRef, ref)));
+
+  return row ?? null;
+}
+
+/**
+ * O provedor cobra um preço diferente do local? Downgrade agendado já está lá e só entra no
+ * fim do período; em trial, quem define o plano é o primeiro pagamento.
+ */
+export function planDivergence(row: SubscriptionRow, price: PlanTarget | null) {
+  if (!price || row.status === "trialing") return null;
+  if (price.planPriceId === row.planPriceId) return null;
+  if (price.planPriceId === row.metadata.pendingPlanPriceId) return null;
+
+  return price;
 }
 
 /** `SELECT ... FOR UPDATE`: webhook, job e owner não se atropelam na mesma assinatura. */

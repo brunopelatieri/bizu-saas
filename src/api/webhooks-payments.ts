@@ -17,9 +17,9 @@ import type { PaymentProvider } from "@/lib/payments/types";
  * (`src/jobs/webhooks.ts`).
  *
  * - Lê o corpo bruto: a assinatura vale para os bytes recebidos, não para um JSON refeito.
- * - Só a assinatura inválida conta para o limite por IP: o provedor legítimo pode mandar
- *   centenas de eventos por minuto, e quem erra 20 vezes para de ser ouvido antes de
- *   encher a tabela.
+ * - O limite por IP só vale para a assinatura inválida, e é checado depois dela: o provedor
+ *   legítimo manda volume e, atrás de um proxy mal configurado, divide o IP com quem forja.
+ *   Passado o limite, quem erra para de gravar na tabela.
  * - 5xx faz o provedor reenviar; o reenvio cai na unique e só reenfileira o que parou.
  */
 export const paymentWebhooks = new Hono();
@@ -49,11 +49,6 @@ paymentWebhooks.post(
     if (provider === "unavailable") return c.json({ error: "Indisponível." }, 503);
     if (!provider) return c.json({ error: "Provedor sem webhook." }, 404);
 
-    const ip = clientKey(c);
-    if (rejectedLimit.blocked(ip)) {
-      return c.json({ error: "Muitas tentativas. Tente mais tarde." }, 429);
-    }
-
     const rawBody = await c.req.text();
     const headers = headersOf(c.req.raw.headers);
     const ctx = platformContext();
@@ -71,6 +66,11 @@ paymentWebhooks.post(
     }
 
     if (!verification.ok) {
+      const ip = clientKey(c);
+      if (rejectedLimit.blocked(ip)) {
+        return c.json({ error: "Muitas tentativas. Tente mais tarde." }, 429);
+      }
+
       rejectedLimit.hit(ip);
       await recordRejected(provider.id, headers, verification.reason);
       return c.json({ error: "Assinatura inválida." }, 400);
