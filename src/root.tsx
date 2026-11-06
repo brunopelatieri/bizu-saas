@@ -35,7 +35,7 @@ export const links: LinksFunction = () => [
 ];
 
 export const meta: MetaFunction = () => [
-  { title: `${siteConfig.name} — Site, login e dashboard prontos para o seu projeto` },
+  { title: `${siteConfig.name} — Comece seu SaaS com a fundação pronta` },
   { name: "description", content: siteConfig.description },
   { name: "theme-color", content: "#0b0b0c" },
 ];

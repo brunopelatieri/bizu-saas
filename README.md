@@ -1,52 +1,65 @@
-# Bizu Starter
+# Bizu SaaS
 
-**Bizu Starter** é o ponto de partida para projetos pequenos e médios que **não são SaaS**, mas precisam de site público, área de login e dashboard. Usa Drizzle em qualquer Postgres, com documentação viva e fluxo pensado para **AI Software Engineering**.
+**Bizu SaaS** é o ponto de partida open source para quem vai lançar um SaaS:
+multi-tenant, quatro níveis de login com verificação de e-mail, trial configurável e
+pagamentos em módulos (Pix, boleto e cartão). Tudo sobre Drizzle em qualquer Postgres,
+com documentação viva e fluxo pensado para **AI Software Engineering**.
 
-Serve para portais de clientes, áreas de membros, sites institucionais com painel, blogs com área administrativa e sistemas internos.
-
-> **Não é para SaaS:** não traz multi-tenant, planos nem cobrança recorrente. A proposta é continuar simples para projetos com um único cliente ou organização.
+> **Em construção.** O projeto está sendo transformado a partir do antigo Bizu
+> Starter seguindo a spec em [`docs/specs/saas-foundation/`](docs/specs/saas-foundation/spec.md).
+> O estado real de cada fase está em [`docs/context/status.md`](docs/context/status.md).
+> Hoje o site público e a infra local funcionam; login, tenants e cobrança entram
+> nas próximas fases.
 
 ---
 
 ## 📋 Índice
 
-- [Bizu Starter](#bizu-starter)
-  - [📋 Índice](#-índice)
-  - [Demo](#demo)
-  - [O Que Vem Pronto](#o-que-vem-pronto)
-  - [Resumo Técnico 80/20](#resumo-técnico-8020)
-  - [Metodologia Sugerida](#metodologia-sugerida)
-  - [Como Clonar e Rodar](#como-clonar-e-rodar)
-    - [Autenticação](#autenticação)
-    - [Escolha do Postgres](#escolha-do-postgres)
-    - [Banco local e Drizzle](#banco-local-e-drizzle)
-  - [Variáveis Principais](#variáveis-principais)
-  - [Scripts Úteis](#scripts-úteis)
-  - [Documentação](#documentação)
-  - [Autor](#autor)
+- [O que o Bizu SaaS entrega](#o-que-o-bizu-saas-entrega)
+- [Níveis de acesso](#níveis-de-acesso)
+- [Resumo Técnico 80/20](#resumo-técnico-8020)
+- [Metodologia](#metodologia)
+- [Como Clonar e Rodar](#como-clonar-e-rodar)
+- [Variáveis Principais](#variáveis-principais)
+- [Scripts Úteis](#scripts-úteis)
+- [Documentação](#documentação)
+- [Autor](#autor)
 
 ---
 
-## Demo
+## O que o Bizu SaaS entrega
 
-**URL:** [https://bizu.bru.ia.br](https://bizu.bru.ia.br)
+Quando todas as fases da spec estiverem concluídas:
 
-> **Nota sobre deploy:** este repositório é focado em **VPS + Docker + Node único** (`react-router-hono-server` + Hono + SSR). A demo pública roda na **Vercel** e exigiu **adaptações de arquitetura** (modelo serverless, não o stack plug-and-play deste repo).
->
-> O caminho natural deste template é **VPS/Docker**. Use a demo como referência visual; para a arquitetura otimizada para Vercel, veja o repositório dedicado: [github.com/brunopelatieri/bizu-saas-vercel](https://github.com/brunopelatieri/bizu-saas-vercel)
+- Landing page, página de preços e blog com SSR e SEO.
+- Autenticação própria sobre Postgres (Better Auth + Drizzle), com verificação de
+  e-mail por link em todos os cadastros, recuperação de senha, 2FA e sessões em banco.
+- Multi-tenant com isolamento por `tenant_id` na aplicação e Row Level Security no
+  Postgres, provado por testes.
+- Papéis `owner`, `admin`, `member` e papéis personalizados por tenant.
+- Área do proprietário (`/admin`), área do owner e equipe (`/app`) e portal do
+  cliente (`/portal`).
+- Planos, trial configurável (inclusive gratuito), assinaturas, inadimplência e
+  webhooks verificados, com Stripe e Asaas como primeiros módulos.
+- E-mails transacionais com provedor substituível, Mailpit no desenvolvimento e fila
+  de jobs no próprio Postgres.
+- Auditoria, personificação com consentimento, base de LGPD, Docker para VPS, CI,
+  migrations, seed e este tutorial.
+
+**Já disponível hoje:** site público com SSR, API Hono em processo único, Drizzle,
+rate limit, headers de segurança, Postgres com papéis de runtime e migração, Mailpit,
+validação de variáveis de ambiente, lint, testes (unitários e de banco) e CI.
 
 ---
 
-## O Que Vem Pronto
+## Níveis de acesso
 
-- Landing page responsiva, blog com SSR, páginas públicas e meta tags
-- Telas de login e dashboard client-side, ainda sem provedor de autenticação
-- API Hono no mesmo processo Node do SSR, com rotas privadas validadas no servidor
-- Drizzle ORM em qualquer Postgres
-- Rate limit, headers de segurança, lint, testes e CI
-- Base visual com shadcn/ui, Tailwind v4, tema claro/escuro e componentes prontos
-- Estrutura de contexto para agentes de IA entenderem o projeto antes de mexer
-- Docker preparado para VPS Ubuntu + Docker + Portainer
+| Nível | Área | Quem é |
+|---|---|---|
+| Proprietário da plataforma | `/admin` | Quem opera o SaaS: tenants, planos, trial, assinaturas, suporte |
+| Owner da conta | `/app` | Cliente do SaaS, dono de um tenant |
+| Colaborador | `/app` | Equipe do owner, com papel `admin`, `member` ou personalizado |
+| Cliente/lead | `/portal` | Cliente do owner, com login próprio dentro do tenant |
 
 ---
 
@@ -55,25 +68,28 @@ Serve para portais de clientes, áreas de membros, sites institucionais com pain
 ```text
 React Router v7 Framework Mode + SSR global
   |
-  |-- /api/*              Hono API -> Drizzle -> Postgres
+  |-- /api/*              Hono API -> Drizzle -> Postgres (RLS por tenant)
   |-- /, /sobre, /blog    rotas públicas com SSR e SEO
-  |-- /login              autenticação (provedor a definir)
-  `-- /dashboard/**       client-side, sem loader sensível no servidor
+  |-- /login              autenticação (Better Auth, fase 2)
+  |-- /app/**             owner e equipe, client-side, sem loader sensível
+  |-- /admin/**           proprietário (fase 5)
+  `-- /portal/**          clientes e leads (fase 8)
 ```
 
-**Stack principal:** React 19, TypeScript, React Router v7, Vite, Tailwind v4, shadcn/ui, Hono, Drizzle, Postgres, Zod, Zustand, TanStack Query, React Hook Form, Biome, Vitest e Docker.
+**Stack principal:** React 19, TypeScript, React Router v7, Vite, Tailwind v4,
+shadcn/ui, Hono, Drizzle, Postgres, Zod, Zustand, TanStack Query, React Hook Form,
+Better Auth, pg-boss, Nodemailer, Biome, Vitest e Docker.
 
 ---
 
-## Metodologia Sugerida
+## Metodologia
 
-Este template foi pensado para trabalhar com humanos e agentes de IA no mesmo fluxo. A ideia é aplicar **AI Software Engineering**: PRD/spec antes do código, contexto enxuto carregado sob demanda e decisões importantes documentadas.
+PRD e SPEC antes do código, contexto enxuto carregado sob demanda e mudanças pequenas
+e documentadas. Humanos e agentes de IA trabalham com o mesmo mapa técnico.
 
 ```text
 PRD -> SPEC -> implementação -> lint + tipos + testes + build -> /code-review -> atualizar contexto
 ```
-
-Em vez de carregar toda a documentação em cada sessão, o agente começa por um índice e abre só o que a tarefa pede. Isso reduz o consumo de tokens sem perder precisão:
 
 | Nível | O que é | Quando carrega |
 |---|---|---|
@@ -82,83 +98,105 @@ Em vez de carregar toda a documentação em cada sessão, o agente começa por u
 | Sob demanda | `docs/context/**` e skills `ctx-*` | Quando a tarefa pede |
 | Arquivo morto | `docs/context/archive/` | Só por pedido explícito |
 
-Comandos disponíveis no Claude Code:
-
-| Comando | Função |
-|---|---|
-| `/prd <feature>` | Cria o PRD em `docs/specs/<feature>/` |
-| `/spec <feature>` | Escreve a SPEC técnica a partir do PRD |
-| `/ctx-banco-drizzle`, `/ctx-auth`, `/ctx-api-hono`, `/ctx-dashboard`, `/ctx-infra-deploy` | Carregam o contexto do domínio |
-| `/context-budget` | Mede o contexto sempre carregado |
-
-> **Regra prática:** mudou código em um domínio? Atualize o arquivo correspondente em `docs/context/` no mesmo trabalho. O método completo, incluindo escolha de modelo e como adaptar o template a um novo projeto, está em `docs/context/ai-engineering.md`.
+Comandos no Claude Code: `/prd <feature>`, `/spec <feature>`, `/ctx-banco-drizzle`,
+`/ctx-auth`, `/ctx-api-hono`, `/ctx-dashboard`, `/ctx-infra-deploy`, `/context-budget`.
+O método completo está em `docs/context/ai-engineering.md`.
 
 ---
 
 ## Como Clonar e Rodar
 
-**Pré-requisitos:** Node.js 22 e Docker.
+**Pré-requisitos:** Node.js 22.12 ou superior, Docker e Git.
 
 ```bash
-git clone https://github.com/brunopelatieri/bizu-starter.git
-cd bizu-starter
+git clone https://github.com/brunopelatieri/bizu-saas.git
+cd bizu-saas
 
 npm install
 cp .env.example .env.local
+```
 
-docker compose up -d          # Postgres na porta 15432
+Gere os segredos e cole em `.env.local` (um comando por variável):
+
+```bash
+openssl rand -base64 32   # BETTER_AUTH_SECRET
+```
+
+```bash
+openssl rand -base64 32   # CREDENTIALS_ENCRYPTION_KEY
+```
+
+```bash
+openssl rand -hex 16      # AUDIT_SALT
+```
+
+Suba os serviços locais e aplique as migrations:
+
+```bash
+docker compose up -d
+```
+
+```bash
 npm run db:migrate
+```
+
+```bash
 npm run dev
 ```
 
-App em desenvolvimento:
+| Serviço | Endereço |
+|---|---|
+| App em desenvolvimento | `http://localhost:5173` |
+| Postgres | `localhost:15432`, banco `bizu` |
+| Mailpit (e-mails capturados) | `http://localhost:8025` |
 
-```text
-http://localhost:5173
-```
+### Postgres e papéis
+
+O `docker compose up` cria dois papéis no primeiro start (`docker/postgres/init.sql`):
+
+| Papel | Usado por | Permissão |
+|---|---|---|
+| `bizu_owner` | `DIRECT_URL`: migrations, seed e instalação da fila | Dono das tabelas |
+| `bizu_app` | `DATABASE_URL`: aplicação em runtime | Sem `BYPASSRLS`; o Row Level Security vale para ele |
+
+Em um Postgres próprio, rode o mesmo SQL de `docker/postgres/init.sql` como
+superusuário antes do `db:migrate`. Se você vinha do Bizu Starter, o volume antigo
+usa o banco `portal`: rode `docker compose down -v` antes de subir de novo.
 
 ### Autenticação
 
-O projeto ainda não tem provedor de autenticação, então login e dashboard ficam bloqueados. O site público funciona normalmente. Para conectar um provedor, veja `docs/context/tech/08-auth.md`.
+Login e áreas autenticadas ficam bloqueados até a fase 2 da spec (Better Auth). O
+site público funciona normalmente. Veja `docs/context/tech/08-auth.md`.
 
-### Escolha do Postgres
+### Testes
 
-O Drizzle é a única camada de dados. Para trocar de banco, basta mudar `DATABASE_URL` e `DIRECT_URL`:
+```bash
+npm test
+```
 
-| Opção | Quando usar |
-|---|---|
-| Docker local | Desenvolvimento, já configurado no `.env.example` |
-| VPS ou gerenciado | Projeto com infraestrutura própria |
+```bash
+npm run test:db
+```
 
-Em pooler no modo transaction, como PgBouncer, adicione `?prepare=false` à `DATABASE_URL`.
-
-### Banco local e Drizzle
-
-O **`drizzle-kit`** já está em `devDependencies`. Depois do `npm install`, os scripts `npm run db:migrate`, `db:generate` e `db:studio` usam o binário local automaticamente — **não instale globalmente** (`npm i -g drizzle-kit`).
-
-**Ordem recomendada na primeira execução:**
-
-1. `npm install` — instala dependências + `drizzle-kit`
-2. `cp .env.example .env.local` — URLs em `localhost:15432` (porta do Docker no Windows)
-3. `docker compose up -d` — sobe o Postgres
-4. `npm run db:migrate` — aplica migrations em `drizzle/`
-5. `npm run dev`
+`test:db` precisa do Postgres do Docker no ar e das migrations aplicadas.
 
 **Se `db:migrate` falhar:**
 
 | Problema | Solução |
 |---|---|
 | `drizzle-kit` não encontrado | Rode `npm install` antes do migrate |
-| Erro de conexão | Confira se o Postgres está up (`docker compose ps`) e se `.env.local` existe com `DATABASE_URL` / `DIRECT_URL` apontando para `localhost:15432` (não `5432`; no Windows a porta 5432 costuma estar reservada) |
+| Erro de conexão | Confira `docker compose ps` e se `.env.local` aponta para `localhost:15432` (no Windows a porta 5432 costuma estar reservada) |
+| `role "bizu_owner" does not exist` | O volume é antigo: `docker compose down -v` e suba de novo |
 
 **Servidor de produção local:**
 
 ```bash
 npm run build
-npm run start
 ```
 
-Por padrão, o `start` usa `PORT=3000`.
+```bash
+npm run start
+```
 
 ---
 
@@ -166,10 +204,17 @@ Por padrão, o `start` usa `PORT=3000`.
 
 | Variável | Descrição |
 |---|---|
-| `DATABASE_URL` | Conexão runtime com Postgres |
-| `DIRECT_URL` | Conexão usada pelo Drizzle Kit/migrations |
+| `APP_URL` | URL pública do app; base dos links de e-mail e dos cookies |
+| `DATABASE_URL` | Conexão runtime (`bizu_app`) |
+| `DIRECT_URL` | Conexão do Drizzle Kit e do seed (`bizu_owner`) |
+| `BETTER_AUTH_SECRET` | Assinatura de tokens e cookies da autenticação |
+| `CREDENTIALS_ENCRYPTION_KEY` | Criptografia de credenciais de provedores por tenant |
+| `AUDIT_SALT` | Hash de IP no log de auditoria |
+| `EMAIL_PROVIDER`, `EMAIL_FROM`, `SMTP_*` | Envio de e-mail; `smtp` com Mailpit no dev |
 | `PORT` | Porta do servidor único em produção |
-| `TRUSTED_PROXY_HOPS` | Quantidade de reverse proxies na frente do app; use `1` atrás de um proxy |
+| `TRUSTED_PROXY_HOPS` | Reverse proxies na frente do app; use `1` atrás de um proxy |
+
+A lista completa, com os módulos de pagamento, está em `.env.example`.
 
 ---
 
@@ -181,7 +226,8 @@ npm run build        # build de produção
 npm run start        # roda build/server/index.js
 npm run lint         # lint com Biome
 npm run typecheck    # typegen + TypeScript
-npm test             # testes com Vitest
+npm test             # testes unitários e de API (sem banco)
+npm run test:db      # testes contra o Postgres do Docker
 npm run db:generate  # gera migrations Drizzle
 npm run db:migrate   # aplica migrations
 npm run db:studio    # abre Drizzle Studio
@@ -195,20 +241,18 @@ npm run db:studio    # abre Drizzle Studio
 |---|---|
 | `docs/context/INDEX.md` | Mapa de todo o contexto: ponto de partida para pessoas e agentes |
 | `docs/context/core.md` | Objetivo, arquitetura e regras de decisão |
-| `docs/context/receitas.md` | Passo a passo: marca, tabela, rota privada, tela e página nova |
+| `docs/context/status.md` | O que está pronto e o que falta, por fase |
+| `docs/specs/saas-foundation/` | PRD e SPEC da transformação em SaaS |
+| `docs/context/receitas.md` | Passo a passo das tarefas comuns |
 | `docs/context/ai-engineering.md` | Método de trabalho, economia de tokens e adaptação do template |
 | `docs/context/tech/` | Especificação técnica, um arquivo por seção |
 | `docs/context/infra-deploy.md` | Topologia, credenciais e riscos de deploy |
-| `docs/specs/` | Templates de PRD/SPEC e specs de features |
-| `docs/context/archive/` | Histórico, incluindo as notas de migração para SSR + Hono |
 | `.claude/rules/`, `.cursor/rules/` | Regras por domínio para agentes |
 | `.claude/skills/` | Skills de contexto e de fluxo |
-
-`AI_CONTEXT.md` e `PROJECT_TECHNICAL_SPEC.md` agora são stubs que apontam para `docs/context/`.
 
 ---
 
 ## Autor
 
 **Bruno Pelatieri Goulart**
-Enterprise Automation Architect • AI • DevOps • n8n Specialist
+Enterprise Automation Architect • AI • DevOps • n8n Specialist

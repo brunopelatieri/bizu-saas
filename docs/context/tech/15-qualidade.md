@@ -4,7 +4,7 @@
 - **Specs relacionadas:** nenhuma citada
 - **Paths do código:** não declarado
 
-<!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L689-718 -->
+
 ## 15. Qualidade e Validacao
 
 Verificacoes recentes realizadas:
@@ -16,7 +16,7 @@ Verificacoes recentes realizadas:
   - `/blog`
   - `/blog/reduzir-mensagens-de-status`
   - `/login`
-  - `/dashboard` sem auth, confirmando shell sem dados sensiveis.
+  - `/app` sem auth, confirmando shell sem dados sensiveis.
 
 Comandos recomendados antes de cada entrega:
 
@@ -24,12 +24,18 @@ Comandos recomendados antes de cada entrega:
 npm run lint
 npm run typecheck
 npm test
+npm run test:db   # exige o Postgres do Docker com migrations aplicadas
 npm run build
 ```
 
 O CI em `.github/workflows/ci.yml` roda os mesmos comandos em push para `main` e em
-pull requests. Os testes ficam ao lado do codigo (`src/**/*.test.ts`); hoje cobrem a
-autenticacao e as protecoes da API.
+pull requests, com um servico `postgres:16` onde `docker/postgres/init.sql` e aplicado
+via `psql` antes de `db:migrate` e `test:db`, e fecha com
+`npm audit --omit=dev --audit-level=high`.
+
+Testes unitarios e de API ficam ao lado do codigo (`src/**/*.test.ts`): autenticacao,
+protecoes da API, `env.ts` e e-mail com provedor `memory`. Testes com banco real
+ficam em `tests/db/` (`vitest.db.config.ts`, sem paralelismo entre arquivos).
 
 Para smoke test local de producao:
 

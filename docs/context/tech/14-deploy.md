@@ -4,7 +4,7 @@
 - **Specs relacionadas:** nenhuma citada
 - **Paths do código:** não declarado
 
-<!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L610-688 -->
+
 ## 14. Deploy em VPS Ubuntu + Docker + Portainer
 
 ### Demo em Producao
@@ -43,16 +43,18 @@ Destino planejado:
 
 ### Compose Atual
 
-`docker-compose.yml` atual contem apenas Postgres local:
+`docker-compose.yml` e so de desenvolvimento:
 
-- `postgres:16-alpine`
-- Porta local `15432` publicada para `5432` dentro do container.
-- Usuario/senha/db: `portal`.
-- Volume `postgres_data`.
+- `postgres:16-alpine`, porta local `15432`, superusuario `postgres`, volume `postgres_data`.
+  `docker/postgres/init.sql` roda no primeiro start do volume e cria o banco `bizu` e os
+  papeis `bizu_owner` (migrations) e `bizu_app` (runtime, sem `BYPASSRLS`).
+- `axllent/mailpit`: SMTP `1025`, interface `8025`; captura todo e-mail de dev.
+- Porta ocupada por outro projeto: crie `docker-compose.override.yml` (ignorado pelo git)
+  com `ports: !override` e ajuste `.env.local`.
 
 Para producao via Portainer, recomenda-se stack com:
 
-- Container app (`bizu-starter`).
+- Container app (`bizu-saas`).
 - Container Postgres ou Postgres externo/gerenciado.
 - Rede Docker compartilhada.
 - Reverse proxy com TLS.
@@ -64,14 +66,17 @@ Runtime:
 
 - `NODE_ENV=production`
 - `PORT=3000`
-- `TRUSTED_PROXY_HOPS` (quantidade de reverse proxies; 1 com um proxy)
-- `DATABASE_URL`
+- `APP_URL`, `TRUSTED_PROXY_HOPS=1` (um por reverse proxy)
+- `DATABASE_URL` (`bizu_app`), `DIRECT_URL` (`bizu_owner`)
+- `BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY`, `AUDIT_SALT`: valores gerados;
+  os de exemplo (`change-me...`) derrubam o processo em producao
+- `EMAIL_PROVIDER`, `EMAIL_FROM`, `SMTP_*` ou `RESEND_*`
 
-Migrations:
+A lista completa esta em `.env.example`; a validacao, em `src/lib/env.ts`.
 
-- `DIRECT_URL`
-
-E-mail, quando adicionado ao projeto: credenciais SMTP, como variaveis de runtime.
+Migrations rodam em etapa separada (`npm run db:migrate` com `DIRECT_URL`), antes de
+subir a nova imagem. Em Postgres proprio, rode `docker/postgres/init.sql` com `psql`
+como superusuario uma vez, antes da primeira migration.
 
 ---
 

@@ -4,7 +4,7 @@
 - **Specs relacionadas:** nenhuma citada
 - **Paths do código:** `src/api/`, `src/api/app.ts`, `src/components/ui/`, `src/root.tsx`
 
-<!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L72-149 -->
+
 ## 2. Stack Principal
 
 ### Runtime e Linguagem

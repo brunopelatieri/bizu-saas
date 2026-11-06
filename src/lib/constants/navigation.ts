@@ -1,7 +1,7 @@
 export const siteConfig = {
-  name: "Bizu Starter",
+  name: "Bizu SaaS",
   description:
-    "Ponto de partida para sites, portais e sistemas pequenos e médios, com dashboard e Drizzle.",
+    "Ponto de partida open source para SaaS: multi-tenant, quatro níveis de login, trial e cobrança por Pix, boleto e cartão sobre Postgres.",
   locale: "pt-BR",
   url: "https://bizu.bru.ia.br",
   logo: "/bizu_bru_ia.png",
@@ -16,7 +16,7 @@ export const siteConfig = {
   },
   links: {
     demo: "https://bizu.bru.ia.br",
-    repo: "https://github.com/brunopelatieri/bizu-starter",
+    repo: "https://github.com/brunopelatieri/bizu-saas",
     repoVercel: "https://github.com/brunopelatieri/bizu-saas-vercel",
     github: "https://github.com/brunopelatieri",
     site: "https://brunogoulart.com.br",
@@ -91,7 +91,7 @@ export const contactChannelValues: Record<string, string> = {
   Site: "brunogoulart.com.br",
   LinkedIn: "in/bruno-pelatieri-goulart",
   GitHub: "@brunopelatieri",
-  Repositório: "brunopelatieri/bizu-starter",
+  Repositório: "brunopelatieri/bizu-saas",
   "Repo Vercel": "brunopelatieri/bizu-saas-vercel",
   YouTube: "@devgalactico",
   X: "@brunopelatieri",

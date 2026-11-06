@@ -74,12 +74,14 @@ Discuta o modelo antes de tarefas relevantes. A regra é usar o mais leve que re
 
 Para as tarefas de código, siga `docs/context/receitas.md`.
 
-1. Confirme o encaixe: se o projeto precisa de multi-tenant ou cobrança recorrente, ele
-   é um SaaS e está fora do propósito deste starter.
+1. Confirme o encaixe: o template é para SaaS multi-tenant com cobrança. Um projeto
+   de cliente único pode usá-lo removendo módulos, mas carrega camadas a mais.
 2. Reescreva "Domínio" e "Regras inegociáveis" no `CLAUDE.md`.
 3. Atualize `docs/context/core.md` e `docs/context/status.md`.
 4. Crie um arquivo em `docs/context/` para cada domínio de negócio novo.
 5. Para cada domínio, crie rule com `paths:` e, se for grande, skill `ctx-<domínio>`.
 6. Registre os arquivos novos no INDEX e remova o que não se aplica.
 7. Escolha onde o Postgres roda. Só muda a `DATABASE_URL`.
-8. Comece a primeira feature por `/prd`.
+8. Remova os módulos que não usa: apague a pasta do provedor e tire o id da variável
+   de ambiente que o registra.
+9. Comece a primeira feature por `/prd`.

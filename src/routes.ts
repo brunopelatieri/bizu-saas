@@ -24,27 +24,21 @@ export default [
   route("login", "routes/login.tsx"),
 
   // ---------------------------------------------------------------------------
-  // Área autenticada — client-only (SEM loader de servidor).
+  // Área do tenant (owner e equipe) — client-only (SEM loader de servidor).
   // O ProtectedRoute faz o gate no cliente; nenhum dado sensível é
-  // renderizado no HTML inicial (ver docs/context/tech/01-visao-geral.md).
+  // renderizado no HTML inicial. As áreas /admin (proprietário) e /portal
+  // (cliente/lead) entram nas fases seguintes da spec saas-foundation.
   // ---------------------------------------------------------------------------
   layout("components/auth/protected-route.tsx", [
-    route("dashboard", "components/layout/dashboard-layout.tsx", [
-      index("routes/dashboard.tsx"),
-      route("projetos", "routes/dashboard.coming-soon.tsx", {
-        id: "dash-projetos",
+    route("app", "components/layout/dashboard-layout.tsx", [
+      index("routes/app.tsx"),
+      route("clientes", "routes/app.coming-soon.tsx", { id: "app-clientes" }),
+      route("equipe", "routes/app.coming-soon.tsx", { id: "app-equipe" }),
+      route("assinatura", "routes/app.coming-soon.tsx", {
+        id: "app-assinatura",
       }),
-      route("clientes", "routes/dashboard.coming-soon.tsx", {
-        id: "dash-clientes",
-      }),
-      route("arquivos", "routes/dashboard.coming-soon.tsx", {
-        id: "dash-arquivos",
-      }),
-      route("relatorios", "routes/dashboard.coming-soon.tsx", {
-        id: "dash-relatorios",
-      }),
-      route("configuracoes", "routes/dashboard.coming-soon.tsx", {
-        id: "dash-configuracoes",
+      route("configuracoes", "routes/app.coming-soon.tsx", {
+        id: "app-configuracoes",
       }),
     ]),
   ]),

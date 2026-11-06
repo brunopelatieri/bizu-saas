@@ -10,7 +10,15 @@
 2. Troque os arquivos de imagem em `public/` e as URLs de `sitemap.xml` e `robots.txt`.
 3. Ajuste os títulos em `src/routes/*.tsx` e as seções de `src/components/landing/`.
 4. Remova o que for da demonstração: `src/lib/constants/projects.ts`, posts de exemplo
-   em `src/lib/content/posts.ts` e os cards de exemplo do dashboard.
+   em `src/lib/content/posts.ts` e os cards de exemplo de `/app`.
+
+## Adicionar uma variável de ambiente
+
+1. Declare em `src/lib/env.ts` (obrigatória, opcional ou condicional em `superRefine`).
+2. Acrescente em `.env.example` com comentário de uso e valor de exemplo.
+3. Leia com `getEnv().NOME`; não use `process.env` fora de `env.ts`.
+4. Se for segredo, o exemplo começa com `change-me` para ser recusado em produção.
+5. Se o CI precisar dela, inclua em `env:` de `.github/workflows/ci.yml`.
 
 ## Criar uma tabela
 
@@ -56,10 +64,10 @@ api.get("/api/notes", authRateLimit, requireAuth, async (c) => {
 - Envolva o acesso ao banco em `try/catch` e registre com `logError`.
 - Teste com `api.request()`, como em `src/api/app.test.ts`.
 
-## Criar uma tela no dashboard
+## Criar uma tela em /app
 
-1. Crie o route module em `src/routes/dashboard.notes.tsx`, com `meta` e sem `loader`.
-2. Registre em `src/routes.ts`, dentro do layout do dashboard.
+1. Crie o route module em `src/routes/app.notes.tsx`, com `meta` e sem `loader`.
+2. Registre em `src/routes.ts`, dentro do layout de `/app`.
 3. Adicione o item em `src/lib/constants/dashboard-nav.ts` (menu e título).
 4. Busque os dados com TanStack Query e `apiFetch`, seguindo `AccountCard`.
 

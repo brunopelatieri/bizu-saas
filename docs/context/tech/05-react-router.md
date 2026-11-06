@@ -4,7 +4,7 @@
 - **Specs relacionadas:** nenhuma citada
 - **Paths do código:** `src/lib/content/posts.ts`, `src/root.tsx`, `src/routes.ts`, `src/routes/*.tsx`, `src/routes/about.tsx`, `src/routes/blog-post.tsx`, `src/routes/blog.tsx`, `src/routes/contact.tsx`, `src/routes/home.tsx`, `src/routes/projects.tsx`
 
-<!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L204-250 -->
+
 ## 5. React Router Framework Mode
 
 ### Arquivos Principais
@@ -19,7 +19,7 @@
   - Injeta script anti-flash para tema dark/light.
 - `src/routes.ts`
   - Configuracao declarativa das rotas.
-  - Divide rotas publicas, auth standalone e dashboard.
+  - Divide rotas publicas, auth standalone e areas autenticadas (/app, /admin, /portal).
 - `src/routes/*.tsx`
   - Route modules com `meta`, `loader` quando necessario e componente default.
 

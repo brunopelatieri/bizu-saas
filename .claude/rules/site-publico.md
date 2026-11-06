@@ -18,6 +18,6 @@ paths:
 - Navbar e footer são compartilhados via layout.
 - Idioma da interface: pt-BR.
 - A `BlogSection` da landing é vitrine estática; o blog real está em `/blog`.
-- Landing page nova segue o skill indicado em `docs/context/tech/13-skills-rules.md`.
+- Marca, descrição e links ficam em `siteConfig` (`src/lib/constants/navigation.ts`).
 
 Para entender este domínio, leia: docs/context/tech/10-site-publico.md

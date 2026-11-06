@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Autenticação sem provedor, com ponto único de integração
 
-O projeto ainda não tem provedor de autenticação: login e dashboard estão bloqueados.
+O projeto ainda não tem provedor de autenticação: login e as áreas autenticadas estão bloqueados até a fase 2 da spec (Better Auth).
 
 - Cliente: o provedor entra em `noProvider`, em `src/providers/auth-provider.tsx`.
 - Servidor: o provedor entra em `verifyToken`, em `src/api/auth.ts`.

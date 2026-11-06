@@ -8,9 +8,33 @@ on:
 permissions:
   contents: read
 
+env:
+  NODE_ENV: test
+  APP_URL: http://localhost:5173
+  DATABASE_URL: postgresql://bizu_app:bizu_app@localhost:5432/bizu
+  DIRECT_URL: postgresql://bizu_owner:bizu_owner@localhost:5432/bizu
+  BETTER_AUTH_SECRET: ci-only-better-auth-secret-not-for-production
+  CREDENTIALS_ENCRYPTION_KEY: ci-only-credentials-encryption-key-not-prod
+  AUDIT_SALT: ci-only-audit-salt-not-for-production
+  EMAIL_PROVIDER: memory
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,4 +45,12 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      # Mesmo SQL do docker-compose: cria o banco `bizu` e os papéis bizu_owner/bizu_app.
+      - name: Criar papéis do Postgres
+        run: psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d postgres -f docker/postgres/init.sql
+        env:
+          PGPASSWORD: postgres
+      - run: npm run db:migrate
+      - run: npm run test:db
       - run: npm run build
+      - run: npm audit --omit=dev --audit-level=high

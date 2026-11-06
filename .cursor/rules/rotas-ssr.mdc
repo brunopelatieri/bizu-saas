@@ -11,7 +11,9 @@ alwaysApply: false
 - Não reintroduzir `src/App.tsx`, `src/main.tsx` nem `index.html`.
 - Use `meta` nativo para SEO e Open Graph.
 - Use `loader` server-side só para dados públicos indexáveis.
-- Rotas de `/dashboard/**` não têm `loader` server-side.
+- Rotas de `/app/**`, `/admin/**` e `/portal/**` não têm `loader` server-side.
+- Página que recebe token na URL (verificação, convite, reset) só renderiza no GET; o
+  botão faz a chamada que consome o token.
 - Página nova exige atualizar `src/lib/constants/navigation.ts`.
 - Conteúdo do blog vem de `src/lib/content/posts.ts`; preserve a assinatura pública das funções.
 

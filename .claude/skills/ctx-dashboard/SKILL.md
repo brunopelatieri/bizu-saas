@@ -1,6 +1,6 @@
 ---
 name: ctx-dashboard
-description: Use ao alterar a área autenticada /dashboard.
+description: Use ao alterar as áreas autenticadas /app, /admin ou /portal.
 ---
 
 Leia `docs/context/tech/11-dashboard.md` antes de planejar ou implementar.

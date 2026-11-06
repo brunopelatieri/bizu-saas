@@ -1,46 +1,33 @@
 # Landing page e site público
 
 - **Escopo:** Seções da home e layout público responsivo.
-- **Specs relacionadas:** nenhuma citada
-- **Paths do código:** `src/components/landing/`, `src/components/layout/root-layout.tsx`, `src/components/layout/site-header.tsx`, `src/components/layout/site-nav-links.tsx`, `src/pages/home-page.tsx`
+- **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`
+- **Paths do código:** `src/components/landing/`, `src/components/layout/root-layout.tsx`, `src/components/layout/site-header.tsx`, `src/components/layout/site-nav-links.tsx`, `src/pages/home-page.tsx`, `src/pages/projects-page.tsx`, `src/lib/constants/navigation.ts`
 
-<!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L420-458 -->
-## 10. Landing Page e Site Publico
+## Home
 
-Home atual (`src/pages/home-page.tsx`) compoe secoes em
-`src/components/landing/`:
+`src/pages/home-page.tsx` compõe seções em `src/components/landing/`:
 
-- `HeroSection`
-- `AboutSection`
-- `FeaturesSection`
-- `HowItWorksSection` (metodologia AI Software Engineering)
-- `StackSection`
-- `AudienceSection`
-- `BlogSection`
-- `FaqSection`
-- `CtaSection`
+- `HeroSection`: "Comece seu SaaS com a fundação pronta", CTA para o GitHub.
+- `AboutSection`: dores de quem monta um SaaS do zero e a solução.
+- `FeaturesSection` (`#funcionalidades`): multi-tenant, quatro níveis de login,
+  pagamentos em módulos, SSR, e-mail e jobs, portabilidade.
+- `HowItWorksSection` (`#metodologia`): AI Software Engineering.
+- `StackSection`, `AudienceSection`, `BlogSection` (vitrine estática), `FaqSection`,
+  `CtaSection`.
 
-Objetivo:
+Objetivo: posicionar o Bizu SaaS como ponto de partida para SaaS e servir de base para
+a landing de projetos derivados. A página `/precos` com `loader` de planos entra na
+fase 5; `/legal/termos` e `/legal/privacidade` na fase 10.
 
-- Posicionar o Bizu Starter como ponto de partida para projetos pequenos e medios com login e dashboard.
-- Destacar tecnologias, metodologia e publico-alvo (empresas, agencias e freelancers, empreendedores e devs).
-- Servir como base para landing pages de projetos derivados.
+`siteConfig` em `src/lib/constants/navigation.ts` concentra nome, descrição, links e
+autor; personalize ali primeiro (`docs/context/receitas.md`).
 
-Observacao:
+## Layout público
 
-- A `BlogSection` da landing e uma vitrine/preview estatica.
-- O blog real com SSR esta em `/blog` e `/blog/:slug`.
-
-Layout publico:
-
-- `src/components/layout/root-layout.tsx` — shell com header, main e footer.
-- `src/components/layout/site-header.tsx` — header sticky responsivo.
-- `src/components/layout/site-nav-links.tsx` — links de `navItems` com `NavLink` ativo;
-  reutilizado no desktop (inline) e no Sheet mobile.
-- Mobile (`<md`): hamburger + Sheet lateral com navegacao e acoes de auth
-  (Entrar ou Dashboard/Sair).
-- Desktop (`≥md`): logo, nav inline, theme toggle e auth como antes.
+- `root-layout.tsx`: shell com header, main e footer.
+- `site-header.tsx`: header sticky responsivo; mobile com hamburger e `Sheet`;
+  desktop com nav inline, theme toggle e ações de auth (Entrar ou `/app`/Sair).
+- `site-nav-links.tsx`: links de `navItems` com `NavLink` ativo.
 - Anti-overflow: `min-w-0`, `overflow-hidden`, `shrink-0`, padding responsivo.
-
----
-
+- `public/robots.txt` bloqueia `/app`, `/admin`, `/portal`, `/login` e `/auth`.

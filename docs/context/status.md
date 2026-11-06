@@ -1,36 +1,46 @@
 # Status do projeto
 
-- **Escopo:** O que está pronto hoje e pendências técnicas conhecidas.
-- **Specs relacionadas:** nenhuma citada
-- **Paths do código:** `src/lib/content/posts.ts`, `src/root.tsx`
+- **Escopo:** O que está pronto hoje, por fase da spec, e pendências técnicas conhecidas.
+- **Specs relacionadas:** `docs/specs/saas-foundation/spec-plano.md` (fases)
+- **Paths do código:** `src/lib/content/posts.ts`, `src/root.tsx`, `src/lib/env.ts`
 
-<!-- ORIGEM: AI_CONTEXT.md L94-110 -->
-## Status Atual
+## Fases da spec saas-foundation
 
-- Demo em [https://bizu.bru.ia.br](https://bizu.bru.ia.br) — hospedada na **Vercel**.
-- Repositório principal (este): **VPS + Docker + Node único** (`react-router-hono-server` + Hono + SSR).
-- Repositório Vercel (arquitetura otimizada para demo/serverless): [bizu-saas-vercel](https://github.com/brunopelatieri/bizu-saas-vercel).
-- React Router Framework Mode com `ssr: true`.
-- Hono integrado via `react-router-hono-server`.
-- Blog SSR com fonte estática em `src/lib/content/posts.ts`.
-- Dashboard inicial protegido no cliente, com sidebar responsiva (desktop colapsável + Sheet mobile).
-- Header público responsivo (`SiteHeader`): nav inline no desktop (≥md), hamburger + Sheet no mobile.
-- Login/Cadastro premium (`/login`) com Tabs, react-hook-form + Zod e feedback via Sonner.
-- TanStack Query Provider ativo em `src/root.tsx` (`QueryProvider`, instância SSR-safe via `useState`).
-- shadcn/ui expandido: `dialog`, `dropdown-menu`, `sheet`, `table`, `form`, `select`, `skeleton`, `tooltip`, `avatar`.
-- Tema dark/light com Zustand e script anti-flash.
-- Sonner montado globalmente.
-- Autenticação sem provedor: login e dashboard bloqueados, com ponto único de integração.
-- `/api/contact` com rate limit, limite de corpo e headers de segurança.
-- Drizzle aceita qualquer Postgres, inclusive por pooler com `?prepare=false`.
-- Biome, Vitest e CI no GitHub Actions.
+| Fase | Entrega | Estado |
+|---|---|---|
+| 0 | Reposicionamento: textos, docs, rules, `/dashboard` → `/app`, stubs removidos | concluída |
+| 1 | Infra local: papéis do Postgres, Mailpit, `.env.example`, `env.ts`, CI com Postgres, `test:db`, seams de e-mail | concluída |
+| 2 | Auth núcleo (Better Auth, equipe e plataforma) | pendente |
+| 3 | E-mail transacional completo e jobs (pg-boss) | pendente |
+| 4 | Tenant, equipe, RBAC e RLS | pendente |
+| 5 | Admin e planos | pendente |
+| 6 | Billing núcleo + Stripe | pendente |
+| 7 | Módulo Asaas | pendente |
+| 8 | Portal do cliente | pendente |
+| 9 | 2FA, personificação e segurança | pendente |
+| 10 | LGPD, arquivos e observabilidade | pendente |
+| 11 | Repositório público e README final | pendente |
+
+## Estado atual do código
+
+- React Router Framework Mode com `ssr: true`; Hono integrado via `react-router-hono-server`.
+- Site público com SSR: landing reposicionada para SaaS, blog estático em
+  `src/lib/content/posts.ts`.
+- `/login` com Tabs Login/Cadastro (bloqueado até a fase 2) e `/app/**` com shell
+  client-side (visão geral, clientes, equipe, assinatura e configurações como "em breve").
+- `/api/health`, `/api/me` (401/503) e `/api/contact` com rate limit, limite de corpo e
+  headers de segurança.
+- Variáveis de ambiente validadas em `src/lib/env.ts` na inicialização.
+- Postgres do Docker com `bizu_owner` e `bizu_app` (`docker/postgres/init.sql`) e Mailpit.
+- E-mail: interface `EmailProvider` com provedores `memory` e `smtp` (`src/lib/email/`);
+  fila, templates e bounces entram na fase 3.
+- Biome, Vitest (`npm test` sem banco, `npm run test:db` com banco) e CI com Postgres.
 - Dockerfile multi-stage para VPS.
 
-<!-- ORIGEM: AI_CONTEXT.md L111-115 -->
 ## Pendências Técnicas Conhecidas
 
-- Escolher e integrar o provedor de autenticação.
+- Fases 2 a 11 da spec.
 - Evoluir blog estático para tabela Drizzle quando virar feature real.
-- Migrar para React Router 8 e `react-router-hono-server` 4 para zerar os alertas moderados restantes (`tech/16-bugs-riscos.md`).
-- Criar schemas compartilhados adicionais conforme novos forms/APIs surgirem.
-- Criar stack Portainer completa para app + Postgres + reverse proxy.
+- Migrar para React Router 8 e `react-router-hono-server` 4 para zerar os alertas
+  moderados restantes (`tech/16-bugs-riscos.md`), depois da entrega da spec.
+- Stack Portainer completa (`docker/compose.prod.yml`) na fase 11.

@@ -16,7 +16,7 @@ export function LoginPage() {
   }
 
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/app" replace />;
   }
 
   return (
@@ -45,7 +45,7 @@ export function LoginPage() {
           </h1>
           <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
             <Sparkles className="size-3.5 text-primary" aria-hidden="true" />
-            Entre para acessar o dashboard
+            Entre para acessar sua conta
           </p>
         </header>
 

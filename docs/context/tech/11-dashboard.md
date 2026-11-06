@@ -1,43 +1,30 @@
-# Dashboard/Admin
+# Área do tenant (/app)
 
-- **Escopo:** Layout, rotas e estado atual da área autenticada.
-- **Specs relacionadas:** nenhuma citada
-- **Paths do código:** `src/components/layout/dashboard-layout.tsx`, `src/components/layout/dashboard-nav.tsx`, `src/components/layout/dashboard-sidebar.tsx`, `src/components/layout/dashboard-topbar.tsx`, `src/components/layout/dashboard-user-menu.tsx`, `src/lib/constants/dashboard-nav.ts`, `src/pages/dashboard-page.tsx`, `src/routes/dashboard.coming-soon.tsx`, `src/routes/dashboard.tsx`
+- **Escopo:** Layout, rotas e estado atual da área autenticada do owner e da equipe.
+- **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`, `spec-tenant-rbac.md`
+- **Paths do código:** `src/components/layout/dashboard-layout.tsx`, `src/components/layout/dashboard-nav.tsx`, `src/components/layout/dashboard-sidebar.tsx`, `src/components/layout/dashboard-topbar.tsx`, `src/components/layout/dashboard-user-menu.tsx`, `src/lib/constants/dashboard-nav.ts`, `src/pages/dashboard-page.tsx`, `src/routes/app.coming-soon.tsx`, `src/routes/app.tsx`
 
-<!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L459-492 -->
-## 11. Dashboard/Admin
+## Rotas
 
-Arquivos:
+| Rota | Estado |
+|---|---|
+| `/app` | visão geral com `AccountCard` e cards de clientes, equipe e assinatura |
+| `/app/clientes` | em breve (fase 8) |
+| `/app/equipe` | em breve (fase 4) |
+| `/app/assinatura` | em breve (fase 6) |
+| `/app/configuracoes` | em breve (fase 4) |
 
-- `src/components/layout/dashboard-layout.tsx`
-- `src/components/layout/dashboard-sidebar.tsx`
-- `src/components/layout/dashboard-topbar.tsx`
-- `src/components/layout/dashboard-nav.tsx`
-- `src/components/layout/dashboard-user-menu.tsx`
-- `src/pages/dashboard-page.tsx`
-- `src/routes/dashboard.tsx`
-- `src/routes/dashboard.coming-soon.tsx`
-- `src/lib/constants/dashboard-nav.ts`
+`/admin/**` (fase 5) e `/portal/**` (fase 8) seguem o mesmo modelo, com navegação
+própria.
 
-Rotas:
+## Estado atual
 
-- `/dashboard`
-- `/dashboard/projetos`
-- `/dashboard/clientes`
-- `/dashboard/arquivos`
-- `/dashboard/relatorios`
-- `/dashboard/configuracoes`
-
-Estado atual:
-
-- Layout responsivo inspirado no `shadcn-admin`.
-- Desktop: sidebar lateral fixa e colapsável, avatar/menu do usuário na base.
-- Mobile: topbar fixa + hambúrguer abre `Sheet` com navegação.
-- Dashboard inicial com cards zerados e quick actions.
-- Subrotas estão como "Em breve".
-- Sem `loader` de servidor; dados devem ser buscados no cliente via TanStack Query.
-- `AccountCard` (`src/components/dashboard/account-card.tsx`) e o exemplo de dados
+- Layout responsivo inspirado no `shadcn-admin`: sidebar fixa e colapsável no desktop;
+  topbar com hambúrguer e `Sheet` no mobile.
+- Componentes ainda com prefixo `dashboard-*`; a fase 4 os reorganiza em
+  `src/components/app/` ao construir as telas reais.
+- Sem `loader` de servidor; dados buscados no cliente via TanStack Query.
+- `AccountCard` (`src/components/dashboard/account-card.tsx`) é o exemplo de dados
   privados: `useQuery` + `apiFetch` -> `GET /api/me` -> `requireAuth` -> Drizzle.
-
----
-
+- Navegação em `src/lib/constants/dashboard-nav.ts`; tela nova entra lá e em
+  `src/routes.ts`.

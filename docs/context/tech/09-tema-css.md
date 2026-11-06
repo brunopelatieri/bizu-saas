@@ -4,7 +4,7 @@
 - **Specs relacionadas:** nenhuma citada
 - **Paths do código:** `src/components/theme-toggle.tsx`, `src/index.css`, `src/lib/theme.ts`, `src/providers/theme-provider.tsx`, `src/stores/theme-store.ts`, `src/styles/theme.css`
 
-<!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L359-419 -->
+
 ## 9. Tema, CSS e Template Visual
 
 ### Base Visual

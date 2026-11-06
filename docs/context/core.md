@@ -1,8 +1,8 @@
-# Núcleo do Bizu Starter
+# Núcleo do Bizu SaaS
 
 - **Escopo:** Objetivo, arquitetura em alto nível, regras de decisão e manutenção do contexto.
-- **Specs relacionadas:** nenhuma citada
-- **Paths do código:** `src/App.tsx`, `src/api/app.ts`, `src/main.tsx`, `src/server.ts`
+- **Specs relacionadas:** `docs/specs/saas-foundation/`
+- **Paths do código:** `src/api/app.ts`, `src/server.ts`, `src/routes.ts`, `src/lib/env.ts`
 
 ## Como o agente atualiza o próprio contexto
 
@@ -26,76 +26,79 @@
 | Sob demanda | `docs/context/**` e skills `ctx-*` | Quando a tarefa pede |
 | Arquivo morto | `docs/context/archive/` | Só por pedido explícito |
 
-**Leitura dos blocos abaixo:** vieram do antigo `AI_CONTEXT.md`. Neles, "este arquivo"
-significa `docs/context/core.md`, e `PROJECT_TECHNICAL_SPEC.md` significa os arquivos
-de `docs/context/tech/`. Em caso de conflito sobre onde atualizar o contexto, vale a
-seção acima. As marcas `ORIGEM` em `docs/context/` indicam de onde cada bloco veio, no
-commit `7de0d3c`; o texto evolui depois disso.
-
-<!-- ORIGEM: AI_CONTEXT.md L6-22 -->
 ## Objetivo
 
-Ponto de partida full-stack para projetos pequenos e médios que não são SaaS, mas
-têm site público, área de login e dashboard. Usa metodologia de
-**AI Software Engineering**: contexto explícito, decisões documentadas,
-desenvolvimento guiado por especificação e stack moderna para entregar rápido.
+Ponto de partida open source para qualquer SaaS. Quem clona, configura e roda tem um
+sistema funcional com as áreas de login prontas e foca no domínio do produto.
 
-Projetos-alvo:
+Entrega planejada (ver `docs/specs/saas-foundation/prd.md`):
 
-- portal de clientes
-- área de membros
-- site institucional com painel
-- blog com área administrativa
-- sistemas internos e dashboards
+- Quatro níveis de login: proprietário da plataforma, owner do tenant, colaboradores
+  com papéis configuráveis e clientes/leads com portal próprio.
+- Multi-tenant com `tenant_id` na aplicação e Row Level Security no Postgres.
+- Trial configurável pelo proprietário, planos, assinaturas e pagamentos em módulos
+  (Stripe e Asaas primeiro; Mercado Pago, Pagar.me e PagBank sobre a mesma interface).
+- Verificação de e-mail por link em todo cadastro, e-mail transacional com provedor
+  substituível e jobs no próprio Postgres.
+- Portável: qualquer VPS com Docker e um Postgres, sem fornecedor obrigatório.
 
-Fora do escopo: SaaS multi-tenant, planos e cobrança recorrente.
+Fora do escopo: subdomínio por tenant, login social, API pública, nota fiscal e o
+fluxo em que o owner cobra seus clientes (reservado como módulo futuro).
 
-<!-- ORIGEM: AI_CONTEXT.md L30-47 -->
-## Arquitetura Atual
+## Arquitetura
 
 ```text
 React Router v7 Framework Mode (SSR global)
   |
   |-- Rotas públicas com SSR: /, /sobre, /projetos, /contato, /blog, /blog/:slug
-  |-- Rota auth standalone: /login
-  `-- Dashboard client-only por convenção: /dashboard/**
+  |-- Rotas de auth standalone: /login (+ /cadastro, /verificar-email, ... na fase 2)
+  |-- /app/**     owner e equipe do tenant, client-only
+  |-- /admin/**   proprietário da plataforma, client-only (fase 5)
+  `-- /portal/**  clientes e leads do tenant, client-only (fase 8)
 
 Hono API no mesmo processo:
-  |-- src/server.ts
-  `-- src/api/app.ts (/api/*)
+  |-- src/server.ts        valida env, monta a API e o SSR
+  |-- src/api/app.ts       /api/* (health, me, contact; auth e webhooks nas fases seguintes)
+  `-- src/lib/env.ts       variáveis validadas com Zod
 
 Dados:
-  `-- Drizzle ORM + postgres.js -> qualquer Postgres
+  |-- Drizzle ORM + postgres.js -> qualquer Postgres
+  |-- bizu_owner (DIRECT_URL): migrations, seed, fila
+  `-- bizu_app (DATABASE_URL): runtime, sem BYPASSRLS
+
+Serviços locais (docker-compose.yml): Postgres 16 e Mailpit.
 ```
 
-<!-- ORIGEM: AI_CONTEXT.md L48-59 -->
 ## Regras de Decisão
 
 - Não reintroduzir `src/App.tsx`, `src/main.tsx`, `index.html` ou `server/` antigo.
 - Não adicionar proxy `/api` no Vite; API e frontend compartilham origem.
-- Toda rota privada da API usa `requireAuth`.
-- Autenticação ainda sem provedor: veja `tech/08-auth.md`.
-- Não colocar dados sensíveis do dashboard em `loader` server-side.
+- Toda rota privada da API usa `requireAuth`; rotas de tenant usam também
+  `requireTenant` e `requirePermission`; rotas de plataforma, `requirePlatform`.
+- Toda tabela de tenant tem `tenant_id`, `enableRLS()` e policy; toda query de tenant
+  roda em `withTenant`.
+- Autenticação com Better Auth em duas instâncias (equipe e portal): `tech/08-auth.md`.
+- Nenhum token é consumido em GET; respostas nunca revelam se um e-mail existe.
+- Não colocar dados sensíveis das áreas autenticadas em `loader` server-side.
 - Use `meta` nativo do React Router para SEO/Open Graph.
-- Use loaders server-side para dados públicos indexáveis (blog, landing dinâmica).
-- Use client-side fetching/TanStack Query para área autenticada.
+- Use loaders server-side para dados públicos indexáveis (blog, preços).
+- Use client-side fetching/TanStack Query nas áreas autenticadas.
 - Use Zod para contratos de entrada de API e formulários.
 - Use Drizzle migrations para mudanças de schema.
+- Módulo opcional fica em pasta própria, registrado por variável de ambiente, e some
+  ao apagar a pasta.
+- Variáveis de ambiente passam por `src/lib/env.ts`; nova variável entra lá e no
+  `.env.example`.
 
-<!-- ORIGEM: AI_CONTEXT.md L60-75 -->
 ## Quando Atualizar Contexto
 
-Atualize este arquivo e `PROJECT_TECHNICAL_SPEC.md` quando mudar:
+Atualize este arquivo e o arquivo do domínio em `docs/context/tech/` quando mudar:
 
-- Arquitetura.
-- Rotas.
-- Stack ou dependências relevantes.
-- Deploy/Docker/Portainer.
-- Banco/schema.
-- Regras de autenticação e de onde o Postgres pode rodar.
-- Estratégia de auth ou dashboard.
+- Arquitetura, rotas, stack ou dependências relevantes.
+- Deploy, Docker, Portainer ou variáveis de ambiente.
+- Banco, schema, papéis do Postgres ou RLS.
+- Estratégia de auth, tenant, billing ou das áreas autenticadas.
 - Convenções de IA.
 
 Se a mudança afetar onboarding, atualize também `README.md`.
-Se a mudança afetar agentes/LLMs, atualize também `.cursor/rules/`.
-
+Se a mudança afetar agentes/LLMs, atualize `.claude/rules/` e `.cursor/rules/`.

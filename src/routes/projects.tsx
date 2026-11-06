@@ -4,9 +4,9 @@ import { buildMeta } from "@/lib/seo";
 
 export const meta: MetaFunction = () =>
   buildMeta({
-    title: "Projetos — Bizu Starter",
+    title: "Projetos — Bizu SaaS",
     description:
-      "O propósito do Bizu Starter em detalhe: arquitetura, stack, metodologia de AI Software Engineering e links do repositório open source.",
+      "O propósito do Bizu SaaS em detalhe: multi-tenant, níveis de login, pagamentos em módulos, arquitetura, metodologia de AI Software Engineering e links do repositório.",
     path: "/projetos",
   });
 

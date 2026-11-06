@@ -146,3 +146,6 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Override local do compose (portas etc.)
+docker-compose.override.yml

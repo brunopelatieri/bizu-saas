@@ -4,9 +4,9 @@ import { buildMeta } from "@/lib/seo";
 
 export const meta: MetaFunction = () =>
   buildMeta({
-    title: "Sobre — Bruno Pelatieri Goulart | Bizu Starter",
+    title: "Sobre — Bruno Pelatieri Goulart | Bizu SaaS",
     description:
-      "Desenvolvedor Full Stack desde 2006: IA, automação com n8n e LangChain, agentes autônomos, Web3 e arquitetura escalável. Quem está por trás do Bizu Starter.",
+      "Desenvolvedor Full Stack desde 2006: IA, automação com n8n e LangChain, agentes autônomos, Web3 e arquitetura escalável. Quem está por trás do Bizu SaaS.",
     path: "/sobre",
   });
 

@@ -75,7 +75,7 @@ export function DashboardUserMenu({
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem render={<Link to="/dashboard/configuracoes" />}>
+        <DropdownMenuItem render={<Link to="/app/configuracoes" />}>
           <Settings />
           Configurações
         </DropdownMenuItem>

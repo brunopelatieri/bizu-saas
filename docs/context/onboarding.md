@@ -1,27 +1,36 @@
 # Onboarding local
 
-- **Escopo:** Primeira execução: instalação, env, Postgres local, migrations Drizzle e dev server.
-- **Specs relacionadas:** nenhuma citada
-- **Paths do código:** não declarado
+- **Escopo:** Primeira execução: instalação, env, Postgres e Mailpit locais, migrations Drizzle e dev server.
+- **Specs relacionadas:** `docs/specs/saas-foundation/spec-testes-operacao.md`
+- **Paths do código:** `docker-compose.yml`, `docker/postgres/init.sql`, `.env.example`, `src/lib/env.ts`
 
-<!-- ORIGEM: AI_CONTEXT.md L76-93 -->
-## Onboarding Local (Primeira Execução)
+## Primeira execução
 
 ```bash
 npm install
-cp .env.example .env.local
-docker compose up -d          # Postgres em localhost:15432
+cp .env.example .env.local        # gere BETTER_AUTH_SECRET, CREDENTIALS_ENCRYPTION_KEY e AUDIT_SALT
+docker compose up -d              # Postgres em localhost:15432 e Mailpit em localhost:8025
 npm run db:migrate
 npm run dev
 ```
 
-- `drizzle-kit` está em **devDependencies** — disponível após `npm install`; não
-  instalar globalmente. Scripts `db:*` usam o binário local via npm.
-- `drizzle.config.ts` carrega `.env.local` e usa `DIRECT_URL` (fallback
-  `DATABASE_URL`).
-- Postgres local: porta **15432** no host (5432 reservada/bloqueada em muitos
-  Windows). Ver `docker-compose.yml` e `.env.example`.
-- Se migrate falhar por conexão: `docker compose ps` + conferir `.env.local`.
-- Para usar outro Postgres, pule o `docker compose` e troque `DATABASE_URL` e `DIRECT_URL`.
-- Login e dashboard ficam bloqueados até existir um provedor: veja `tech/08-auth.md`.
-
+- `drizzle-kit` está em **devDependencies**; os scripts `db:*` usam o binário local.
+- `drizzle.config.ts` carrega `.env.local` e usa `DIRECT_URL` (fallback `DATABASE_URL`).
+- Postgres local na porta **15432** do host (5432 costuma estar reservada no Windows).
+  Banco `bizu`; `docker/postgres/init.sql` cria `bizu_owner` (migrations) e `bizu_app`
+  (runtime, sem `BYPASSRLS`) no primeiro start do volume.
+- Volume antigo do Bizu Starter (banco `portal`): `docker compose down -v` e suba de novo.
+- Porta `15432` ocupada por outro projeto: crie `docker-compose.override.yml` (ignorado
+  pelo git) com `services.postgres.ports: !override ["15434:5432"]` e troque a porta em
+  `.env.local`.
+- Mailpit captura todo e-mail enviado por SMTP em `localhost:1025`; a interface fica em
+  `http://localhost:8025`. Nada sai para a internet com `EMAIL_PROVIDER=smtp` apontando
+  para ele.
+- `src/lib/env.ts` valida as variáveis na inicialização. Falta de variável obrigatória
+  derruba o processo com a lista do que falta, sem imprimir valores. Em produção,
+  segredos com o valor de exemplo (`change-me...`) são recusados.
+- Para usar outro Postgres, rode o SQL de `docker/postgres/init.sql` como superusuário e
+  troque `DATABASE_URL` e `DIRECT_URL`.
+- Testes: `npm test` roda sem banco; `npm run test:db` exige o Postgres do Docker com as
+  migrations aplicadas.
+- Login e áreas autenticadas ficam bloqueados até a fase 2: veja `tech/08-auth.md`.

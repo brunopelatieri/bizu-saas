@@ -9,7 +9,7 @@
 O projeto **não tem provedor de autenticação**. Ninguém consegue entrar:
 
 - `/login` mostra um aviso, e o formulário só aparece quando há provedor.
-- `/dashboard/**` redireciona para `/login`.
+- `/app/**` redireciona para `/login`.
 - Rotas privadas da API respondem 401 sem token e 503 com qualquer token.
 
 ## Pontos de integração

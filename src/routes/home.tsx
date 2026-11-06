@@ -4,9 +4,9 @@ import { siteConfig } from "@/lib/constants/navigation";
 import { buildMeta } from "@/lib/seo";
 export const meta: MetaFunction = () =>
   buildMeta({
-    title: "Bizu Starter — Site, login e dashboard prontos para o seu projeto",
+    title: "Bizu SaaS — Comece seu SaaS com a fundação pronta",
     description:
-      "Ponto de partida para projetos pequenos e médios com área de login e dashboard: React Router v7, Hono, Drizzle e Docker, com fluxo guiado por IA.",
+      "Starter open source para SaaS: multi-tenant, quatro níveis de login com verificação de e-mail, trial configurável e cobrança por Pix, boleto e cartão sobre Postgres.",
     path: "/",
     image: `${siteConfig.url}${siteConfig.logo}`,
   });

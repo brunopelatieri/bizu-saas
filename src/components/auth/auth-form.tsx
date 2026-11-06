@@ -255,7 +255,7 @@ function SignupForm({ nextPath }: { nextPath: string }) {
 
 export function AuthForm() {
   const [searchParams] = useSearchParams();
-  const nextPath = searchParams.get("next") ?? "/dashboard";
+  const nextPath = searchParams.get("next") ?? "/app";
   const [mode, setMode] = useState<"login" | "signup">("login");
 
   return (

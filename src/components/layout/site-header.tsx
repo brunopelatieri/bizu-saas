@@ -43,7 +43,7 @@ function SiteHeaderAuth({
           className,
         )}
       >
-        <Link to="/dashboard" onClick={onNavigate} className={layout === "stack" ? "w-full" : undefined}>
+        <Link to="/app" onClick={onNavigate} className={layout === "stack" ? "w-full" : undefined}>
           <Button size="sm" className={layout === "stack" ? "w-full" : undefined}>
             Dashboard
           </Button>

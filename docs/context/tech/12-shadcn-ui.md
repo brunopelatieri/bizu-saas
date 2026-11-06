@@ -4,7 +4,7 @@
 - **Specs relacionadas:** nenhuma citada
 - **Paths do código:** `src/index.css`
 
-<!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L493-539 -->
+
 ## 12. shadcn/ui
 
 Config: `components.json`

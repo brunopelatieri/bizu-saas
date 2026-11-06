@@ -1,6 +1,8 @@
 ---
 paths:
-  - "src/routes/dashboard*.tsx"
+  - "src/routes/app*.tsx"
+  - "src/routes/admin*.tsx"
+  - "src/routes/portal*.tsx"
   - "src/components/dashboard/**"
   - "src/lib/api/**"
   - "src/pages/dashboard-page.tsx"
@@ -9,13 +11,15 @@ paths:
   - "src/components/auth/protected-route.tsx"
 ---
 
-# Área autenticada client-only em /dashboard
+# Áreas autenticadas client-only: /app, /admin e /portal
 
 - Sem `loader` server-side com dados sensíveis.
 - Nenhum dado do usuário pode ser serializado no HTML inicial.
 - `ProtectedRoute` faz o gate de autenticação no cliente.
 - Busque dados no cliente com TanStack Query e `apiFetch`; siga `AccountCard` como exemplo.
-- O gate do cliente não protege dados: o endpoint usa `requireAuth`.
+- O gate do cliente não protege dados: o endpoint usa `requireAuth` (+ `requireTenant`,
+  `requirePermission` ou `requirePlatform`).
+- Esconder um botão por permissão é conveniência; a regra vale no servidor.
 - Mantenha o layout responsivo: sidebar colapsável no desktop e `Sheet` no mobile.
 
 Para entender este domínio, leia: docs/context/tech/11-dashboard.md

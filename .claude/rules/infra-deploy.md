@@ -9,7 +9,8 @@ paths:
 # Docker, Portainer, VPS e variáveis de ambiente
 
 - Processo único: `node build/server/index.js`, porta `3000`, healthcheck em `/api/health`.
-- `docker-compose.yml` é só o Postgres de desenvolvimento, na porta `15432`.
+- `docker-compose.yml` sobe Postgres (porta `15432`, papéis `bizu_owner`/`bizu_app` via `docker/postgres/init.sql`) e Mailpit (`1025`/`8025`) de desenvolvimento.
+- Variável nova entra em `src/lib/env.ts` (Zod) e em `.env.example`; o servidor valida tudo na inicialização.
 - Segredos nunca são versionados; `.env.example` leva só valores de exemplo.
 - Migrations são etapa separada do container da aplicação.
 - Atrás de reverse proxy, defina `TRUSTED_PROXY_HOPS`; sem isso, todos dividem o mesmo rate limit.

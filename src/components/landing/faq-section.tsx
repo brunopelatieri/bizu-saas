@@ -4,19 +4,24 @@ import { siteConfig } from "@/lib/constants/navigation";
 
 const faqs = [
   {
-    question: "O Bizu Starter é open source?",
+    question: "O Bizu SaaS é open source?",
     answer:
-      "Sim. O código está no GitHub e pode ser clonado para iniciar seus projetos. A ideia é ser um ponto de partida sólido, não uma caixa-preta.",
+      "Sim. O código está no GitHub sob licença MIT e pode ser clonado para iniciar o seu SaaS. A ideia é ser um ponto de partida sólido, não uma caixa-preta.",
   },
   {
-    question: "Que tipo de projeto posso criar com ele?",
+    question: "Quais níveis de acesso vêm prontos?",
     answer:
-      "Portal de clientes, área de membros, site institucional com painel, blog com área administrativa e sistemas internos: projetos pequenos e médios que precisam de login e dashboard.",
+      "Quatro: o proprietário da plataforma, o dono de cada conta (tenant), os colaboradores dele com papéis configuráveis e os clientes ou leads dele, com um portal próprio. Todos passam por verificação de e-mail.",
   },
   {
-    question: "Serve para criar um SaaS?",
+    question: "Como funciona a cobrança?",
     answer:
-      "Não é o foco. Ele não traz multi-tenant, planos nem cobrança recorrente. A proposta é ser simples para projetos com um único cliente ou organização; um SaaS exigiria essas camadas a mais.",
+      "Planos, trial e assinaturas ficam no seu Postgres. Os provedores de pagamento são módulos: Stripe e Asaas vêm prontos, e Mercado Pago, Pagar.me e PagBank seguem a mesma interface. Pix, boleto e cartão conforme o provedor.",
+  },
+  {
+    question: "Preciso de Redis, Supabase ou outro serviço?",
+    answer:
+      "Não. Autenticação, sessões, fila de jobs e rate limit rodam sobre o Postgres. E-mail, arquivos e pagamento são provedores substituíveis configurados por variáveis de ambiente.",
   },
   {
     question: "O que é a metodologia de AI Software Engineering aqui?",
@@ -26,7 +31,7 @@ const faqs = [
   {
     question: "Onde faço o deploy?",
     answer:
-      "Este repositório é focado em VPS + Docker + Node único (react-router-hono-server + Hono + SSR). A demo em bizu.bru.ia.br roda na Vercel; a arquitetura otimizada para esse deploy está em github.com/brunopelatieri/bizu-saas-vercel. Use a demo como referência visual, não como espelho 1:1 deste código.",
+      "Em qualquer VPS com Docker e um Postgres: um processo Node serve o site, a API e as áreas autenticadas. O README leva do clone ao sistema rodando, incluindo migrations, seed e e-mail local com Mailpit.",
   },
   {
     question: "Preciso saber IA para usar?",

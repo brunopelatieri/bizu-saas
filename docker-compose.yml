@@ -1,3 +1,4 @@
+# Serviços de desenvolvimento. Produção: docker/compose.prod.yml (fase 11 da spec).
 services:
   postgres:
     image: postgres:16-alpine
@@ -5,11 +6,29 @@ services:
       # 15432 no host evita conflito com portas reservadas no Windows (5432/5433)
       - "15432:5432"
     environment:
-      POSTGRES_USER: portal
-      POSTGRES_PASSWORD: portal
-      POSTGRES_DB: portal
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: postgres
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Cria o banco `bizu` e os papéis bizu_owner/bizu_app só no primeiro start do volume.
+      # Volume antigo (banco `portal`): `docker compose down -v` e suba de novo.
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/10-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Captura todo e-mail enviado por SMTP em dev. Interface: http://localhost:8025
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
 
 volumes:
   postgres_data:

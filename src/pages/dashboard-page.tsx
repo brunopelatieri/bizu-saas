@@ -1,4 +1,4 @@
-import { BarChart3, FileStack, FolderKanban, Users } from "lucide-react";
+import { BarChart3, CreditCard, UserCog, Users } from "lucide-react";
 import { Link } from "react-router";
 import { AccountCard } from "@/components/dashboard/account-card";
 import { Button } from "@/components/ui/button";
@@ -12,53 +12,46 @@ import { useAuth } from "@/providers/auth-provider";
 
 const stats = [
   {
-    label: "Projetos ativos",
-    value: "0",
-    icon: FolderKanban,
-    href: "/dashboard/projetos",
-    description: "Nenhum projeto criado ainda",
-  },
-  {
     label: "Clientes",
     value: "0",
     icon: Users,
-    href: "/dashboard/clientes",
-    description: "Nenhum cliente convidado ainda",
+    href: "/app/clientes",
+    description: "Nenhum cliente cadastrado ainda",
   },
   {
-    label: "Arquivos",
-    value: "0",
-    icon: FileStack,
-    href: "/dashboard/arquivos",
-    description: "Nenhum arquivo enviado ainda",
+    label: "Equipe",
+    value: "1",
+    icon: UserCog,
+    href: "/app/equipe",
+    description: "Só você por enquanto",
   },
   {
-    label: "Atualizações",
-    value: "0",
-    icon: BarChart3,
-    href: "/dashboard/relatorios",
-    description: "Nenhuma atualização esta semana",
+    label: "Assinatura",
+    value: "Trial",
+    icon: CreditCard,
+    href: "/app/assinatura",
+    description: "Plano e faturas da sua conta",
   },
 ];
 
 const quickActions = [
   {
-    label: "Criar projeto",
-    description: "Adicione um novo projeto e defina suas etapas.",
-    href: "/dashboard/projetos",
-    icon: FolderKanban,
-  },
-  {
-    label: "Convidar cliente",
-    description: "Convide um cliente por e-mail para acessar o portal.",
-    href: "/dashboard/clientes",
+    label: "Cadastrar cliente",
+    description: "Adicione um cliente ou lead e envie o acesso ao portal.",
+    href: "/app/clientes",
     icon: Users,
   },
   {
-    label: "Enviar arquivo",
-    description: "Compartilhe documentos, assets ou contratos.",
-    href: "/dashboard/arquivos",
-    icon: FileStack,
+    label: "Convidar equipe",
+    description: "Convide colaboradores e defina o papel de cada um.",
+    href: "/app/equipe",
+    icon: UserCog,
+  },
+  {
+    label: "Escolher plano",
+    description: "Veja os planos e pague por Pix, boleto ou cartão.",
+    href: "/app/assinatura",
+    icon: CreditCard,
   },
 ];
 
@@ -69,20 +62,19 @@ export function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      {/* Welcome header */}
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-foreground">
           Olá, {firstName}! 👋
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Bem-vindo ao seu dashboard. Comece criando seu primeiro projeto.
+          Bem-vindo à sua conta. Comece cadastrando clientes ou convidando a
+          equipe.
         </p>
       </div>
 
       <AccountCard />
 
-      {/* Stat cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {stats.map(({ label, value, icon: Icon, href, description }) => (
           <Link key={label} to={href}>
             <Card className="group cursor-pointer transition-shadow hover:shadow-md">
@@ -103,7 +95,6 @@ export function DashboardPage() {
         ))}
       </div>
 
-      {/* Empty state / quick actions */}
       <div>
         <h2 className="mb-4 text-base font-semibold text-foreground">
           Por onde começar
@@ -133,7 +124,6 @@ export function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent activity placeholder */}
       <div>
         <h2 className="mb-4 text-base font-semibold text-foreground">
           Atividade recente
@@ -145,8 +135,7 @@ export function DashboardPage() {
               Nenhuma atividade ainda
             </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Crie um projeto e faça sua primeira atualização para ver o
-              histórico aqui.
+              As ações da sua conta aparecerão aqui.
             </p>
           </CardContent>
         </Card>

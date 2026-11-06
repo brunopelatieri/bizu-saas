@@ -1,23 +1,23 @@
 const audiences = [
   {
-    icon: "🏢",
-    title: "Empresas",
-    body: "Coloque no ar portais e sistemas internos sem montar a fundação do zero. Uma base padronizada facilita a manutenção e reduz a dívida técnica.",
+    icon: "🚀",
+    title: "Fundadores",
+    body: "Lance o SaaS com trial, planos e cobrança por Pix e boleto desde o primeiro dia. Valide a ideia sem gastar o caixa na fundação.",
   },
   {
     icon: "🤝",
-    title: "Agências e freelancers",
-    body: "Entregue portais e áreas de cliente em dias, com a mesma base em todos os projetos e menos retrabalho em login, dashboard e deploy.",
+    title: "Agências e estúdios",
+    body: "Entregue produtos white label para vários clientes a partir da mesma base, com áreas separadas para você, o cliente e o cliente do cliente.",
   },
   {
-    icon: "🚀",
-    title: "Empreendedores",
-    body: "Transforme a ideia em produto sem travar na fundação. Comece pelo que diferencia o negócio e valide mais rápido.",
+    icon: "🏢",
+    title: "Empresas",
+    body: "Transforme um serviço interno em produto com isolamento por tenant, papéis configuráveis e auditoria desde o início.",
   },
   {
     icon: "🧠",
     title: "Devs AI Software Engineer",
-    body: "Contexto vivo, TypeScript estrito e convenções claras. Os agentes de IA entendem o projeto e entregam dentro do padrão.",
+    body: "Contexto vivo, TypeScript estrito e specs antes do código. Os agentes de IA entendem o projeto e entregam dentro do padrão.",
   },
 ];
 
@@ -30,11 +30,11 @@ export function AudienceSection() {
             Para quem é
           </p>
           <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            Feito para quem precisa entregar com velocidade e robustez
+            Feito para quem precisa lançar um SaaS com velocidade e segurança
           </h2>
           <p className="mx-auto max-w-2xl text-muted-foreground">
-            De um site com área logada a um sistema interno, com um fluxo que une
-            engenharia consolidada e inteligência artificial.
+            Do primeiro cliente pagante ao suporte com personificação auditada,
+            com um fluxo que une engenharia consolidada e inteligência artificial.
           </p>
         </div>
 

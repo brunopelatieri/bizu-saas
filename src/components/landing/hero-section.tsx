@@ -8,7 +8,7 @@ const stackBadges = [
   "React Router v7",
   "Hono",
   "Drizzle",
-  "Tailwind v4",
+  "Postgres",
   "Docker",
 ];
 
@@ -27,19 +27,19 @@ export function HeroSection() {
       <div className="relative mx-auto max-w-5xl px-6 py-28 text-center md:py-36">
         <Badge variant="outline" className="mb-6 gap-2 px-3 py-1.5 text-xs">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-primary" />
-          Starter full-stack · AI Software Engineering
+          Starter open source para SaaS · AI Software Engineering
         </Badge>
 
         <h1 className="mx-auto max-w-3xl text-4xl font-bold tracking-tight text-foreground md:text-6xl">
-          Site, login e dashboard.{" "}
-          <span className="text-primary">Prontos para o seu projeto.</span>
+          Comece seu SaaS{" "}
+          <span className="text-primary">com a fundação pronta.</span>
         </h1>
 
         <p className="mx-auto mt-6 max-w-2xl text-lg text-muted-foreground md:text-xl">
-          O <strong className="text-foreground">Bizu Starter</strong> é o ponto
-          de partida para projetos pequenos e médios: site público, área de
-          login e dashboard, com Drizzle em qualquer Postgres.
-          Sem a complexidade de um SaaS.
+          O <strong className="text-foreground">Bizu SaaS</strong> traz
+          multi-tenant, quatro níveis de login com verificação de e-mail, trial
+          configurável e cobrança por Pix, boleto e cartão em módulos. Tudo sobre
+          Postgres, em qualquer VPS com Docker.
         </p>
 
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -49,9 +49,9 @@ export function HeroSection() {
               Ver no GitHub
             </Button>
           </a>
-          <Link to="#metodologia">
+          <Link to="#funcionalidades">
             <Button variant="outline" size="lg" className="min-w-44 text-base">
-              Ver a metodologia
+              O que vem pronto
             </Button>
           </Link>
         </div>
@@ -79,7 +79,7 @@ export function HeroSection() {
           </div>
           <img
             src={siteConfig.screenshot}
-            alt="Preview do Bizu Starter"
+            alt="Preview do Bizu SaaS"
             className="block w-full object-cover object-top"
           />
         </div>

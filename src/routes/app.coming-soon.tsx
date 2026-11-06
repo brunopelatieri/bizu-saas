@@ -3,7 +3,7 @@ import { useLocation } from "react-router";
 import { dashboardTitleFromPath } from "@/lib/constants/dashboard-nav";
 
 export const meta: MetaFunction = () => [
-  { title: "Em breve — Bizu Starter" },
+  { title: "Em breve — Bizu SaaS" },
   { name: "robots", content: "noindex" },
 ];
 

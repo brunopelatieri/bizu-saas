@@ -12,13 +12,13 @@ export function loader() {
 }
 
 export const meta: Route.MetaFunction = () => [
-  { title: "Blog — Bizu Starter" },
+  { title: "Blog — Bizu SaaS" },
   {
     name: "description",
     content:
       "Insights para profissionais digitais: produtividade, negócios e ferramentas.",
   },
-  { property: "og:title", content: "Blog — Bizu Starter" },
+  { property: "og:title", content: "Blog — Bizu SaaS" },
   { property: "og:type", content: "website" },
 ];
 

@@ -9,11 +9,12 @@ export function CtaSection() {
       <div className="mx-auto max-w-3xl px-6 text-center">
         <div className="rounded-2xl border border-primary/20 bg-primary/5 px-8 py-16 shadow-sm">
           <h2 className="mb-4 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-            Comece seu próximo projeto com vantagem.
+            Comece seu SaaS com vantagem.
           </h2>
           <p className="mx-auto mb-8 max-w-xl text-lg text-muted-foreground">
-            Clone a base, leia o contexto e coloque sua ideia para rodar em
-            minutos — com humanos e IA no mesmo fluxo de engenharia.
+            Clone a base, configure o ambiente e tenha login, tenants, trial e
+            cobrança rodando em minutos — com humanos e IA no mesmo fluxo de
+            engenharia.
           </p>
 
           <div className="flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -31,7 +32,7 @@ export function CtaSection() {
           </div>
 
           <p className="mt-5 text-sm text-muted-foreground">
-            Open source · Stack moderna · Pronto para VPS com Docker
+            Open source · Multi-tenant · Pix, boleto e cartão · VPS com Docker
           </p>
         </div>
       </div>

@@ -10,31 +10,30 @@ import {
 import { siteConfig } from "@/lib/constants/navigation";
 
 const targetProjects = [
-  "Portal de clientes",
-  "Área de membros",
-  "Site institucional",
-  "Landing page",
-  "Blog com SSR",
-  "Dashboard / Admin",
-  "Sistemas internos",
+  "SaaS B2B",
+  "SaaS B2C com portal do cliente",
+  "Produto white label para agências",
+  "Serviço interno que vira produto",
+  "Marketplace de serviços",
+  "Área de membros com assinatura",
 ];
 
 const readyModules = [
   {
-    title: "Páginas públicas com SSR",
-    body: "Landing, sobre, projetos, contato e blog renderizados no servidor, com meta tags e Open Graph dinâmico por rota.",
+    title: "Multi-tenant com RLS",
+    body: "Cada conta é um tenant isolado por tenant_id na aplicação e por Row Level Security no Postgres, com testes que provam o isolamento.",
   },
   {
-    title: "API Hono integrada",
-    body: "Endpoints em /api/* no mesmo processo do SSR, validados com Zod e persistindo no Postgres via Drizzle.",
+    title: "Quatro níveis de login",
+    body: "Proprietário, dono da conta, colaboradores com papéis configuráveis e clientes com portal próprio. Verificação de e-mail, 2FA e sessões em banco.",
   },
   {
-    title: "Auth + dashboard",
-    body: "Área autenticada client-side, sem dados sensíveis no HTML inicial.",
+    title: "Planos, trial e pagamentos",
+    body: "Planos e assinaturas no seu Postgres; trial configurável pelo proprietário; Stripe e Asaas como módulos, com Pix, boleto e cartão.",
   },
   {
-    title: "Base de produto",
-    body: "shadcn/ui + Tailwind v4, tema dark/light, formulários, estado com Zustand e dashboard com dados protegidos no servidor.",
+    title: "E-mail, jobs e auditoria",
+    body: "E-mails transacionais com provedor substituível, fila de jobs no Postgres, log de auditoria e base de LGPD.",
   },
 ];
 
@@ -66,8 +65,8 @@ export function ProjectsPage() {
     <>
       <PageHero
         eyebrow="Projeto em destaque"
-        title="Bizu Starter"
-        description="Ponto de partida para projetos pequenos e médios com site público e dashboard, usando Drizzle."
+        title="Bizu SaaS"
+        description="Ponto de partida open source para SaaS: multi-tenant, quatro níveis de login, trial e pagamentos em módulos, sobre Postgres."
         actions={
           <>
             <a href={siteConfig.links.repo} target="_blank" rel="noreferrer noopener">
@@ -92,11 +91,11 @@ export function ProjectsPage() {
             O propósito
           </h2>
           <p>
-            O <strong className="text-foreground">Bizu Starter</strong> é uma base
-            moderna e reutilizável para projetos pequenos e médios que não são
-            SaaS, mas precisam de login e dashboard. Em vez de gastar semanas montando a
-            fundação, você começa com SSR, API, banco, autenticação, UI e deploy
-            já integrados — e foca no que diferencia o seu projeto.
+            O <strong className="text-foreground">Bizu SaaS</strong> é uma base
+            moderna e reutilizável para quem vai lançar um SaaS. Em vez de gastar
+            meses montando a fundação, você começa com multi-tenant, níveis de
+            login, verificação de e-mail, trial, cobrança, e-mail, jobs e deploy
+            já integrados — e foca no que diferencia o seu produto.
           </p>
           <p>
             O diferencial é a metodologia de{" "}
@@ -114,7 +113,7 @@ export function ProjectsPage() {
             Para que tipo de projeto
           </h2>
           <p className="mb-8 max-w-2xl text-muted-foreground">
-            Uma base genérica o suficiente para se adaptar ao seu produto.
+            Qualquer produto que cobre por assinatura e atenda várias contas.
           </p>
           <div className="flex flex-wrap gap-2">
             {targetProjects.map((item) => (
@@ -142,10 +141,12 @@ export function ProjectsPage() {
             <pre className="overflow-x-auto px-5 py-5 text-xs leading-relaxed text-muted-foreground">
 {`React Router v7 Framework Mode + SSR global
   |
-  |-- /api/*              Hono API -> Drizzle -> Postgres
-  |-- /, /sobre, /blog    rotas públicas com SSR e SEO
-  |-- /login              autenticação (provedor a definir)
-  \`-- /dashboard/**       client-side, sem loader sensível no servidor`}
+  |-- /api/*              Hono API -> Drizzle -> Postgres (RLS por tenant)
+  |-- /, /precos, /blog   rotas públicas com SSR e SEO
+  |-- /login, /cadastro   autenticação com verificação de e-mail
+  |-- /app/**             owner e equipe do tenant (client-side)
+  |-- /admin/**           proprietário da plataforma
+  \`-- /portal/**          clientes e leads do tenant`}
             </pre>
           </div>
 
@@ -173,8 +174,9 @@ export function ProjectsPage() {
             Repositório e demo
           </h2>
           <p className="mb-8 max-w-2xl text-muted-foreground">
-            Este repositório é focado em <strong className="text-foreground">VPS + Docker + Node único</strong>{" "}
-            (react-router-hono-server + Hono + SSR). A demo pública roda na{" "}
+            Este repositório roda em <strong className="text-foreground">VPS + Docker + Node único</strong>{" "}
+            (react-router-hono-server + Hono + SSR), sem fornecedor obrigatório.
+            A demo pública roda na{" "}
             <strong className="text-foreground">Vercel</strong> — a arquitetura
             otimizada para esse deploy está no repositório{" "}
             <a

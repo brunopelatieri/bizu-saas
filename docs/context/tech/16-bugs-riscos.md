@@ -4,7 +4,7 @@
 - **Specs relacionadas:** nenhuma citada
 - **Paths do código:** `src/api/app.ts`, `src/lib/content/posts.ts`, `src/lib/schemas/contact.ts`, `src/server.ts`
 
-<!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L719-858 -->
+
 ## 16. Bugs, Riscos e Ajustes Recomendados
 
 ### BUG-001 — `.env.example` ainda indicava `PORT=3001` (corrigido)

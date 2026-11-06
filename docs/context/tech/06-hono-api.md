@@ -1,10 +1,10 @@
 # Hono API
 
 - **Escopo:** Rotas `/api/*`, validação Zod e montagem no servidor único.
-- **Specs relacionadas:** nenhuma citada
+- **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`
 - **Paths do código:** `src/api/auth.ts`, `src/api/rate-limit.ts`, `src/api/log.ts`, `src/api/app.ts`, `src/components/contact/contact-form.tsx`, `src/lib/schemas/contact.ts`, `src/server.ts`
 
-<!-- ORIGEM: PROJECT_TECHNICAL_SPEC.md L251-284 -->
+
 ## 6. Hono API
 
 Arquivo: `src/api/app.ts`

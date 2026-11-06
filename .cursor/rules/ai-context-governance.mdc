@@ -5,8 +5,9 @@ alwaysApply: true
 
 # Governança de Contexto IA
 
-Este projeto é um starter para sites com login e dashboard, feito com **AI Software Engineering**: PRD/spec primeiro,
-contexto enxuto carregado sob demanda e decisões técnicas documentadas.
+Este projeto é um starter open source para SaaS multi-tenant, feito com **AI Software
+Engineering**: PRD/spec primeiro, contexto enxuto carregado sob demanda e decisões
+técnicas documentadas. A feature em andamento é `docs/specs/saas-foundation/`.
 
 ## Antes de mudanças relevantes
 
@@ -24,10 +25,14 @@ Mudança de código em um domínio exige atualizar, no mesmo trabalho:
 
 ## Regras globais
 
-- Dados da app sempre via Drizzle, em qualquer Postgres.
-- Rota privada da API usa `requireAuth`; o gate do cliente não protege dados.
+- Dados da app sempre via Drizzle, em qualquer Postgres; runtime com `bizu_app`
+  (sem `BYPASSRLS`), migrations com `bizu_owner`.
+- Toda tabela de tenant tem `tenant_id` e RLS; toda query de tenant roda em `withTenant`.
+- Rota privada da API usa `requireAuth` (+ `requireTenant`/`requirePermission`); o gate
+  do cliente não protege dados.
+- Nenhum token é consumido em GET; respostas nunca revelam se um e-mail existe.
+- Módulo opcional fica em pasta própria e some ao apagar a pasta.
 - Preserve TypeScript estrito.
-- Multi-tenant e cobrança recorrente estão fora do escopo do template.
 - Features novas exigem spec antes do código.
 
 ## Método de trabalho
@@ -35,4 +40,4 @@ Mudança de código em um domínio exige atualizar, no mesmo trabalho:
 - PRD/spec em `docs/specs/<feature>/` antes de feature relevante.
 - Mudanças pequenas, verificáveis e documentadas.
 - Para bugs, identificar causa e validação antes de editar.
-- Para novas features, definir onde entram: pública SSR, API Hono ou dashboard client-side.
+- Para novas features, definir onde entram: pública SSR, API Hono, `/app`, `/admin` ou `/portal`.

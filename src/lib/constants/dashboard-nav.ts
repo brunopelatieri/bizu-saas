@@ -1,10 +1,9 @@
 import type { LucideIcon } from "lucide-react";
 import {
-  BarChart3,
-  FileStack,
-  FolderKanban,
+  CreditCard,
   LayoutDashboard,
   Settings,
+  UserCog,
   Users,
 } from "lucide-react";
 
@@ -15,27 +14,26 @@ export type DashboardNavItem = {
   end?: boolean;
 };
 
+/** Navegação da área do tenant (`/app/**`). */
 export const dashboardMainNav: DashboardNavItem[] = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { href: "/dashboard/projetos", label: "Projetos", icon: FolderKanban },
-  { href: "/dashboard/clientes", label: "Clientes", icon: Users },
-  { href: "/dashboard/arquivos", label: "Arquivos", icon: FileStack },
-  { href: "/dashboard/relatorios", label: "Relatórios", icon: BarChart3 },
+  { href: "/app", label: "Visão geral", icon: LayoutDashboard, end: true },
+  { href: "/app/clientes", label: "Clientes", icon: Users },
+  { href: "/app/equipe", label: "Equipe", icon: UserCog },
+  { href: "/app/assinatura", label: "Assinatura", icon: CreditCard },
 ];
 
 export const dashboardBottomNav: DashboardNavItem[] = [
-  { href: "/dashboard/configuracoes", label: "Configurações", icon: Settings },
+  { href: "/app/configuracoes", label: "Configurações", icon: Settings },
 ];
 
 export const dashboardTitles: Record<string, string> = {
-  "/dashboard": "Dashboard",
-  "/dashboard/projetos": "Projetos",
-  "/dashboard/clientes": "Clientes",
-  "/dashboard/arquivos": "Arquivos",
-  "/dashboard/relatorios": "Relatórios",
-  "/dashboard/configuracoes": "Configurações",
+  "/app": "Visão geral",
+  "/app/clientes": "Clientes",
+  "/app/equipe": "Equipe",
+  "/app/assinatura": "Assinatura",
+  "/app/configuracoes": "Configurações",
 };
 
 export function dashboardTitleFromPath(pathname: string): string {
-  return dashboardTitles[pathname] ?? "Dashboard";
+  return dashboardTitles[pathname] ?? "Visão geral";
 }

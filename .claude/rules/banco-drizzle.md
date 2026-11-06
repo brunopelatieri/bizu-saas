@@ -10,7 +10,8 @@ paths:
 - Dados da aplicação passam sempre pelo Drizzle.
 - O Postgres pode ser local ou em qualquer servidor: muda só a `DATABASE_URL`.
 - Toda mudança de schema em `src/db/schema.ts` gera migration: `npm run db:generate` e `npm run db:migrate`.
-- `DATABASE_URL` é de runtime; `DIRECT_URL` é do Drizzle Kit.
+- `DATABASE_URL` é de runtime (`bizu_app`, sem `BYPASSRLS`); `DIRECT_URL` é do Drizzle Kit e do seed (`bizu_owner`).
+- Testes que precisam de banco ficam em `tests/db/` e rodam com `npm run test:db`.
 - `drizzle-kit` é devDependency: rode pelos scripts `db:*`, sem instalar globalmente.
 - Permissões são validadas no servidor, com `requireAuth` + checks.
 - Loaders acessam o banco direto, sem chamada HTTP interna.

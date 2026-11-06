@@ -1,6 +1,8 @@
 User-agent: *
 Allow: /
-Disallow: /dashboard
+Disallow: /app
+Disallow: /admin
+Disallow: /portal
 Disallow: /login
 Disallow: /auth
 
