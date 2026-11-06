@@ -10,6 +10,7 @@ import {
   call,
   cleanUp,
   connectOwner,
+  createRole,
   createTenant,
   createUser,
   newEmail,
@@ -324,6 +325,25 @@ describe("limite de assentos", () => {
     expect(await checkLimit(id, "members")).toMatchObject({ used: 2, allowed: false });
   });
 
+  it("papel personalizado respeita o limite do plano", async () => {
+    const plan = await createPlanRow(owner, { isFree: false, limits: { custom_roles: 1 } });
+    const user = await createUser(owner);
+    const { id } = await createTenant(user);
+    await owner.begin(async (tx) => {
+      await tx`select set_config('app.bypass_tenant', 'on', true)`;
+      await tx`update subscription set plan_id = ${plan.id} where tenant_id = ${id}`;
+    });
+
+    await createRole(user, "assistente", ["invitation:create"]);
+
+    const refused = await call("POST", "/api/roles", {
+      cookie: user.cookie,
+      body: { name: "auxiliar", permissions: ["invitation:create"] },
+    });
+    expect(refused.status).toBe(403);
+    expect((await bodyOf(refused)).code).toBe("PLAN_LIMIT_REACHED");
+  });
+
   it("tenant sem assinatura não tem limite", async () => {
     const user = await createUser(owner);
     const { id } = await createTenant(user);
@@ -527,6 +547,20 @@ describe("seed", () => {
     ).toEqual([{ total: 3 }]);
   });
 
+  it("não promove conta que outra pessoa cadastrou sem confirmar o e-mail", async () => {
+    const { email } = SEED_USERS.platformOwner;
+    await owner`update "user" set email_verified = false, role = 'user' where email = ${email}`;
+
+    await expect(runSeed("senha-do-seed-123")).rejects.toThrow("sem e-mail confirmado");
+
+    const [row] = await owner<{ role: string; email_verified: boolean }[]>`
+      select role, email_verified from "user" where email = ${email}
+    `;
+    await owner`update "user" set email_verified = true, role = 'platform_owner' where email = ${email}`;
+
+    expect(row).toEqual({ role: "user", email_verified: false });
+  });
+
   it("recusa produção sem SEED_ALLOW_PRODUCTION", async () => {
     const { assertSeedAllowed } = await import("@/db/seed");
 
@@ -541,6 +575,13 @@ describe("seed", () => {
       }),
     ).toBe("senha-longa-123");
     expect(() => assertSeedAllowed({ NODE_ENV: "development" })).toThrow("SEED_PASSWORD");
+    expect(() =>
+      assertSeedAllowed({
+        NODE_ENV: "production",
+        SEED_ALLOW_PRODUCTION: "1",
+        SEED_PASSWORD: "Bizu-seed-2026!",
+      }),
+    ).toThrow(".env.example");
     expect(computeTrialEnd(new Date(0), 1).getTime()).toBe(DAY_MS);
   });
 });

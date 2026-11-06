@@ -73,8 +73,8 @@ O banner de `/app` (`BillingBanner`) só informa; quem barra é a API.
   Reconvidar o mesmo e-mail não ocupa um segundo (`ignoreInvitationEmail`); aceitar ignora o
   próprio convite (`ignoreInvitationId`).
 - Aplicado em `POST /api/team/invitations` e `POST /api/invitations/:id/accept`.
-- `custom_roles` conta `organization_role`, mas **ainda não é aplicado** (o teto de 20 do plugin
-  continua valendo). `customers` e `storage_mb` contam 0 até as fases 8 e 10.
+- `custom_roles` conta `organization_role` e é aplicado em `POST /api/roles`; sem limite no plano,
+  vale o teto fixo de 20 do plugin. `customers` e `storage_mb` contam 0 até as fases 8 e 10.
 - Features: `GET /api/me` entrega a lista; `hasFeature` no servidor e `tenant_feature_override`
   ficam para quando a primeira feature for cobrada.
 
@@ -106,6 +106,9 @@ filtro, usados pelos testes. Destinatários: proprietários do tenant (`listTena
 = `pro`, 14 e 7 dias), `owner@bizu.local` (`platform_owner`), `suporte@bizu.local`
 (`platform_support`) e o tenant `acme` (`acme.owner`, `acme.admin`, `acme.membro`, trial no
 `pro`). Só cria o que falta: planos e configurações editados em `/admin` não são sobrescritos.
+Conta já existente com o e-mail de um usuário do seed só tem o papel conferido se o e-mail estiver
+confirmado; sem isso o seed para, porque a senha é de quem cadastrou. Em produção, recusa o
+`SEED_PASSWORD` de `.env.example`.
 Usa o papel de runtime (`DATABASE_URL`) e insere as contas já verificadas, com o hash do
 próprio Better Auth.
 
