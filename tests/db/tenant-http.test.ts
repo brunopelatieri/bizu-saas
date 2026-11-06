@@ -111,7 +111,7 @@ describe("rotas de equipe sobre o servidor Node", () => {
       expect(response.status).toBe(200);
     });
 
-    it("sign-out do portal e rotas sem corpo passam pelo servidor Node", async () => {
+    it("rotas do Better Auth no portal passam pelo servidor Node", async () => {
       const anonymous = await request("GET", "/api/portal/auth/get-session");
       expect(anonymous.status).toBe(200);
 
@@ -120,6 +120,12 @@ describe("rotas de equipe sobre o servidor Node", () => {
         body: JSON.stringify({ token: "inexistente" }),
       });
       expect(verify.status).toBe(400);
+
+      const signOut = await request("POST", "/api/portal/auth/sign-out", {
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      expect(signOut.status).toBe(200);
     });
   });
 
@@ -144,6 +150,7 @@ describe("rotas de equipe sobre o servidor Node", () => {
     );
 
     it.each([
+      `/api/admin/portal-users/${anyId}/revoke-sessions`,
       `/api/admin/webhooks/${anyId}/reprocess`,
       `/api/admin/subscriptions/${anyId}/cancel`,
       `/api/admin/subscriptions/${anyId}/sync`,

@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { emailOnlySchema, signupSchema } from "@/lib/schemas/auth";
+import { optionalText, phoneSchema } from "@/lib/schemas/customer";
 import { slugSchema } from "@/lib/schemas/tenant";
 
 /** Contratos de `/api/portal/*` e dos formulários de `/portal`. */
@@ -18,14 +19,7 @@ export type PortalSignupInput = z.infer<typeof portalSignupSchema>;
 
 export const portalProfileSchema = z.object({
   name: z.string().trim().min(2, "Informe seu nome.").max(120, "Nome muito longo."),
-  phone: z
-    .string()
-    .trim()
-    .max(30, "Telefone muito longo.")
-    .regex(/^[\d\s()+.-]*$/, "Use só números e + ( ) - .")
-    .nullable()
-    .optional()
-    .transform((value) => value || null),
+  phone: optionalText(phoneSchema),
 });
 export type PortalProfileInput = z.infer<typeof portalProfileSchema>;
 export type PortalProfileValues = z.input<typeof portalProfileSchema>;

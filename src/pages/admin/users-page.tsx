@@ -50,11 +50,11 @@ export function AdminUsersPage() {
   const [banning, setBanning] = useState<AdminUser | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
   const scope = searchParams.get("scope") === "portal" ? "portal" : "team";
-  const query = useAdminQuery<Page<AdminUser>>("/api/admin/users", {
-    q,
-    page,
-    scope: "team",
-  });
+  const query = useAdminQuery<Page<AdminUser>>(
+    "/api/admin/users",
+    { q, page, scope: "team" },
+    scope === "team",
+  );
   const ban = useAdminMutation("Usuário banido.");
   const unban = useAdminMutation("Usuário desbanido.");
 

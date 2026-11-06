@@ -145,9 +145,10 @@ export async function requestPortalSignup({
 }
 
 /**
- * E-mail provado: vira `lead` do tenant, ou liga o cadastro que o owner já tinha feito. Só
- * o owner promove a `active`. Plano sem vaga não ganha linha: autocadastro não derruba o
- * limite de quem paga.
+ * E-mail provado: vira `lead` do tenant, ou liga o lead que o owner já tinha cadastrado.
+ * Só o owner promove a `active`, e uma linha ativa nunca é ligada aqui: a senha desta conta
+ * nasceu antes da prova do e-mail. Plano sem vaga não ganha linha: autocadastro não derruba
+ * o limite de quem paga.
  */
 export async function confirmPortalSignup(email: string, org: string) {
   const tenant = await findOpenTenant(org);
@@ -174,7 +175,7 @@ export async function confirmPortalSignup(email: string, org: string) {
       .onConflictDoUpdate({
         target: [customer.tenantId, customer.email],
         set: { portalUserId: person.id },
-        where: sql`${customer.portalUserId} is null`,
+        where: sql`${customer.portalUserId} is null and ${customer.status} = 'lead'`,
       })
       .returning({ id: customer.id });
 

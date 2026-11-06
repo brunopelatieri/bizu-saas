@@ -8,6 +8,7 @@ import { useAuth } from "@/providers/auth-provider";
 export function useAdminQuery<T>(
   path: string,
   params?: Record<string, string | number | undefined>,
+  enabled = true,
 ) {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params ?? {})) {
@@ -18,6 +19,7 @@ export function useAdminQuery<T>(
   return useQuery({
     queryKey: ["admin", path, params ?? {}],
     queryFn: () => apiFetch<T>(`${path}${query}`),
+    enabled,
     retry: false,
   });
 }

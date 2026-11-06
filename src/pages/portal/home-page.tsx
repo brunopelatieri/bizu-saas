@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { PageTitle, QueryState } from "@/components/admin/query-state";
+import { DetailRow } from "@/components/detail-row";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { apiFetch } from "@/lib/api/client";
 import { usePortalAuth } from "@/providers/portal-auth-provider";
@@ -13,15 +14,6 @@ type PortalCustomerResponse = {
     document: string | null;
   };
 };
-
-function Row({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="break-all font-medium text-foreground">{value ?? "–"}</dd>
-    </div>
-  );
-}
 
 export function PortalHomePage() {
   const { active } = usePortalAuth();
@@ -48,10 +40,10 @@ export function PortalHomePage() {
             </CardHeader>
             <CardContent>
               <dl className="space-y-3 text-sm">
-                <Row label="Nome" value={data.customer.name} />
-                <Row label="E-mail" value={data.customer.email} />
-                <Row label="Telefone" value={data.customer.phone} />
-                <Row label="Documento" value={data.customer.document} />
+                <DetailRow label="Nome" value={data.customer.name} />
+                <DetailRow label="E-mail" value={data.customer.email} />
+                <DetailRow label="Telefone" value={data.customer.phone} />
+                <DetailRow label="Documento" value={data.customer.document} />
               </dl>
             </CardContent>
           </Card>

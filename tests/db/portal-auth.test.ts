@@ -457,6 +457,9 @@ describe("portal: autenticação", () => {
       expect(unconfirmed.status).toBe(403);
       await waitForBackgroundTasks();
 
+      const link = mail.sent.filter(({ to }) => to === email).at(0);
+      expect(link?.text).toContain(`&org=${tenant.slug}`);
+
       const scanner = await call(
         "GET",
         `/api/portal/auth/verify-email?token=${confirmToken(email)}`,
@@ -483,6 +486,27 @@ describe("portal: autenticação", () => {
       expect((await call("GET", "/api/portal/customer", { cookie })).status).toBe(403);
 
       await allowSelfSignup(false);
+    });
+
+    it("confirmar não liga a identidade a um cliente já ativo", async () => {
+      await allowSelfSignup(true);
+      const { id, email } = await createCustomer(tenantOwner, {
+        status: "active",
+      });
+
+      await signup(email, tenant.slug);
+      await waitForBackgroundTasks();
+      await call("POST", "/api/portal/auth/verify-email", {
+        body: { token: confirmToken(email), org: tenant.slug },
+      });
+      await allowSelfSignup(false);
+
+      const detail = await call("GET", `/api/customers/${id}`, {
+        cookie: tenantOwner.cookie,
+      });
+      expect(await detail.json()).toMatchObject({
+        customer: { status: "active", hasPortalAccess: false },
+      });
     });
 
     it("convite derruba a senha de quem cadastrou o e-mail sem provar", async () => {

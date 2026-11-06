@@ -5,8 +5,14 @@ import { customerStatuses } from "@/lib/tenant/customer-constants";
 
 export const CUSTOMER_PAGE_SIZE = 20;
 
+export const phoneSchema = z
+  .string()
+  .trim()
+  .max(30, "Telefone muito longo.")
+  .regex(/^[\d\s()+.-]*$/, "Use só números e + ( ) - .");
+
 /** Texto opcional: vazio vira `null`, ausente segue ausente (o PATCH não mexe). */
-const optionalText = (schema: z.ZodString) =>
+export const optionalText = (schema: z.ZodType<string, string>) =>
   schema
     .nullable()
     .optional()
@@ -21,13 +27,7 @@ export const customerSchema = z.object({
     .toLowerCase()
     .max(254, "E-mail muito longo.")
     .email("Informe um e-mail válido."),
-  phone: optionalText(
-    z
-      .string()
-      .trim()
-      .max(30, "Telefone muito longo.")
-      .regex(/^[\d\s()+.-]*$/, "Use só números e + ( ) - ."),
-  ),
+  phone: optionalText(phoneSchema),
   document: optionalText(z.string().trim().max(30, "Documento muito longo.")),
   status: z.enum(customerStatuses).optional(),
   tags: z

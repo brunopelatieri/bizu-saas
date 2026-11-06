@@ -6,7 +6,7 @@ import {
   useContext,
   useMemo,
 } from "react";
-import { apiFetch } from "@/lib/api/client";
+import { ApiError, apiFetch } from "@/lib/api/client";
 import { toAuthActionError } from "@/lib/auth/client";
 import { portalClient } from "@/lib/auth/portal-client";
 import { rememberPortalOrg } from "@/lib/portal/last-org";
@@ -87,12 +87,22 @@ export function PortalAuthProvider({ children }: { children: ReactNode }) {
 
   const signIn = useCallback(
     async ({ email, password }: LoginInput, org?: string | null) => {
-      const { error } = await portalClient.signIn.email({
-        email,
-        password,
-        callbackURL: org ? `/portal?org=${encodeURIComponent(org)}` : "/portal",
+      // Sem `portalClient`: com `callbackURL`, o cliente do Better Auth troca de página
+      // na hora, antes de o tenant pedido ser ativado. A URL só serve ao link de
+      // verificação, reenviado a quem ainda não confirmou o e-mail.
+      await apiFetch("/api/portal/auth/sign-in/email", {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          password,
+          callbackURL: org ? `/portal?org=${encodeURIComponent(org)}` : "/portal",
+        }),
+      }).catch((error: unknown) => {
+        if (error instanceof ApiError) {
+          throw toAuthActionError({ status: error.status, code: error.code });
+        }
+        throw error;
       });
-      if (error) throw toAuthActionError(error);
 
       await refetch();
 

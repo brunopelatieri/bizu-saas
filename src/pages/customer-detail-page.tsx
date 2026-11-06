@@ -11,18 +11,10 @@ import {
   useCustomerMutation,
 } from "@/components/app/customers/customers-api";
 import { Can } from "@/components/auth/can";
+import { DetailRow } from "@/components/detail-row";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-function Row({ label, value }: { label: string; value: string | null }) {
-  return (
-    <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between">
-      <dt className="text-muted-foreground">{label}</dt>
-      <dd className="break-all font-medium text-foreground">{value || "–"}</dd>
-    </div>
-  );
-}
 
 function PortalAccessCard({ customer }: { customer: Customer }) {
   const invite = useCustomerMutation("Acesso enviado por e-mail.");
@@ -37,11 +29,11 @@ function PortalAccessCard({ customer }: { customer: Customer }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <dl className="space-y-3 text-sm">
-          <Row
+          <DetailRow
             label="Acesso enviado em"
             value={customer.invitedAt ? formatDateTime(customer.invitedAt) : null}
           />
-          <Row label="Último acesso" value={formatDateTime(customer.lastLoginAt)} />
+          <DetailRow label="Último acesso" value={formatDateTime(customer.lastLoginAt)} />
         </dl>
         <div className="flex flex-wrap gap-2">
           <Can resource="customer" action="invite">
@@ -133,9 +125,9 @@ export function CustomerDetailPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <dl className="space-y-3 text-sm">
-                  <Row label="E-mail" value={customer.email} />
-                  <Row label="Telefone" value={customer.phone} />
-                  <Row label="Documento" value={customer.document} />
+                  <DetailRow label="E-mail" value={customer.email} />
+                  <DetailRow label="Telefone" value={customer.phone} />
+                  <DetailRow label="Documento" value={customer.document} />
                 </dl>
                 {customer.tags.length > 0 ? (
                   <div className="flex flex-wrap gap-1">

@@ -79,8 +79,9 @@ describe("schemas do portal", () => {
     expect(portalTokenSchema.safeParse({ token: "" }).success).toBe(false);
   });
 
-  it("telefone vazio no perfil vira null", () => {
+  it("telefone vazio no perfil vira null; ausente segue ausente", () => {
     expect(portalProfileSchema.parse({ name: "Júlia", phone: "" }).phone).toBeNull();
+    expect(portalProfileSchema.parse({ name: "Júlia" }).phone).toBeUndefined();
   });
 
   it("senha nova segue o mínimo de 10", () => {

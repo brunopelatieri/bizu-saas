@@ -16,6 +16,9 @@ export function PortalChoosePage() {
 
   const available = tenants.filter((tenant) => tenant.available);
 
+  // Sem o que escolher, `PortalLayout` decide: entra no único ou mostra o aviso.
+  if (available.length < 2) return <Navigate to="/portal" replace />;
+
   async function choose(tenantId: string) {
     setPending(tenantId);
 
