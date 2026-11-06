@@ -8,3 +8,4 @@ export * from "./schema/contact";
 export * from "./schema/email";
 export * from "./schema/billing";
 export * from "./schema/customer";
+export * from "./schema/security";

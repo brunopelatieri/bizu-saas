@@ -16,8 +16,7 @@ import { organization } from "./tenant";
  * Tabelas do Better Auth (instância `auth`, equipe e plataforma). Nomes e tipos
  * seguem `getAuthTables`, com `uuid` (`advanced.database.generateId: "uuid"`) e
  * `timestamptz`. As chaves deste módulo são os nomes de modelo que o adapter procura.
- * As do plugin `organization` ficam em `tenant.ts`; o `twoFactor` (fase 9) acrescenta
- * colunas e tabelas.
+ * As do plugin `organization` ficam em `tenant.ts`.
  */
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
@@ -41,6 +40,8 @@ export const user = pgTable("user", {
   banned: boolean("banned").notNull().default(false),
   banReason: text("ban_reason"),
   banExpires: timestamptz("ban_expires"),
+  // Só o plugin `twoFactor` escreve: vira `true` depois do primeiro código válido.
+  twoFactorEnabled: boolean("two_factor_enabled").notNull().default(false),
   phone: text("phone"),
   locale: text("locale"),
   // Sessão nova abre neste tenant, se a pessoa ainda for membro. Não passa pelo Better Auth.
@@ -97,6 +98,26 @@ export const account = pgTable(
       table.accountId,
     ),
   ],
+);
+
+/** Plugin `twoFactor`. Segredo TOTP e códigos de backup ficam cifrados pelo próprio plugin. */
+export const twoFactor = pgTable(
+  "two_factor",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    secret: text("secret").notNull(),
+    backupCodes: text("backup_codes").notNull(),
+    // `false` até o primeiro código: ativar pela metade não vale no login.
+    verified: boolean("verified").notNull().default(true),
+    failedVerificationCount: integer("failed_verification_count")
+      .notNull()
+      .default(0),
+    lockedUntil: timestamptz("locked_until"),
+  },
+  (table) => [uniqueIndex("two_factor_user_id_idx").on(table.userId)],
 );
 
 /** Reset de senha, em hash (`verification.storeIdentifier: "hashed"`). */
