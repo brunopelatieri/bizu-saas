@@ -4,6 +4,8 @@ import { createHonoServer } from "react-router-hono-server/node";
 import { api } from "@/api/app";
 import { requestLogger } from "@/api/request-logger";
 import { EnvError, getEnv } from "@/lib/env";
+import { getLogger } from "@/lib/logger";
+import { flushObservability, initObservability } from "@/lib/observability";
 import { getProviders } from "@/lib/payments/registry";
 
 // Em desenvolvimento, carrega variáveis do .env.local (DATABASE_URL etc.).
@@ -27,12 +29,18 @@ try {
   throw error;
 }
 
+// Sentry (opcional): sem SENTRY_DSN nada é carregado.
+await initObservability();
+
 // `node build/server/index.js --worker`: só os workers de jobs, sem HTTP (JOBS_MODE=worker).
 // Também funciona em dev: `npx tsx --tsconfig tsconfig.app.json src/server.ts --worker`.
 const workerOnly = process.argv.includes("--worker");
 
 async function stopOnSignal(stop: () => Promise<void>) {
-  const shutdown = () => void stop().finally(() => process.exit(0));
+  const shutdown = () =>
+    void stop()
+      .then(() => flushObservability())
+      .finally(() => process.exit(0));
   process.once("SIGTERM", shutdown);
   process.once("SIGINT", shutdown);
 }
@@ -41,7 +49,7 @@ if (workerOnly) {
   const { startJobs } = await import("@/jobs");
   const jobs = await startJobs();
   await stopOnSignal(jobs.stop);
-  console.log("Workers de jobs em execução (sem HTTP).");
+  getLogger().info("Workers de jobs em execução (sem HTTP).");
 } else if (getEnv().JOBS_MODE === "inline") {
   // Fila no mesmo processo. Com `off` ou `worker`, este processo só enfileira.
   const { startJobs } = await import("@/jobs");

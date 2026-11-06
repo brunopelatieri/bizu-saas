@@ -18,6 +18,8 @@ type Overview = {
   trialsExpiringSoon: number;
   activePlans: number;
   failedWebhooks: number;
+  /** `null`: a fila não respondeu. */
+  deadJobs: number | null;
 };
 
 function Stat({
@@ -27,7 +29,7 @@ function Stat({
   to,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   hint?: string;
   to?: string;
 }) {
@@ -79,7 +81,7 @@ export function AdminOverviewPage() {
                 />
               ))}
             </div>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <Stat
                 label="Testes acabando"
                 value={data.trialsExpiringSoon}
@@ -107,6 +109,15 @@ export function AdminOverviewPage() {
                 value={data.failedWebhooks}
                 hint="Eventos de pagamento a reprocessar"
                 to="/admin/webhooks?status=failed"
+              />
+              <Stat
+                label="Jobs mortos"
+                value={data.deadJobs ?? "—"}
+                hint={
+                  data.deadJobs === null
+                    ? "A fila não respondeu"
+                    : "Esgotaram as tentativas (filas .dead)"
+                }
               />
             </div>
           </>

@@ -26,6 +26,7 @@ import {
   unsuspendTenant,
 } from "@/lib/admin/tenants";
 import { impersonationAccess } from "@/lib/admin/impersonation";
+import { countDeadJobs } from "@/lib/admin/jobs";
 import { listSubscriptions } from "@/lib/admin/subscriptions";
 import {
   assertBannable,
@@ -106,9 +107,11 @@ function auditAdmin(
   });
 }
 
-adminRoutes.get("/api/admin/overview", async (c) =>
-  c.json(await getOverview()),
-);
+adminRoutes.get("/api/admin/overview", async (c) => {
+  const [overview, deadJobs] = await Promise.all([getOverview(), countDeadJobs()]);
+
+  return c.json({ ...overview, deadJobs });
+});
 
 adminRoutes.get(
   "/api/admin/tenants",

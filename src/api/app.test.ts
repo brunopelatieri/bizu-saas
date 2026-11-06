@@ -1,4 +1,5 @@
 import { DrizzleQueryError } from "drizzle-orm";
+import { captureLogs } from "@/lib/logger-capture";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.stubEnv("TRUSTED_PROXY_HOPS", "1");
@@ -54,7 +55,7 @@ describe("POST /api/contact", () => {
   });
 
   it("não expõe detalhes internos quando o banco falha", async () => {
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = captureLogs();
     values.mockRejectedValue(new Error("postgres://user:senha@host/db"));
 
     const response = await contact(valid, "10.0.0.4");
@@ -63,12 +64,12 @@ describe("POST /api/contact", () => {
     expect(response.status).toBe(500);
     expect(text).not.toContain("senha");
     expect(text).not.toContain("DATABASE_URL");
-    expect(JSON.stringify(spy.mock.calls)).not.toContain("senha");
-    spy.mockRestore();
+    expect(spy.text()).not.toContain("senha");
+    spy.restore();
   });
 
   it("não grava no log os dados pessoais de uma query que falhou", async () => {
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = captureLogs();
     const cause = Object.assign(new Error("falha"), { code: "42501" });
     values.mockRejectedValue(
       new DrizzleQueryError("insert", [valid.email, valid.message], cause),
@@ -76,19 +77,19 @@ describe("POST /api/contact", () => {
 
     await contact(valid, "10.0.0.8");
 
-    expect(JSON.stringify(spy.mock.calls)).not.toContain(valid.email);
-    expect(JSON.stringify(spy.mock.calls)).toContain("42501");
-    spy.mockRestore();
+    expect(spy.text()).not.toContain(valid.email);
+    expect(spy.text()).toContain("42501");
+    spy.restore();
   });
 
   it("mantém no log o diagnóstico de erros comuns", async () => {
-    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const spy = captureLogs();
     values.mockRejectedValue(new Error("DATABASE_URL is not set"));
 
     await contact(valid, "10.0.0.9");
 
-    expect(JSON.stringify(spy.mock.calls)).toContain("DATABASE_URL is not set");
-    spy.mockRestore();
+    expect(spy.text()).toContain("DATABASE_URL is not set");
+    spy.restore();
   });
 
   it("limita tentativas por cliente sem afetar os demais", async () => {

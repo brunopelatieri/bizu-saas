@@ -1,5 +1,6 @@
 import { Hono } from "hono";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { captureLogs } from "@/lib/logger-capture";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   cspReportRoutes,
   createCsrfGuard,
@@ -174,7 +175,7 @@ describe("CSRF", () => {
 });
 
 describe("POST /api/csp-report", () => {
-  const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+  const logs = captureLogs();
   let ip = 0;
 
   function send(body: string) {
@@ -195,7 +196,7 @@ describe("POST /api/csp-report", () => {
   }
 
   afterEach(() => {
-    consoleError.mockClear();
+    logs.clear();
   });
 
   const report = {
@@ -212,7 +213,7 @@ describe("POST /api/csp-report", () => {
 
     expect(response.status).toBe(204);
 
-    const logged = JSON.stringify(consoleError.mock.calls);
+    const logged = logs.text();
 
     expect(logged).toContain("script-src-elem");
     expect(logged).toContain("https://cdn.exemplo.com");
@@ -226,7 +227,7 @@ describe("POST /api/csp-report", () => {
       expect((await send(body)).status).toBe(204);
     }
 
-    expect(consoleError).not.toHaveBeenCalled();
+    expect(logs.lines).toHaveLength(0);
   });
 
   it("acima de 16 KB responde 413", async () => {
