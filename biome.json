@@ -22,5 +22,31 @@
 		"rules": {
 			"preset": "recommended"
 		}
-	}
+	},
+	"overrides": [
+		{
+			"includes": [
+				"src/api/me.ts",
+				"src/api/tenant.ts",
+				"src/api/team.ts",
+				"src/api/roles.ts",
+				"src/api/invitations.ts",
+				"src/api/permissions.ts"
+			],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"paths": {
+									"@/db": "Rota de tenant não acessa o banco direto: use src/lib/tenant/ com withTenant."
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	]
 }

@@ -10,12 +10,14 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
+import { organization } from "./tenant";
 
 /**
  * Tabelas do Better Auth (instância `auth`, equipe e plataforma). Nomes e tipos
  * seguem `getAuthTables`, com `uuid` (`advanced.database.generateId: "uuid"`) e
  * `timestamptz`. As chaves deste módulo são os nomes de modelo que o adapter procura.
- * Os plugins `organization` (fase 4) e `twoFactor` (fase 9) acrescentam colunas e tabelas.
+ * As do plugin `organization` ficam em `tenant.ts`; o `twoFactor` (fase 9) acrescenta
+ * colunas e tabelas.
  */
 
 const timestamptz = (name: string) => timestamp(name, { withTimezone: true });
@@ -41,6 +43,10 @@ export const user = pgTable("user", {
   banExpires: timestamptz("ban_expires"),
   phone: text("phone"),
   locale: text("locale"),
+  // Sessão nova abre neste tenant, se a pessoa ainda for membro. Não passa pelo Better Auth.
+  lastTenantId: uuid("last_tenant_id").references(() => organization.id, {
+    onDelete: "set null",
+  }),
   ...timestamps,
 });
 
@@ -56,6 +62,10 @@ export const session = pgTable(
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
     impersonatedBy: text("impersonated_by"),
+    activeOrganizationId: uuid("active_organization_id").references(
+      () => organization.id,
+      { onDelete: "set null" },
+    ),
     ...timestamps,
   },
   (table) => [index("session_user_id_idx").on(table.userId)],

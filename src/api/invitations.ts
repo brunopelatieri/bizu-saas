@@ -1,0 +1,85 @@
+import { Hono } from "hono";
+import { requireAuth } from "@/api/auth";
+import { jsonBodyLimit, MINUTE, sameOrigin, validId } from "@/api/guards";
+import type { TenantEnv } from "@/api/permissions";
+import { clientKey, rateLimit } from "@/api/rate-limit";
+import { handleTenantError } from "@/api/tenant-errors";
+import { audit } from "@/lib/audit";
+import { roleLabel } from "@/lib/auth/permissions";
+import { getAuth } from "@/lib/auth/server";
+import { notFound, TenantRuleError } from "@/lib/tenant/errors";
+import { activateTenant, findMembership } from "@/lib/tenant/membership";
+import { findOpenInvitation } from "@/lib/tenant/team";
+
+const INVALID_INVITATION = "Convite inválido ou expirado.";
+
+/**
+ * Lado de quem recebe o convite. O GET nunca consome nada e serve scanners de e-mail sem
+ * efeito; aceitar exige clique, sessão e e-mail verificado do próprio convidado.
+ */
+export const invitationRoutes = new Hono<TenantEnv>();
+
+invitationRoutes.onError(handleTenantError);
+invitationRoutes.use("/api/invitations/*", sameOrigin, jsonBodyLimit);
+
+invitationRoutes.get(
+  "/api/invitations/:id",
+  rateLimit({ limit: 30, windowMs: MINUTE }),
+  validId,
+  async (c) => {
+    const invitation = await findOpenInvitation(c.req.valid("param").id);
+    if (!invitation) throw notFound(INVALID_INVITATION);
+
+    c.header("Cache-Control", "no-store");
+
+    return c.json({
+      invitation: {
+        id: invitation.id,
+        email: invitation.email,
+        tenantName: invitation.tenantName,
+        inviterName: invitation.inviterName,
+        roleLabel: roleLabel(invitation.role),
+        expiresAt: invitation.expiresAt,
+      },
+    });
+  },
+);
+
+invitationRoutes.post(
+  "/api/invitations/:id/accept",
+  rateLimit({ limit: 10, windowMs: MINUTE }),
+  requireAuth,
+  validId,
+  async (c) => {
+    const invitationId = c.req.valid("param").id;
+    const user = c.get("user");
+    const invitation = await findOpenInvitation(invitationId);
+
+    if (!invitation) throw notFound(INVALID_INVITATION);
+
+    // O plugin só descobriria na constraint, e responderia 500.
+    if (await findMembership(user.id, invitation.tenantId)) {
+      throw new TenantRuleError(
+        409,
+        "ALREADY_MEMBER",
+        "Você já faz parte desta organização.",
+      );
+    }
+
+    const { member } = await getAuth().api.acceptInvitation({
+      headers: c.req.raw.headers,
+      body: { invitationId },
+    });
+
+    await activateTenant(c.get("session").id, user.id, invitation.tenantId);
+    await audit("member.joined", {
+      actor: { id: user.id },
+      tenantId: invitation.tenantId,
+      target: { type: "member", id: member.id },
+      metadata: { invitationId, role: invitation.role },
+      ip: clientKey(c),
+    });
+
+    return c.json({ tenant: { id: invitation.tenantId } });
+  },
+);

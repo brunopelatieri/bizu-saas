@@ -2,11 +2,15 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
 import { zValidator } from "@hono/zod-validator";
-import { requireAuth } from "@/api/auth";
 import { authRoutes } from "@/api/auth-ext";
+import { invitationRoutes } from "@/api/invitations";
 import { logError } from "@/api/log";
+import { meRoutes } from "@/api/me";
 import { rateLimit } from "@/api/rate-limit";
 import { checkReady } from "@/api/ready";
+import { rolesRoutes } from "@/api/roles";
+import { teamRoutes } from "@/api/team";
+import { tenantRoutes } from "@/api/tenant";
 import { emailWebhooks } from "@/api/webhooks-email";
 import { getDb } from "@/db";
 import { contactMessages } from "@/db/schema";
@@ -26,9 +30,6 @@ export const api = new Hono();
 // HSTS fica com o reverse proxy, que conhece o domínio e seus subdomínios.
 api.use("*", secureHeaders({ strictTransportSecurity: false }));
 
-// Vem antes de `requireAuth`: cada sessão validada consulta o banco.
-const authRateLimit = rateLimit({ limit: 60, windowMs: 60 * 1000 });
-
 api.get("/api/health", (c) => c.json({ ok: true }));
 
 // Prontidão (banco + fila): o motivo da falha não vai na resposta.
@@ -42,10 +43,11 @@ api.route("/", emailWebhooks);
 // Better Auth em /api/auth/* e rotas próprias em /api/auth-ext/* (src/api/auth-ext.ts).
 api.route("/", authRoutes);
 
-// `tenants`, `features` e `limits` são preenchidos a partir das fases 4 e 5.
-api.get("/api/me", authRateLimit, requireAuth, (c) =>
-  c.json({ user: c.get("user"), tenants: [], features: [], limits: {} }),
-);
+api.route("/", meRoutes);
+api.route("/", tenantRoutes);
+api.route("/", teamRoutes);
+api.route("/", rolesRoutes);
+api.route("/", invitationRoutes);
 
 api.post(
   "/api/contact",
