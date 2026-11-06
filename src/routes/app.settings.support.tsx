@@ -19,7 +19,7 @@ type Grant = {
   id: string;
   expiresAt: string;
   revokedAt: string | null;
-  usedBy: string | null;
+  used: boolean;
   createdAt: string;
 };
 
@@ -48,7 +48,7 @@ function GrantRow({
         <p>
           {active ? "Vale até " : "Valia até "}
           {formatDateTime(grant.expiresAt)}
-          {grant.usedBy ? " · usada pelo suporte" : ""}
+          {grant.used ? " · usada pelo suporte" : ""}
         </p>
         <p className="text-xs text-muted-foreground">
           Criada em {formatDateTime(grant.createdAt)}

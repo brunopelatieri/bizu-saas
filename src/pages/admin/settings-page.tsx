@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { ImpersonationPolicy } from "@/lib/billing/settings";
+import type { ImpersonationPolicy } from "@/lib/billing/constants";
 import { platformSettingsSchema } from "@/lib/schemas/admin";
 
 const AUTO = "auto";

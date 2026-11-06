@@ -15,6 +15,7 @@ paths:
 - O schema `pgboss` (fila de jobs) não é do Drizzle: a migration só o cria e dá acesso ao `bizu_app`; as tabelas vêm de `npm run jobs:install` (`docs/context/tech/20-jobs.md`).
 - `DATABASE_URL` é de runtime (`bizu_app`, sem `BYPASSRLS`); `DIRECT_URL` é do Drizzle Kit e da instalação da fila (`bizu_owner`); o seed usa a conexão de runtime.
 - `plan`, `plan_price` e `platform_setting` são da plataforma (sem RLS, editadas só por `/api/admin/*`).
+- `impersonation_grant` e `tenant_payment_credential` são de tenant. Segredo só entra cifrado por `encryptSecret`, passando por `src/lib/tenant/credentials.ts`; o texto em claro nunca sai em resposta.
 - `subscription`, `subscription_event`, `invoice` e `billing_profile` são de tenant; `payment_event` tem RLS e só se lê com `withPlatformScope`.
 - Transição de cobrança em `subscription.status` passa por `transition()` + `applyDecision()` (`src/lib/billing/`), com a linha travada. A exceção é `changeTenantPlan`, a troca manual do admin.
 - `npm run db:seed` é idempotente, recusa produção sem `SEED_ALLOW_PRODUCTION=1` e nunca promove conta com e-mail não confirmado.

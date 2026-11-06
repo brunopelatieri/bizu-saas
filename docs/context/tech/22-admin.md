@@ -15,7 +15,8 @@
 `adminRoutes` aplica, em `/api/admin/*`: `sameOrigin` → `jsonBodyLimit` → `authRateLimit` →
 `requireAuth` → `requirePlatform()`; cada escrita soma `requirePlatform(["platform_owner"])`
 **antes** da validação. O `AdminLayout` manda quem não é da plataforma de volta a `/app`, mas é
-só o caminho da interface. Sem `loader` de servidor. O 2FA obrigatório da plataforma é da fase 9.
+só o caminho da interface. Sem `loader` de servidor. Em produção, sem 2FA, toda rota responde 403
+`PLATFORM_2FA_REQUIRED`, e o layout leva a `/admin/configuracoes/seguranca`.
 
 ## API
 
@@ -53,13 +54,23 @@ tenant levam o `tenant_id`. Tabelas de tenant são lidas com `withPlatformScope(
 | `/admin/planos`, `/admin/planos/:id` | `plans-page.tsx`, `plan-detail-page.tsx` |
 | `/admin/assinaturas` | `subscriptions-page.tsx` |
 | `/admin/webhooks` | `webhooks-page.tsx` |
-| `/admin/configuracoes` | `settings-page.tsx` |
+| `/admin/auditoria` | `routes/admin/audit.tsx`: log global, por ação, organização e pessoa |
+| `/admin/configuracoes` | `settings-page.tsx`, inclusive a política de acesso do suporte |
+| `/admin/configuracoes/seguranca` | `routes/admin/security.tsx`: 2FA de quem administra |
 
 Reaproveitam o shell de `/app`: `AppSidebar`, `AppNav` e `AppTopbar` recebem o menu
 (`admin-nav.ts`) por props. Dados por `useAdminQuery`/`useAdminMutation` (`admin-api.ts`);
 escrita só aparece para `platform_owner` (`useIsPlatformOwner`). O menu do usuário mostra
 "Administração" para quem tem papel de plataforma. Formulários validam com os schemas de
 `src/lib/schemas/admin.ts`; `limits` vazio vira `null` (ilimitado).
+
+## Personificação
+
+`/admin/tenants/:id` mostra, por membro, "Personificar" (com grant ativo ou
+`impersonation_policy = allow_without_consent`) ou "Pedir acesso". As duas chamam
+`POST /api/admin/impersonate`, aberta a `platform_owner` e `platform_support`; sem consentimento, ela
+responde 403 e avisa os owners. A política se edita em `/admin/configuracoes` e só
+`platform_owner` a altera. Regras em `tech/26-seguranca.md`.
 
 ## Usuários do portal
 
@@ -71,5 +82,4 @@ de todos os tenants.
 
 ## Ainda não existe
 
-Overview sem MRR e jobs mortos; `/admin/jobs`, `/admin/auditoria`; personificação (fase 9);
-detalhe de usuário; revogar sessões.
+Overview sem MRR e jobs mortos; `/admin/jobs`; detalhe de usuário; revogar sessões.

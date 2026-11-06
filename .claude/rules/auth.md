@@ -15,6 +15,7 @@ paths:
   - "src/components/auth/**"
   - "src/routes/auth/**"
   - "src/pages/login-page.tsx"
+  - "src/pages/two-factor-page.tsx"
   - "src/pages/signup-page.tsx"
   - "src/pages/verify-email-page.tsx"
   - "src/pages/forgot-password-page.tsx"
@@ -28,7 +29,9 @@ paths:
 - Rota privada usa `requireAuth` (sessão no banco, e-mail verificado); de plataforma, também `requirePlatform`.
 - Nenhum token é consumido em GET: a página renderiza e um botão faz a chamada. `/api/auth/verify-email` só aceita POST, atrás do `verificationGuard`.
 - Respostas de cadastro, reenvio, reset e troca de e-mail nunca revelam se um e-mail existe: mesmo status, corpo e cabeçalhos. Trabalho que depende da existência roda em `runInBackground`.
-- `/send-verification-email`, `/request-password-reset`, personificação e toda escrita do plugin admin ficam em `disabledPaths`; use `auth.api.*` no servidor, atrás de `/api/admin/*`.
+- `/send-verification-email`, `/request-password-reset`, personificação, rotas de sessão (`/list-sessions`, `/revoke-*`), `/two-factor/send-otp`, `/two-factor/verify-otp` e toda escrita do plugin admin ficam em `disabledPaths`; use `auth.api.*` no servidor, atrás das rotas próprias.
+- Personificação passa só por `POST /api/admin/impersonate` e `/stop-impersonating` (`src/api/impersonation.ts`), com consentimento; mutação sensível nova usa `blockWhileImpersonating` e entra no `it.each` de `tests/db/impersonation.test.ts`. Em `/api/auth/*`, a sessão personificada só usa `get-session` e `sign-out`.
+- Papel de plataforma sem 2FA em produção responde 403 `PLATFORM_2FA_REQUIRED`; `tenant.settings.require_2fa` responde 403 `TENANT_2FA_REQUIRED`. Trocar `BETTER_AUTH_SECRET` invalida os 2FA ativos.
 - Não confie em `X-Forwarded-For`: o IP vem de `clientKey` (`TRUSTED_PROXY_HOPS`) e chega ao Better Auth em `x-bizu-client-ip`.
 - Rota nova em `/api/auth/*` confere `Origin` e não passa `c.req.raw` a `new Request()`; teste também em `tests/db/auth-http.test.ts`.
 - Use `AuthUser` (`src/lib/auth/types.ts`), sem expor tipos do Better Auth na interface.
@@ -38,4 +41,4 @@ paths:
 - Permissões são validadas no servidor; o cliente só esconde botões.
 - Sessões e usuários ficam no Postgres, via Drizzle.
 
-Para entender este domínio, leia: docs/context/tech/08-auth.md e docs/context/tech/25-portal-clientes.md
+Para entender este domínio, leia: docs/context/tech/08-auth.md, docs/context/tech/25-portal-clientes.md e docs/context/tech/26-seguranca.md

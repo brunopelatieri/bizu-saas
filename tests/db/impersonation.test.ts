@@ -610,8 +610,13 @@ describe("personificação", () => {
       const list = await call("GET", "/api/tenant/support-grant", {
         cookie: tenantOwner.cookie,
       });
-      const { grants } = (await list.json()) as { grants: { id: string }[] };
+      const text = await list.text();
+      const { grants } = JSON.parse(text) as {
+        grants: { id: string; used: boolean }[];
+      };
       expect(grants.map((row) => row.id)).toEqual([id]);
+      expect(grants[0]?.used).toBe(false);
+      expect(text).not.toContain("usedBy");
 
       await call("DELETE", `/api/tenant/support-grant/${id}`, {
         cookie: tenantOwner.cookie,

@@ -1,9 +1,7 @@
 import { inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { platformSetting } from "@/db/schema";
-
-export const impersonationPolicies = ["consent", "allow_without_consent"] as const;
-export type ImpersonationPolicy = (typeof impersonationPolicies)[number];
+import type { ImpersonationPolicy } from "@/lib/billing/constants";
 
 /** Configurações da plataforma, editadas em `/admin/configuracoes`. */
 export type PlatformSettings = {

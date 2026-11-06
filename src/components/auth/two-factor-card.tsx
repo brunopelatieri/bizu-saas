@@ -240,7 +240,7 @@ export function TwoFactorCard() {
             </div>
             <p className="break-all text-xs text-muted-foreground">
               Sem câmera? Use a chave{" "}
-              <code data-testid="totp-secret">{secretOf(step.totpURI)}</code>
+              <code>{secretOf(step.totpURI)}</code>
             </p>
             <div className="grid gap-1.5">
               <Label htmlFor="two-factor-code">Código de 6 dígitos</Label>

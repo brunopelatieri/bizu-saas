@@ -7,7 +7,7 @@
 ## Arquivos
 
 - `src/db/schema/<domínio>.ts`: um arquivo por domínio (`auth.ts`, `tenant.ts`, `audit.ts`,
-  `contact.ts`, `email.ts`, `billing.ts`).
+  `contact.ts`, `email.ts`, `billing.ts`, `security.ts`).
 - `src/db/rls.ts`: `withTenant` e `withPlatformScope`.
 - `src/db/tenant-policy.ts`: `tenantPolicy()`, fora de `rls.ts` porque o Drizzle Kit carrega o
   schema sem o alias `@/` nem as variáveis de ambiente.
@@ -21,8 +21,13 @@
 Schema atual:
 
 ```text
-user                      Better Auth; role, banned e ban_* (plugin admin), phone, locale,
-                          last_tenant_id
+user                      Better Auth; role, banned e ban_* (plugin admin), two_factor_enabled,
+                          phone, locale, last_tenant_id
+two_factor                plugin twoFactor: secret e backup_codes cifrados, verified, lockout
+portal_two_factor         o mesmo no portal, sem rotas abertas
+impersonation_grant       consentimento do owner: expires_at, revoked_at, used_by (RLS)
+tenant_payment_credential encrypted_secret bytea, key_version, sem tela (RLS)
+rate_limit_bucket         key em hash, window_start, count (RATE_LIMIT_STORE=postgres)
 session                   token unique, user_id, expires_at, impersonated_by,
                           active_organization_id
 account                   provider_id = credential guarda a senha

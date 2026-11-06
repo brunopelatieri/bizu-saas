@@ -68,8 +68,10 @@ Runtime:
 - `PORT=3000`
 - `APP_URL`, `TRUSTED_PROXY_HOPS=1` (um por reverse proxy)
 - `DATABASE_URL` (`bizu_app`), `DIRECT_URL` (`bizu_owner`)
-- `BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY`, `AUDIT_SALT`: valores gerados;
-  os de exemplo (`change-me...`) derrubam o processo em producao
+- `BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY` (32 bytes em base64), `AUDIT_SALT`:
+  valores gerados; os de exemplo derrubam o processo em producao
+- `RATE_LIMIT_STORE=postgres`: `memory` derruba o processo em producao
+- `CSP_REPORT_ONLY`: `true` relata em `/api/csp-report`; `false` bloqueia
 - `EMAIL_PROVIDER`, `EMAIL_FROM`, `SMTP_*` ou `RESEND_*`
 
 A lista completa esta em `.env.example`; a validacao, em `src/lib/env.ts`.

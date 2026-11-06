@@ -41,7 +41,7 @@ export function derivePortalSecret(secret: string) {
  * 2FA do portal: desligado por padrão, sem tela. O plugin e a tabela ficam prontos, mas
  * ninguém ativa por HTTP; quem o ligar por tenant abre estas rotas (`spec-auth.md`).
  */
-export const PORTAL_TWO_FACTOR_PATHS = [
+const PORTAL_TWO_FACTOR_PATHS = [
   "/two-factor/enable",
   "/two-factor/disable",
   "/two-factor/get-totp-uri",

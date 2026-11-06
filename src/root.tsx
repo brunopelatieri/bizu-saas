@@ -1,3 +1,4 @@
+import "@/lib/zod-config";
 import { type ReactNode, useContext } from "react";
 import {
   isRouteErrorResponse,

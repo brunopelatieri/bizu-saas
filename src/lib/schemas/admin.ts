@@ -1,11 +1,11 @@
 import { z } from "zod";
 import {
+  impersonationPolicies,
   paymentEventStatuses,
   paymentProviderIds,
   priceIntervals,
   subscriptionStatusList,
 } from "@/lib/billing/constants";
-import { impersonationPolicies } from "@/lib/billing/settings";
 import { billingStates } from "@/lib/billing/state";
 import { slugSchema } from "@/lib/schemas/tenant";
 

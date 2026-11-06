@@ -13,8 +13,9 @@ const HOUR = 60 * 60 * 1000;
 const NOT_FOUND = "Autorização não encontrada.";
 const LIST_LIMIT = 20;
 
-export function listSupportGrants(tenantId: string) {
-  return withTenant(tenantId, (tx) =>
+/** `usedBy` é de quem atende: o tenant só precisa saber que a autorização foi usada. */
+export async function listSupportGrants(tenantId: string) {
+  const rows = await withTenant(tenantId, (tx) =>
     tx
       .select({
         id: impersonationGrant.id,
@@ -28,6 +29,8 @@ export function listSupportGrants(tenantId: string) {
       .orderBy(desc(impersonationGrant.createdAt))
       .limit(LIST_LIMIT),
   );
+
+  return rows.map(({ usedBy, ...row }) => ({ ...row, used: usedBy !== null }));
 }
 
 export async function createSupportGrant(

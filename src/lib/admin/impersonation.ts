@@ -5,8 +5,9 @@ import { auditLog, impersonationGrant, organization, session } from "@/db/schema
 import { audit } from "@/lib/audit";
 import { runInBackground } from "@/lib/auth/background";
 import { appLink } from "@/lib/auth/links";
-import { type ImpersonationPolicy, loadSettings } from "@/lib/billing/settings";
+import type { ImpersonationPolicy } from "@/lib/billing/constants";
 import { listTenantOwners } from "@/lib/billing/notify";
+import { loadSettings } from "@/lib/billing/settings";
 import { sendEmail } from "@/lib/email/send";
 import { impersonationRequestedTemplate } from "@/lib/email/templates/impersonation-requested";
 import { impersonationStartedTemplate } from "@/lib/email/templates/impersonation-started";

@@ -38,3 +38,8 @@ npm run dev
   (vai a `/app`). Pode rodar de novo sem duplicar nada.
 - Para testar login: cadastre-se em `/cadastro`, abra o Mailpit em `http://localhost:8025` e
   confirme pelo link. Sem o seed, o primeiro proprietário é promovido por SQL (`tech/08-auth.md`).
+
+## `.env.local` criado antes da fase 9
+
+`CREDENTIALS_ENCRYPTION_KEY: use 32 bytes em base64` na subida significa que o arquivo traz o exemplo
+antigo. Gere uma chave com `openssl rand -base64 32` ou copie a do `.env.example`.

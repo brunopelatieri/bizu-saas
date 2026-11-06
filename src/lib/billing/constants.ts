@@ -108,3 +108,7 @@ export function formatMoney(cents: number, currency = "BRL") {
     cents / 100,
   );
 }
+
+/** `consent`: o suporte só entra com autorização. Fica aqui porque o formulário também usa. */
+export const impersonationPolicies = ["consent", "allow_without_consent"] as const;
+export type ImpersonationPolicy = (typeof impersonationPolicies)[number];
