@@ -4,6 +4,9 @@ Disallow: /app
 Disallow: /admin
 Disallow: /portal
 Disallow: /login
-Disallow: /auth
+Disallow: /cadastro
+Disallow: /verificar-email
+Disallow: /esqueci-senha
+Disallow: /redefinir-senha
 
 Sitemap: https://bizu.bru.ia.br/sitemap.xml

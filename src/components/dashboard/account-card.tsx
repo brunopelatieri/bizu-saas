@@ -45,11 +45,11 @@ export function AccountCard() {
           <dl className="grid gap-1 text-sm sm:grid-cols-[max-content_1fr] sm:gap-x-4">
             <dt className="text-muted-foreground">Nome</dt>
             <dd className="text-foreground">
-              {data.user.fullName ?? "Não informado"}
+              {data.user.name}
             </dd>
             <dt className="text-muted-foreground">E-mail</dt>
             <dd className="break-all text-foreground">
-              {data.user.email ?? "Não informado"}
+              {data.user.email}
             </dd>
           </dl>
         )}

@@ -3,6 +3,7 @@ import { bodyLimit } from "hono/body-limit";
 import { secureHeaders } from "hono/secure-headers";
 import { zValidator } from "@hono/zod-validator";
 import { requireAuth } from "@/api/auth";
+import { authRoutes } from "@/api/auth-ext";
 import { logError } from "@/api/log";
 import { rateLimit } from "@/api/rate-limit";
 import { getDb } from "@/db";
@@ -23,13 +24,17 @@ export const api = new Hono();
 // HSTS fica com o reverse proxy, que conhece o domínio e seus subdomínios.
 api.use("*", secureHeaders({ strictTransportSecurity: false }));
 
-// Vem antes de `requireAuth`: cada token validado pode consultar o provedor de Auth.
+// Vem antes de `requireAuth`: cada sessão validada consulta o banco.
 const authRateLimit = rateLimit({ limit: 60, windowMs: 60 * 1000 });
 
 api.get("/api/health", (c) => c.json({ ok: true }));
 
+// Better Auth em /api/auth/* e rotas próprias em /api/auth-ext/* (src/api/auth-ext.ts).
+api.route("/", authRoutes);
+
+// `tenants`, `features` e `limits` são preenchidos a partir das fases 4 e 5.
 api.get("/api/me", authRateLimit, requireAuth, (c) =>
-  c.json({ user: c.get("user") }),
+  c.json({ user: c.get("user"), tenants: [], features: [], limits: {} }),
 );
 
 api.post(

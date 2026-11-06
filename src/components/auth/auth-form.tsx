@@ -1,9 +1,16 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, LogIn, UserPlus } from "lucide-react";
+import { Loader2, MailCheck } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { useNavigate, useSearchParams } from "react-router";
+import { Link, useNavigate } from "react-router";
 import { toast } from "sonner";
+import {
+  authInputClassName,
+  authLabelClassName,
+  authLinkClassName,
+  authSubmitClassName,
+} from "@/components/auth/auth-shell";
+import { ResendVerification } from "@/components/auth/resend-verification";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -14,32 +21,45 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AuthActionError } from "@/lib/auth/client";
+import { TERMS_VERSION } from "@/lib/legal/versions";
 import {
-  loginSchema,
-  signupSchema,
   type LoginInput,
+  loginSchema,
+  MIN_PASSWORD_LENGTH,
   type SignupInput,
+  signupSchema,
 } from "@/lib/schemas/auth";
-import { cn } from "@/lib/utils";
 import { useAuth } from "@/providers/auth-provider";
 
-const inputClassName =
-  "h-10 w-full bg-black/25 px-3 text-sm placeholder:text-muted-foreground/80";
+/** Tela depois do cadastro. A mesma para e-mail novo e existente. */
+function CheckEmailNotice({ email }: { email: string }) {
+  return (
+    <div className="grid gap-4 text-sm">
+      <div className="flex items-start gap-3">
+        <MailCheck className="mt-0.5 size-5 shrink-0 text-primary" />
+        <div>
+          <p className="font-medium text-white">Confirme seu e-mail</p>
+          <p className="mt-1 text-muted-foreground">
+            Enviamos um link para <span className="break-all">{email}</span>. Ele
+            vale por 1 hora.
+          </p>
+        </div>
+      </div>
+      <ResendVerification email={email} />
+      <p className="text-center text-muted-foreground">
+        <Link to="/login" className={authLinkClassName}>
+          Já confirmei, entrar
+        </Link>
+      </p>
+    </div>
+  );
+}
 
-const labelClassName = "text-white";
-
-const tabTriggerClassName = cn(
-  "h-full flex-1 gap-2 rounded-lg border border-transparent py-2 text-sm font-medium",
-  "text-muted-foreground transition-all duration-300 ease-out",
-  "hover:text-foreground",
-  "data-active:border-primary/20 data-active:bg-primary/15 data-active:text-primary",
-  "data-active:shadow-[0_0_20px_oklch(var(--primary)/0.15)]",
-);
-
-function LoginForm({ nextPath }: { nextPath: string }) {
+export function LoginForm({ nextPath }: { nextPath: string }) {
   const navigate = useNavigate();
   const { signIn } = useAuth();
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
@@ -47,250 +67,253 @@ function LoginForm({ nextPath }: { nextPath: string }) {
   });
 
   async function onSubmit(values: LoginInput) {
+    setUnverifiedEmail(null);
+
     try {
       await signIn(values);
-      toast.success("Login realizado com sucesso.");
       navigate(nextPath);
-    } catch (err) {
+    } catch (error) {
+      if (error instanceof AuthActionError && error.code === "EMAIL_NOT_VERIFIED") {
+        setUnverifiedEmail(values.email);
+        return;
+      }
+
       toast.error(
-        err instanceof Error ? err.message : "Falha ao entrar. Tente novamente.",
+        error instanceof Error ? error.message : "Falha ao entrar. Tente novamente.",
       );
     }
   }
 
   return (
-    <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="grid w-full grid-cols-1 gap-4"
-      >
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem className="w-full">
-              <FormLabel className={labelClassName}>E-mail</FormLabel>
-              <FormControl className="w-full">
-                <Input
-                  {...field}
-                  type="email"
-                  autoComplete="email"
-                  placeholder="voce@empresa.com"
-                  className={inputClassName}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem className="w-full">
-              <FormLabel className={labelClassName}>Senha</FormLabel>
-              <FormControl className="w-full">
-                <Input
-                  {...field}
-                  type="password"
-                  autoComplete="current-password"
-                  placeholder="••••••••"
-                  className={inputClassName}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button
-          type="submit"
-          size="lg"
-          className="mt-2 h-10 w-full shadow-[0_0_24px_oklch(var(--primary)/0.25)]"
-          disabled={form.formState.isSubmitting || !form.formState.isValid}
+    <div className="grid w-full gap-4">
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="grid w-full grid-cols-1 gap-4"
         >
-          {form.formState.isSubmitting ? (
-            <>
-              <Loader2 className="animate-spin" />
-              Entrando...
-            </>
-          ) : (
-            "Entrar"
-          )}
-        </Button>
-      </form>
-    </Form>
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel className={authLabelClassName}>E-mail</FormLabel>
+                <FormControl className="w-full">
+                  <Input
+                    {...field}
+                    type="email"
+                    autoComplete="email"
+                    placeholder="voce@empresa.com"
+                    className={authInputClassName}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel className={authLabelClassName}>Senha</FormLabel>
+                <FormControl className="w-full">
+                  <Input
+                    {...field}
+                    type="password"
+                    autoComplete="current-password"
+                    placeholder="••••••••••"
+                    className={authInputClassName}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button
+            type="submit"
+            size="lg"
+            className={authSubmitClassName}
+            disabled={form.formState.isSubmitting || !form.formState.isValid}
+          >
+            {form.formState.isSubmitting ? (
+              <>
+                <Loader2 className="animate-spin" />
+                Entrando...
+              </>
+            ) : (
+              "Entrar"
+            )}
+          </Button>
+        </form>
+      </Form>
+
+      {unverifiedEmail ? (
+        <div className="grid gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-sm">
+          <p className="font-medium text-amber-400">
+            Confirme seu e-mail para entrar
+          </p>
+          <p className="text-muted-foreground">
+            Enviamos um novo link para o seu e-mail.
+          </p>
+          <ResendVerification email={unverifiedEmail} />
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap justify-between gap-2 text-sm text-muted-foreground">
+        <Link to="/esqueci-senha" className={authLinkClassName}>
+          Esqueci minha senha
+        </Link>
+        <Link to="/cadastro" className={authLinkClassName}>
+          Criar conta
+        </Link>
+      </div>
+    </div>
   );
 }
 
-function SignupForm({ nextPath }: { nextPath: string }) {
-  const navigate = useNavigate();
+export function SignupForm() {
   const { signUp } = useAuth();
+  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
   const form = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
-    defaultValues: { name: "", email: "", phone: "", password: "" },
+    defaultValues: {
+      name: "",
+      email: "",
+      password: "",
+      termsVersion: TERMS_VERSION,
+    },
     mode: "onChange",
   });
 
   async function onSubmit(values: SignupInput) {
     try {
       await signUp(values);
-      toast.success("Conta criada com sucesso.");
-      navigate(nextPath);
-    } catch (err) {
+      setSubmittedEmail(values.email);
+    } catch (error) {
       toast.error(
-        err instanceof Error
-          ? err.message
+        error instanceof Error
+          ? error.message
           : "Falha ao criar conta. Tente novamente.",
       );
     }
   }
 
+  if (submittedEmail) return <CheckEmailNotice email={submittedEmail} />;
+
   return (
-    <Form {...form}>
-      <form
-        onSubmit={form.handleSubmit(onSubmit)}
-        className="grid w-full grid-cols-1 gap-4"
-      >
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem className="w-full">
-              <FormLabel className={labelClassName}>Nome</FormLabel>
-              <FormControl className="w-full">
-                <Input
-                  {...field}
-                  autoComplete="name"
-                  placeholder="Seu nome completo"
-                  className={inputClassName}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem className="w-full">
-              <FormLabel className={labelClassName}>E-mail</FormLabel>
-              <FormControl className="w-full">
-                <Input
-                  {...field}
-                  type="email"
-                  autoComplete="email"
-                  placeholder="voce@empresa.com"
-                  className={inputClassName}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="phone"
-          render={({ field }) => (
-            <FormItem className="w-full">
-              <FormLabel className={labelClassName}>Telefone celular</FormLabel>
-              <FormControl className="w-full">
-                <Input
-                  {...field}
-                  type="tel"
-                  autoComplete="tel"
-                  inputMode="tel"
-                  placeholder="(11) 99999-9999"
-                  className={inputClassName}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="password"
-          render={({ field }) => (
-            <FormItem className="w-full">
-              <FormLabel className={labelClassName}>Senha</FormLabel>
-              <FormControl className="w-full">
-                <Input
-                  {...field}
-                  type="password"
-                  autoComplete="new-password"
-                  placeholder="Mínimo de 6 caracteres"
-                  className={inputClassName}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button
-          type="submit"
-          size="lg"
-          className="mt-2 h-10 w-full shadow-[0_0_24px_oklch(var(--primary)/0.25)]"
-          disabled={form.formState.isSubmitting || !form.formState.isValid}
+    <div className="grid w-full gap-4">
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="grid w-full grid-cols-1 gap-4"
         >
-          {form.formState.isSubmitting ? (
-            <>
-              <Loader2 className="animate-spin" />
-              Criando conta...
-            </>
-          ) : (
-            "Criar conta"
-          )}
-        </Button>
-      </form>
-    </Form>
-  );
-}
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel className={authLabelClassName}>Nome</FormLabel>
+                <FormControl className="w-full">
+                  <Input
+                    {...field}
+                    autoComplete="name"
+                    placeholder="Seu nome completo"
+                    className={authInputClassName}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-export function AuthForm() {
-  const [searchParams] = useSearchParams();
-  const nextPath = searchParams.get("next") ?? "/app";
-  const [mode, setMode] = useState<"login" | "signup">("login");
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel className={authLabelClassName}>E-mail</FormLabel>
+                <FormControl className="w-full">
+                  <Input
+                    {...field}
+                    type="email"
+                    autoComplete="email"
+                    placeholder="voce@empresa.com"
+                    className={authInputClassName}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-  return (
-    <Tabs
-      value={mode}
-      onValueChange={(value) => setMode(value as "login" | "signup")}
-      className="flex w-full flex-col gap-0"
-    >
-      <TabsList
-        variant="default"
-        className="mb-6 flex h-11 w-full max-w-none rounded-xl border border-white/10 bg-black/30 p-1"
-      >
-        <TabsTrigger value="login" className={tabTriggerClassName}>
-          <LogIn className="size-4 shrink-0" />
+          <FormField
+            control={form.control}
+            name="password"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <FormLabel className={authLabelClassName}>Senha</FormLabel>
+                <FormControl className="w-full">
+                  <Input
+                    {...field}
+                    type="password"
+                    autoComplete="new-password"
+                    placeholder={`Mínimo de ${MIN_PASSWORD_LENGTH} caracteres`}
+                    className={authInputClassName}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="acceptTerms"
+            render={({ field }) => (
+              <FormItem className="w-full">
+                <label className="flex items-start gap-2 text-sm text-muted-foreground">
+                  <input
+                    ref={field.ref}
+                    name={field.name}
+                    onBlur={field.onBlur}
+                    type="checkbox"
+                    className="mt-0.5 size-4 accent-primary"
+                    checked={field.value === true}
+                    onChange={(event) => field.onChange(event.target.checked)}
+                  />
+                  <span>Li e aceito os termos de uso e a política de privacidade.</span>
+                </label>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button
+            type="submit"
+            size="lg"
+            className={authSubmitClassName}
+            disabled={form.formState.isSubmitting || !form.formState.isValid}
+          >
+            {form.formState.isSubmitting ? (
+              <>
+                <Loader2 className="animate-spin" />
+                Criando conta...
+              </>
+            ) : (
+              "Criar conta"
+            )}
+          </Button>
+        </form>
+      </Form>
+
+      <p className="text-center text-sm text-muted-foreground">
+        Já tem conta?{" "}
+        <Link to="/login" className={authLinkClassName}>
           Entrar
-        </TabsTrigger>
-        <TabsTrigger value="signup" className={tabTriggerClassName}>
-          <UserPlus className="size-4 shrink-0" />
-          Criar Conta
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent
-        value="login"
-        className="w-full outline-none transition-all duration-300 ease-out data-[state=inactive]:hidden"
-      >
-        <LoginForm nextPath={nextPath} />
-      </TabsContent>
-
-      <TabsContent
-        value="signup"
-        className="w-full outline-none transition-all duration-300 ease-out data-[state=inactive]:hidden"
-      >
-        <SignupForm nextPath={nextPath} />
-      </TabsContent>
-    </Tabs>
+        </Link>
+      </p>
+    </div>
   );
 }

@@ -1,15 +1,15 @@
 import type { AuthUser } from "@/lib/auth/types";
 
 export function getUserDisplayName(user: AuthUser | null): string {
-  const name = user?.fullName?.trim();
+  const name = user?.name.trim();
   if (name) return name;
 
-  const emailPrefix = user?.email?.split("@")[0];
+  const emailPrefix = user?.email.split("@")[0];
   return emailPrefix ?? "Usuário";
 }
 
 export function getUserInitials(user: AuthUser | null): string {
-  const name = user?.fullName?.trim();
+  const name = user?.name.trim();
   if (name) {
     const parts = name.split(/\s+/);
     if (parts.length >= 2) {
@@ -18,5 +18,5 @@ export function getUserInitials(user: AuthUser | null): string {
     return name.slice(0, 2).toUpperCase();
   }
 
-  return user?.email?.slice(0, 2).toUpperCase() ?? "??";
+  return user?.email.slice(0, 2).toUpperCase() ?? "??";
 }
