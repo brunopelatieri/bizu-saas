@@ -74,7 +74,7 @@
 
 - Fase 7 da spec (adiada).
 - **Fase 11:** teste de onboarding com pessoa externa em até 30 minutos (checklist em `CONTRIBUTING.md`); tag `v0.1.0` e GitHub Release (notas do `CHANGELOG.md`); habilitar o relatório privado de vulnerabilidade e o Dependabot no GitHub; certificado real do Caddy e a stack no Portainer, sem teste num domínio real (a stack foi revalidada em `localhost` por HTTP, `tech/14-deploy.md`); `CODEOWNERS` usa o usuário do autor.
-- Site público: `siteConfig.url`, `public/sitemap.xml` e `public/robots.txt` usam o placeholder `https://example.com` (estáticos, não leem `APP_URL`): derivados trocam os três. O link de demo (`siteConfig.links.demo`, `sampleProjects`) e o mock da landing ainda apontam para a demo do autor.
+- Site público: `siteConfig.url`, `public/sitemap.xml` e `public/robots.txt` usam o placeholder `https://example.com` (estáticos, não leem `APP_URL`): derivados trocam os três.
 - **Portal:** `organization.settings.portal_self_signup` liga o autocadastro, mas ainda não tem tela.
   Quem já tem conta no portal não se autocadastra em outro tenant: pede ao owner. O convite sai
   sem `Reply-To` do owner. `portal_rate_limit` e `rate_limit` (tabelas do Better Auth) seguem fora do

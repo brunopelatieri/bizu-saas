@@ -16,7 +16,6 @@ export const siteConfig = {
     photo: "/bruno_pelatieri_goulart_bizu_bru_ia.webp",
   },
   links: {
-    demo: "https://bizu.bru.ia.br",
     repo: "https://github.com/brunopelatieri/bizu-saas",
     github: "https://github.com/brunopelatieri",
     site: "https://brunogoulart.com.br",

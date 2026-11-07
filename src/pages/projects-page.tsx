@@ -45,12 +45,6 @@ const docs = [
     href: siteConfig.links.repo,
     platform: "repo" as const,
   },
-  {
-    label: "Demo ao vivo",
-    description: "Referência visual: demo publicada pelo autor.",
-    href: siteConfig.links.demo,
-    platform: "site" as const,
-  },
 ];
 
 export function ProjectsPage() {
@@ -61,20 +55,12 @@ export function ProjectsPage() {
         title="Bizu SaaS"
         description="Ponto de partida open source para SaaS: multi-tenant, quatro níveis de login, trial e pagamentos em módulos, sobre Postgres."
         actions={
-          <>
-            <a href={siteConfig.links.repo} target="_blank" rel="noreferrer noopener">
-              <Button className="gap-2">
-                <SocialIcon platform="github" />
-                Ver no GitHub
-              </Button>
-            </a>
-            <a href={siteConfig.links.demo} target="_blank" rel="noreferrer noopener">
-              <Button variant="outline" className="gap-2">
-                <SocialIcon platform="site" />
-                Abrir demo
-              </Button>
-            </a>
-          </>
+          <a href={siteConfig.links.repo} target="_blank" rel="noreferrer noopener">
+            <Button className="gap-2">
+              <SocialIcon platform="github" />
+              Ver no GitHub
+            </Button>
+          </a>
         }
       />
 
@@ -164,7 +150,7 @@ export function ProjectsPage() {
       <section className="border-t border-border/50 bg-muted/30 px-6 py-16">
         <div className="mx-auto max-w-5xl">
           <h2 className="mb-4 text-2xl font-bold tracking-tight text-foreground md:text-3xl">
-            Repositório e demo
+            Repositório
           </h2>
           <p className="mb-8 max-w-2xl text-muted-foreground">
             Este repositório roda em <strong className="text-foreground">VPS + Docker + Node único</strong>{" "}

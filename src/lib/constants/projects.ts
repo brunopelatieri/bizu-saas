@@ -6,7 +6,7 @@ export const sampleProjects: Project[] = [
     title: "Bizu SaaS",
     description:
       "Ponto de partida para SaaS: multi-tenant, quatro níveis de login, trial e pagamentos em módulos.",
-    href: "https://bizu.bru.ia.br",
+    href: "https://github.com/brunopelatieri/bizu-saas",
     tags: ["React Router", "Hono", "Drizzle", "Postgres"],
   },
   {

@@ -74,7 +74,7 @@ export function HeroSection() {
             <span className="h-3 w-3 rounded-full bg-yellow-500/70" />
             <span className="h-3 w-3 rounded-full bg-green-500/70" />
             <span className="ml-3 text-xs text-muted-foreground">
-              bizu.bru.ia.br
+              seu-saas.example.com
             </span>
           </div>
           <img
