@@ -66,15 +66,15 @@
   `storage_mb` contado. Sem tela de upload.
 - Observabilidade: logs JSON com `request_id` e redação (pino), Sentry opcional, jobs mortos no `/admin`;
   backup cifrado com `age` no perfil `backup` do compose.
-- Biome, Vitest (`npm test` sem banco, `npm run test:db` com banco) e CI com Postgres.
+- Biome, Vitest (`npm test` sem banco, `npm run test:db` com banco) e CI com Postgres, mais o job `module-removal`.
 - Dockerfile multi-stage para VPS e `docker/compose.prod.yml` (app, worker, migrate, postgres, caddy, backup), com `docker/.env.prod.example`.
 - Repositório público: `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md` (0.1.0), Dependabot, modelos de issue e de PR, `CODEOWNERS`, README em formato de tutorial e `docs/context/atualizar-template.md`.
 
 ## Pendências Técnicas Conhecidas
 
 - Fase 7 da spec (adiada).
-- **Fase 11:** teste de onboarding com pessoa externa em até 30 minutos (checklist em `CONTRIBUTING.md`); tag `v0.1.0` e GitHub Release (notas do `CHANGELOG.md`); habilitar o relatório privado de vulnerabilidade e o Dependabot no GitHub; certificado real do Caddy e a stack no Portainer, sem teste num domínio real; `CODEOWNERS` usa o usuário do autor.
-- O site público ainda mostra links "Repo Vercel" para outro repositório (`src/lib/constants/navigation.ts`), e `public/sitemap.xml` e `robots.txt` trazem o domínio do autor: derivados trocam.
+- **Fase 11:** teste de onboarding com pessoa externa em até 30 minutos (checklist em `CONTRIBUTING.md`); tag `v0.1.0` e GitHub Release (notas do `CHANGELOG.md`); habilitar o relatório privado de vulnerabilidade e o Dependabot no GitHub; certificado real do Caddy e a stack no Portainer, sem teste num domínio real (a stack foi revalidada em `localhost` por HTTP, `tech/14-deploy.md`); `CODEOWNERS` usa o usuário do autor.
+- Site público: `siteConfig.url`, `public/sitemap.xml` e `public/robots.txt` usam o placeholder `https://example.com` (estáticos, não leem `APP_URL`): derivados trocam os três. O link de demo (`siteConfig.links.demo`, `sampleProjects`) e o mock da landing ainda apontam para a demo do autor.
 - **Portal:** `organization.settings.portal_self_signup` liga o autocadastro, mas ainda não tem tela.
   Quem já tem conta no portal não se autocadastra em outro tenant: pede ao owner. O convite sai
   sem `Reply-To` do owner. `portal_rate_limit` e `rate_limit` (tabelas do Better Auth) seguem fora do
@@ -110,7 +110,7 @@
 | Perfis `worker` e `backup` inativos | Variáveis do `backup` com `:-`, validadas pelo `backup.sh` | O Compose interpola perfis inativos, e `config` falharia sem elas |
 | `README` com demo | "Demo: em breve"; nota da Vercel removida | Nenhuma demo existe para este repositório |
 | `dependabot.yml` (npm semanal) | npm e GitHub Actions, semanal, agrupados por menor/patch e major | Actions desatualizadas são a outra fonte comum de alerta |
-| Job `module-removal` no CI | Não entregue | Não estava no escopo da fase 11; o script roda à mão (`npm run check:module-removal`) |
+| Job `module-removal` no CI | Entregue depois da fase 11, em matriz (`stripe`, `sentry`, `s3`) | Não estava no escopo da fase 11; o job só roda `npm run check:module-removal -- <id>`, sem banco |
 
 ## Desvios da spec na fase 9
 
