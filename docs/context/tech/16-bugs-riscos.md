@@ -191,6 +191,15 @@ executadas desde o backup (`tech/14-deploy.md`, `docs/context/lgpd.md`). Não h�
 rota responde 502 e nada é agendado (é o desenho: não agendar com cobrança no ar). O proprietário tenta de novo
 depois, ou o suporte cancela a assinatura em `/admin/assinaturas`.
 
+### RISK-013 — Restore sem GRANTs deixava o `bizu_app` sem acesso (corrigido)
+
+O `backup.sh` gerava o dump com `--no-privileges` e o procedimento restaurava com `--no-owner
+--no-privileges` como `postgres`: tabelas de `public`, `drizzle.__drizzle_migrations` e o schema `pgboss`
+voltavam sem GRANT para o `bizu_app` (reproduzido: 37 tabelas sem acesso, dono `postgres`). Agora o dump
+leva os GRANTs, a restauração é como `bizu_owner` e o `restore-test.sh` mede o acesso do `bizu_app`.
+Risco residual: backups feitos antes da correção não têm os GRANTs; use "Dump antigo" em `tech/14-deploy.md`
+(o `restore-test.sh` reprova esse dump de propósito).
+
 ### RISK-009 — Código TOTP reutilizável dentro da janela (risco aceito)
 
 O plugin aceita o mesmo código enquanto ele estiver na janela de 30 s (mais uma para trás e uma para

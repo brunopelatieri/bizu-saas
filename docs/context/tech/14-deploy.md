@@ -164,21 +164,52 @@ codigo esta em `docker/backup/`:
 
 Validado em Docker com o compose de producao: backup `once` como `bizu_backup`, dump cifrado e
 `restore-test.sh` (37 tabelas, 19 migrations). A restauracao sobre o banco de producao (abaixo) nao foi
-ensaiada ponta a ponta: faca-o numa copia antes de precisar.
+ensaiada ponta a ponta no servidor: faca-o numa copia antes de precisar. O mesmo procedimento foi
+ensaiado num Postgres 16 local (dump, restore como `bizu_owner`, `bizu_app` com acesso).
 
-Restaurar (banco; em producao, rode o `createdb` e o `pg_restore` com `bizu exec -T postgres ...` e o dump no stdin):
+**Restaurar (banco).** O dump leva os GRANTs (`pg_dump --no-owner`, sem `--no-privileges`) e o dono
+sai de quem restaura, entao restaure **como `bizu_owner`**, o papel de `DIRECT_URL`, sem
+`--no-privileges`. Assim as tabelas voltam com dono `bizu_owner` e com o acesso do `bizu_app` em
+`public`, `drizzle` (a tabela de migrations que o app le na subida) e `pgboss`. Restaurar como
+`postgres` com `--no-owner --no-privileges` deixa tudo sem acesso para o runtime e o app nao sobe.
+Em producao, rode o `createdb` e o `pg_restore` com `bizu exec -T postgres ...` e o dump no stdin:
 
 ```bash
 age --decrypt --identity chave.txt --output bizu.dump bizu-AAAAMMDD-HHMMSS.dump.age
-createdb -h HOST -U postgres bizu_novo
-pg_restore -h HOST -U postgres --no-owner --no-privileges --dbname bizu_novo bizu.dump
+createdb -h HOST -U postgres --owner bizu_owner bizu_novo
+pg_restore -h HOST -U bizu_owner --no-owner --dbname bizu_novo bizu.dump
 ```
 
-Depois rode `docker/postgres/init.sql` (papeis e grants) e `npm run db:migrate` se o dump for de
-uma versao anterior. Restaurar arquivos: `age --decrypt --identity chave.txt ...storage.tar.age | tar -x -C /destino`.
+- Servidor novo (sem os papeis): rode antes `docker/postgres/init.sql`, que cria os papeis e o banco
+  `bizu` vazio, e restaure nesse banco. O `init.sql` so mexe no banco `bizu`.
+- Um nome diferente de `bizu` (como `bizu_novo`) exige apontar `DATABASE_URL` e `DIRECT_URL` para ele.
+- Dump de uma versao anterior ao schema atual: `npm run db:migrate` depois do restore.
+- Confira: `select count(*) from pg_tables where schemaname = 'public' and not has_table_privilege('bizu_app', format('%I.%I', schemaname, tablename), 'SELECT')` e
+  `select has_table_privilege('bizu_app', 'drizzle.__drizzle_migrations', 'SELECT')` (0 e `t`).
+
+**Dump antigo** (feito com `--no-privileges`, versoes anteriores do `backup.sh`): nao traz os GRANTs.
+Restaure como acima e rode, como `bizu_owner` no banco restaurado:
+
+```sql
+GRANT USAGE ON SCHEMA public, drizzle, pgboss TO bizu_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public, pgboss TO bizu_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public, pgboss TO bizu_app;
+GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA pgboss TO bizu_app;
+GRANT SELECT ON drizzle.__drizzle_migrations TO bizu_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO bizu_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT USAGE, SELECT ON SEQUENCES TO bizu_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA pgboss GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO bizu_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA pgboss GRANT USAGE, SELECT ON SEQUENCES TO bizu_app;
+ALTER DEFAULT PRIVILEGES IN SCHEMA pgboss GRANT EXECUTE ON FUNCTIONS TO bizu_app;
+```
+
+Restaurar arquivos: `age --decrypt --identity chave.txt ...storage.tar.age | tar -x -C /destino`.
 
 **Teste de restauracao mensal:** `restore-test.sh` decifra o backup, restaura num banco
-descartavel (`bizu_restore_test`) e confere tabelas, usuarios e migrations:
+descartavel (`bizu_restore_test`) e confere tabelas, usuarios, migrations e o acesso do `bizu_app`
+(`has_table_privilege` em `public` e em `drizzle.__drizzle_migrations`). Um dump sem GRANTs reprova o
+teste. Ele restaura como o usuario do backup (nao e `bizu_owner`), entao pula as entradas `DEFAULT ACL`
+do dump, que so um membro de `bizu_owner` pode recriar:
 
 ```bash
 docker compose --profile backup run --rm -v /caminho/da/chave:/key:ro --entrypoint restore-test.sh   backup /backups/bizu-AAAAMMDD-HHMMSS.dump.age /key/chave.txt

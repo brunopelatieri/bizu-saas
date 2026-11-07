@@ -42,7 +42,10 @@ backup_database() {
   plain="$OUT_DIR/.dump.$stamp"
   final="$OUT_DIR/bizu-$stamp.dump.age"
 
-  pg_dump --format=custom --no-owner --no-privileges --file="$plain" || return 1
+  # Sem --no-privileges: o dump leva os GRANTs (do bizu_app em public, drizzle e pgboss). Com a
+  # flag, o restore devolvia as tabelas sem acesso para o runtime. --no-owner fica: quem restaura
+  # vira o dono, e a produção restaura como bizu_owner (docs/context/tech/14-deploy.md).
+  pg_dump --format=custom --no-owner --file="$plain" || return 1
   age --recipient "$BACKUP_AGE_RECIPIENT" --output "$final.partial" "$plain" || return 1
   rm -f "$plain"
   mv "$final.partial" "$final" || return 1
