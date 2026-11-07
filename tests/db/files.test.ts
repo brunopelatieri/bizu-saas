@@ -9,6 +9,7 @@ import { createMemoryProvider } from "@/lib/email/providers/memory";
 import { setEmailProviderForTests } from "@/lib/email/send";
 import { setStorageForTests } from "@/lib/storage";
 import { createLocalProvider } from "@/lib/storage/providers/local";
+import { cleanUpBilling, createPlanRow, ensureSubscription } from "./billing-helpers";
 import {
   addMember,
   APP_ORIGIN,
@@ -86,6 +87,7 @@ describe("módulo de arquivos (/api/files)", () => {
   afterAll(async () => {
     setStorageForTests(undefined);
     setEmailProviderForTests(undefined);
+    await cleanUpBilling(owner);
     await cleanUp(owner);
     await owner.end();
     await rm(dir, { recursive: true, force: true });
@@ -196,15 +198,8 @@ describe("módulo de arquivos (/api/files)", () => {
     const limited = await createUser(owner);
     const limitedTenantId = (await createTenant(limited, "Limitada")).id;
 
-    await owner.begin(async (tx) => {
-      await tx`select set_config('app.bypass_tenant', 'on', true)`;
-      const [plan] = await tx<{ id: string }[]>`
-        insert into plan (slug, name, limits)
-        values (${`storage-${randomUUID()}`}, 'Armazenamento 1 MB', '{"storage_mb": 1}'::jsonb)
-        returning id
-      `;
-      await tx`update subscription set plan_id = ${plan?.id ?? ""} where tenant_id = ${limitedTenantId}`;
-    });
+    const plan = await createPlanRow(owner, { isFree: false, limits: { storage_mb: 1 } });
+    await ensureSubscription(owner, limitedTenantId, plan.id);
 
     const big = Buffer.concat([PNG, Buffer.alloc(700 * 1024, 2)]);
     expect((await upload(limited, { content: big })).status).toBe(201);

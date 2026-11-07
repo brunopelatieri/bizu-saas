@@ -87,6 +87,26 @@ export async function createPlanRow(
   return { id: row.id, slug };
 }
 
+/**
+ * Garante a assinatura do tenant no plano pedido. Sem o seed (como no CI) não há plano nem
+ * trial, e `createTenant` deixa o tenant sem assinatura.
+ */
+export async function ensureSubscription(
+  owner: postgres.Sql,
+  tenantId: string,
+  planId: string,
+  status = "active",
+) {
+  await asPlatform(
+    owner,
+    (tx) => tx`
+      insert into subscription (tenant_id, plan_id, status)
+      values (${tenantId}, ${planId}, ${status})
+      on conflict (tenant_id) do update set plan_id = excluded.plan_id, status = excluded.status
+    `,
+  );
+}
+
 /** Os tenants de teste saem em `cleanUp`; aqui saem os planos que ficaram sem assinatura. */
 export async function cleanUpBilling(owner: postgres.Sql) {
   await owner.begin(async (tx) => {

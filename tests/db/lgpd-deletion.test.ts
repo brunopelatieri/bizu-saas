@@ -15,7 +15,10 @@ import { setStorageForTests } from "@/lib/storage";
 import { createLocalProvider } from "@/lib/storage/providers/local";
 import {
   asPlatform,
+  cleanUpBilling,
+  createPlanRow,
   createStubProvider,
+  ensureSubscription,
   makePlatformUser,
   STUB_ID,
   subscriptionState,
@@ -126,6 +129,7 @@ afterAll(async () => {
     }
   });
   await cleanUpPortal(owner);
+  await cleanUpBilling(owner);
   await cleanUp(owner);
   await owner.end();
 });
@@ -524,6 +528,8 @@ describe("exclusão da organização", () => {
     const tenant = await newTenant(tenantOwner, "Vai Embora Ltda");
     await addMember(owner, tenant.id, admin, "admin");
     await createCustomer(tenantOwner, { name: "Cliente da Org" });
+    const paid = await createPlanRow(owner, { isFree: false });
+    await ensureSubscription(owner, tenant.id, paid.id);
     await updateSubscription(owner, tenant.id, {
       status: "active",
       provider: STUB_ID,
@@ -608,6 +614,8 @@ describe("exclusão da organização", () => {
     const tenantOwner = await newUser();
     const tenant = await newTenant(tenantOwner, "Apagar Ltda");
     const record = await createCustomer(tenantOwner, { name: "Cliente Apagado" });
+    const plan = await createPlanRow(owner, { isFree: true });
+    await ensureSubscription(owner, tenant.id, plan.id);
     const stored = await uploadFile({
       tenantId: tenant.id,
       userId: tenantOwner.id,
