@@ -24,10 +24,11 @@ x-app-environment: &app-environment
   PORT: "3000"
   APP_URL: ${APP_URL:?defina APP_URL com a URL pública, com https://}
   TRUSTED_PROXY_HOPS: ${TRUSTED_PROXY_HOPS:-1}
-  # O app roda como bizu_app (sem BYPASSRLS). Só o migrate usa o bizu_owner de fato, mas
-  # src/lib/env.ts exige DIRECT_URL em todo processo.
+  # src/lib/env.ts exige DIRECT_URL em todo processo, mas só o instalador da fila e as migrations
+  # a usam. App e worker recebem a do bizu_app (sem BYPASSRLS): a senha do dono das tabelas fica
+  # só no migrate, que a sobrescreve abaixo.
   DATABASE_URL: postgresql://bizu_app:${BIZU_APP_PASSWORD:?defina BIZU_APP_PASSWORD}@postgres:5432/bizu
-  DIRECT_URL: postgresql://bizu_owner:${BIZU_OWNER_PASSWORD:?defina BIZU_OWNER_PASSWORD}@postgres:5432/bizu
+  DIRECT_URL: postgresql://bizu_app:${BIZU_APP_PASSWORD}@postgres:5432/bizu
   BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?gere com openssl rand -base64 32}
   CREDENTIALS_ENCRYPTION_KEY: ${CREDENTIALS_ENCRYPTION_KEY:?gere com openssl rand -base64 32}
   CREDENTIALS_ENCRYPTION_KEY_PREVIOUS: ${CREDENTIALS_ENCRYPTION_KEY_PREVIOUS:-}
@@ -95,7 +96,8 @@ services:
     logging: *logging
 
   # Aplicação: assets, /api/* e SSR no mesmo processo. O healthcheck vem do Dockerfile.
-  # APP_JOBS_MODE=inline roda a fila aqui; com o perfil `worker`, use off e deixe o worker.
+  # APP_JOBS_MODE=inline (padrão) roda a fila aqui. Ao ligar o perfil `worker`, defina
+  # APP_JOBS_MODE=off, senão app e worker consomem a mesma fila.
   # APP_IMAGE aponta para um registry quando você publica a imagem em vez de construir na VPS.
   app:
     image: ${APP_IMAGE:-bizu-saas:local}
@@ -152,6 +154,7 @@ services:
         condition: service_healthy
     environment:
       <<: *app-environment
+      DIRECT_URL: postgresql://bizu_owner:${BIZU_OWNER_PASSWORD:?defina BIZU_OWNER_PASSWORD}@postgres:5432/bizu
       JOBS_MODE: "off"
     command: ["sh", "-c", "npm run db:migrate && npm run jobs:install"]
 

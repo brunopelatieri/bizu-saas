@@ -335,7 +335,9 @@ async function main() {
     console.log(
       `Portal: ${SEED_CUSTOMERS.julia.email} em /portal/login?org=acme (também cliente do beta), com a mesma senha. ${SEED_CUSTOMERS.lead.email} é um lead sem acesso até o owner enviar o convite.`,
     );
-    console.log("Os e-mails enviados pelo app chegam ao Mailpit em http://localhost:8025.");
+    if (process.env.EMAIL_PROVIDER !== "memory" && /^(localhost|127\.0\.0\.1)$/.test(process.env.SMTP_HOST ?? "")) {
+      console.log("Os e-mails enviados pelo app chegam ao Mailpit em http://localhost:8025.");
+    }
     process.exit(0);
   } catch (error) {
     logError("Falha no seed", error);

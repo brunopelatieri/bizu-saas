@@ -96,7 +96,7 @@ Runtime (a lista completa está em `.env.example`; a validação, em `src/lib/en
 
 - `NODE_ENV=production`, `PORT=3000`
 - `APP_URL` com `https://`, `TRUSTED_PROXY_HOPS=1` (um por reverse proxy)
-- `DATABASE_URL` (`bizu_app`), `DIRECT_URL` (`bizu_owner`; exigida em todo processo)
+- `DATABASE_URL` (`bizu_app`), `DIRECT_URL` (`bizu_owner`; exigida em todo processo, mas só migrations e `jobs:install` a usam: no compose, `app` e `worker` recebem a do `bizu_app` e só o `migrate` leva a do dono). Senha de banco que começa por `change-me` é recusada em produção
 - `BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY` (32 bytes em base64), `AUDIT_SALT`: valores
   gerados; os de exemplo derrubam o processo em produção
 - `RATE_LIMIT_STORE=postgres`: `memory` derruba o processo em produção

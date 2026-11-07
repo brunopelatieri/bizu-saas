@@ -48,6 +48,7 @@ Não há demo pública deste repositório; o README diz "em breve".
 - `docker-compose.yml` sobe Postgres e Mailpit de desenvolvimento; o perfil `backup` (`docker/backup/`)
   e o MinIO comentado são opcionais. Produção é só `docker/compose.prod.yml`.
 - `docker/postgres/init.sql` aceita as senhas por variáveis do `psql` (`bizu_owner_password`, `bizu_app_password`, `bizu_backup_password`); sem elas, usa as de desenvolvimento.
+- Só o `migrate` leva a `DIRECT_URL` do `bizu_owner`; `app` e `worker` recebem a do `bizu_app`. Senha de banco começada por `change-me` é recusada em produção.
 - O estágio `build` do `Dockerfile` é o alvo do `migrate` (tem `drizzle-kit`, `tsx` e `drizzle/`).
 - Migrations rodam fora do container da aplicação, como etapa separada.
 - Atrás de reverse proxy, defina `TRUSTED_PROXY_HOPS=1` (um valor por proxy na frente).

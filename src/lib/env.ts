@@ -183,6 +183,20 @@ export const envSchema = z
           });
         }
       }
+      // Senha do banco copiada do exemplo (`change-me...`): URL malformada não conta aqui,
+      // o `z.url` acima já a recusa.
+      for (const key of ["DATABASE_URL", "DIRECT_URL"] as const) {
+        const password = URL.canParse(env[key])
+          ? decodeURIComponent(new URL(env[key]).password)
+          : "";
+        if (password.startsWith(PLACEHOLDER_PREFIX)) {
+          ctx.addIssue({
+            code: "custom",
+            path: [key],
+            message: "use uma senha gerada, não o exemplo do .env.prod.example",
+          });
+        }
+      }
       // Com memória, cada réplica contaria sozinha e o limite cairia em silêncio no
       // primeiro `scale`. Recusar na subida é mais barato que descobrir no incidente.
       if (env.RATE_LIMIT_STORE === "memory") {

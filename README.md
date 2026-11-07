@@ -392,7 +392,8 @@ portas 80 e 443 livres):
 - **Postgres gerenciado:** apague o serviço `postgres`, rode `docker/postgres/init.sql` com o `psql`
   como superusuário (as senhas entram por `-v`, veja o cabeçalho do arquivo) e ajuste as URLs.
 - **Teste local sem TLS:** `SITE_ADDRESS=http://localhost`, `APP_URL=http://localhost:4181`,
-  `HTTP_PORT=4181` e `HTTPS_PORT=4443`; serve para `/api/health` e `/api/ready`.
+  `HTTP_PORT=4181` e `HTTPS_PORT=4443`; serve para `/api/health` e `/api/ready`. O login completo sobre
+  HTTP puro em produção não foi exercitado (cookies `Secure`): para testar a sessão, use HTTPS.
 - **Portainer:** Stacks > Add stack > Repository, "Compose path" `docker/compose.prod.yml`, e as variáveis de
   `docker/.env.prod.example` em "Environment variables". O `migrate` roda pelo terminal do host (passo 4), com
   as mesmas variáveis.

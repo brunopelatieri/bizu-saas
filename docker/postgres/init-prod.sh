@@ -12,6 +12,13 @@
   : "${BIZU_OWNER_PASSWORD:?defina BIZU_OWNER_PASSWORD}"
   : "${BIZU_APP_PASSWORD:?defina BIZU_APP_PASSWORD}"
 
+  for name in BIZU_OWNER_PASSWORD BIZU_APP_PASSWORD BIZU_BACKUP_PASSWORD; do
+    eval "value=\${$name:-}"
+    case "$value" in
+      change-me*) echo "init-prod: $name ainda tem o valor de exemplo; gere uma senha (openssl rand -hex 24)." >&2; exit 1 ;;
+    esac
+  done
+
   # Sem BIZU_BACKUP_PASSWORD, o papel de backup não é criado (o serviço `backup` é opcional).
   if [ -n "${BIZU_BACKUP_PASSWORD:-}" ]; then
     psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres \

@@ -74,6 +74,22 @@ describe("parseEnv", () => {
     );
   });
 
+  it("recusa senha de banco de exemplo em produção", () => {
+    const problems = problemsOf({
+      ...base,
+      NODE_ENV: "production",
+      DATABASE_URL: "postgresql://bizu_app:change-me-generate-with-openssl@postgres:5432/bizu",
+      RATE_LIMIT_STORE: "postgres",
+      BETTER_AUTH_SECRET: "u1Z9x2Qw8eRtYuIoPaSdFgHjKlZxCvBnM0987654321=",
+      CREDENTIALS_ENCRYPTION_KEY: "aB3dE6fG9hJ2kL5mN8pQ1rS4tU7vW0xYzA1bC2dE3fg=",
+      AUDIT_SALT: "9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+    });
+
+    expect(problems).toEqual([
+      "DATABASE_URL: use uma senha gerada, não o exemplo do .env.prod.example",
+    ]);
+  });
+
   it("exige a chave de credenciais com 32 bytes em base64", () => {
     const problems = problemsOf({
       ...base,
