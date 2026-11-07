@@ -11,7 +11,7 @@
 
 | Camada | Ferramenta | Uso |
 |--------|------------|-----|
-| Runtime | Node.js 24 | Runtime do build Docker e servidor de producao |
+| Runtime | Node.js 24 | Versao em `.nvmrc` (lida pelo CI), `engines` + `engine-strict` no npm, `node:24-alpine` no Docker |
 | Linguagem | TypeScript 7 | Tipagem estrita em front, server e configs |
 | Package manager | npm | Instalacao e scripts |
 | Modulos | ESM (`type: module`) | Padrao moderno exigido pela integracao RR/Hono |

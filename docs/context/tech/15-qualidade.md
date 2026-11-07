@@ -33,7 +33,7 @@ npm run build
 ```
 
 O CI em `.github/workflows/ci.yml` roda os mesmos comandos em push para `main` e em
-pull requests, com um servico `postgres:16` onde `docker/postgres/init.sql` e aplicado
+pull requests, no Node declarado em `.nvmrc` (`setup-node` com `node-version-file`), com um servico `postgres:16` onde `docker/postgres/init.sql` e aplicado
 via `psql` antes de `db:migrate` e `test:db`, e fecha com
 `npm audit --omit=dev --audit-level=high`.
 

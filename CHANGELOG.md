@@ -11,6 +11,8 @@ incompatível: leia sempre a seção **Migração** antes de atualizar um projet
 ### Alterado
 
 - **Node 24.19 ou superior** em `engines`, `Dockerfile` e CI, piso do `react-router-hono-server` 4.
+- `.nvmrc` com a versão do Node (lida pelo CI via `node-version-file`) e `engine-strict=true` no
+  `.npmrc`: `npm install` em Node antigo falha com `EBADENGINE` em vez de quebrar no dev server.
 - **React Router 8**, `react-router-hono-server` 4, `@hono/node-server` 2, Vite 8 (Rolldown), React 19.3,
   TypeScript 7, postgres.js 4, dotenv 18 e `@hookform/resolvers` 7. `@types/node` fica no major do
   runtime (24), e o Dependabot deixa de propor majors dele.

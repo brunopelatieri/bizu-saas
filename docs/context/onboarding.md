@@ -7,6 +7,7 @@
 ## Primeira execução
 
 ```bash
+nvm use                           # lê .nvmrc (Node 24); sem nvm, confira node -v >= 24.19
 npm install
 cp .env.example .env.local        # gere BETTER_AUTH_SECRET, CREDENTIALS_ENCRYPTION_KEY e AUDIT_SALT
 docker compose up -d              # Postgres em localhost:15432 e Mailpit em localhost:8025
@@ -14,6 +15,9 @@ npm run db:migrate
 npm run dev
 ```
 
+- `npm install` falha com `EBADENGINE` / "Unsupported engine" em Node abaixo de 24.19: o
+  `.npmrc` tem `engine-strict=true` e `package.json` declara `engines.node`. Troque a versão
+  (`nvm use`) em vez de remover a trava.
 - `drizzle-kit` está em **devDependencies**; os scripts `db:*` usam o binário local.
 - `drizzle.config.ts` carrega `.env.local` e usa `DIRECT_URL` (fallback `DATABASE_URL`).
 - Postgres local na porta **15432** do host (5432 costuma estar reservada no Windows).
