@@ -1,10 +1,12 @@
 import { config } from "dotenv";
 import type { SecureHeadersVariables } from "hono/secure-headers";
+import { RouterContextProvider } from "react-router";
 import { createHonoServer } from "react-router-hono-server/node";
 import { api } from "@/api/app";
 import { logError } from "@/api/log";
 import { requestLogger } from "@/api/request-logger";
 import { SCHEMA_BEHIND_MESSAGE, schemaIsBehind } from "@/db/schema-status";
+import { cspNonceRouterContext } from "@/lib/csp-nonce";
 import { EnvError, getEnv } from "@/lib/env";
 import { getLogger } from "@/lib/logger";
 import { flushObservability, initObservability } from "@/lib/observability";
@@ -95,7 +97,11 @@ export default workerOnly
       // em todo DELETE do navegador. Sem isto, responde 500 (`tests/db/tenant-http.test.ts`).
       overrideGlobalObjects: true,
       // O nonce da CSP nasce em `securityHeaders`, na mesma requisição (`entry.server.tsx`).
-      getLoadContext: (c) => ({ cspNonce: c.get("secureHeadersNonce") }),
+      getLoadContext: (c) => {
+        const context = new RouterContextProvider();
+        context.set(cspNonceRouterContext, c.get("secureHeadersNonce"));
+        return context;
+      },
       configure(server) {
         server.use("*", requestLogger);
         // Rotas de negócio (/api/*) são resolvidas antes do handler SSR do RR7.
