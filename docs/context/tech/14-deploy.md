@@ -48,7 +48,7 @@ Variáveis: `docker/.env.prod.example` (copie para `docker/.env.prod`, não vers
 interpola tudo com `${VAR}`: obrigatórias com `:?` (falha dizendo qual falta), opcionais com `:-`
 (vazio vira ausente em `src/lib/env.ts`). Como o Compose interpola até serviços de perfis inativos, as
 do `backup` usam `:-`; o `backup.sh` recusa subir sem elas. Senhas de Postgres só com letras e
-números (entram em URLs).
+números (entram em URLs) e pelo menos 16 caracteres: `init-prod.sh` e `src/lib/env.ts` recusam menos.
 
 Rotina:
 
@@ -71,7 +71,9 @@ serve), "Compose path" `docker/compose.prod.yml`, variáveis em "Environment var
 
 **Postgres gerenciado:** apague o serviço `postgres`, rode `docker/postgres/init.sql` com o `psql` como
 superusuário (`-v bizu_owner_password=... -v bizu_app_password=...`) e ajuste `DATABASE_URL` e
-`DIRECT_URL` no compose. `bizu_backup` precisa de `BYPASSRLS` e `pg_read_all_data` (abaixo).
+`DIRECT_URL` no compose. Sem as variáveis `-v`, o `init.sql` cria os papéis com as senhas de
+desenvolvimento e o app recusa subir: corrija com `ALTER ROLE ... PASSWORD`. `bizu_backup` precisa de
+`BYPASSRLS` e `pg_read_all_data` (abaixo).
 
 **Teste local sem TLS:** `SITE_ADDRESS=http://localhost`, `APP_URL=http://localhost:4181`,
 `HTTP_PORT=4181`, `HTTPS_PORT=4443`.
@@ -108,7 +110,7 @@ Runtime (a lista completa está em `.env.example`; a validação, em `src/lib/en
 
 - `NODE_ENV=production`, `PORT=3000`
 - `APP_URL` com `https://`, `TRUSTED_PROXY_HOPS=1` (um por reverse proxy)
-- `DATABASE_URL` (`bizu_app`), `DIRECT_URL` (`bizu_owner`; exigida em todo processo, mas só migrations e `jobs:install` a usam: no compose, `app` e `worker` recebem a do `bizu_app` e só o `migrate` leva a do dono). Senha de banco que começa por `change-me` é recusada em produção
+- `DATABASE_URL` (`bizu_app`), `DIRECT_URL` (`bizu_owner`; exigida em todo processo, mas só migrations e `jobs:install` a usam: no compose, `app` e `worker` recebem a do `bizu_app` e só o `migrate` leva a do dono). Em produção, as duas URLs são recusadas com senha vazia, igual ao usuário, com menos de 16 caracteres ou começada por `change-me`
 - `BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY` (32 bytes em base64), `AUDIT_SALT`: valores
   gerados; os de exemplo derrubam o processo em produção
 - `RATE_LIMIT_STORE=postgres`: `memory` derruba o processo em produção

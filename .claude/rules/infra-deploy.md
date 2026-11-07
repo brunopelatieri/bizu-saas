@@ -18,7 +18,7 @@ paths:
 - `docker-compose.yml` sobe Postgres (porta `15432`, papéis `bizu_owner`/`bizu_app` via `docker/postgres/init.sql`) e Mailpit (`1025`/`8025`) de desenvolvimento.
 - Produção é `docker/compose.prod.yml` (app, worker, migrate, postgres, caddy, backup; perfis `worker`, `tools`, `backup`), com variáveis de `docker/.env.prod` (modelo em `docker/.env.prod.example`, que acompanha `.env.example` e `src/lib/env.ts`). Nome de projeto `bizu-saas-prod`, para não dividir volume com o dev.
 - `init.sql` recebe as senhas por variáveis do `psql` (`init-prod.sh` as passa); o estágio `build` do `Dockerfile` é o alvo do serviço `migrate`, e o `.dockerignore` não pode excluir `drizzle/`.
-- Só o `migrate` recebe a `DIRECT_URL` do `bizu_owner`; `app` e `worker` levam a do `bizu_app`. Senha de banco começada por `change-me` é recusada em produção (`env.ts` e `init-prod.sh`).
+- Só o `migrate` recebe a `DIRECT_URL` do `bizu_owner`; `app` e `worker` levam a do `bizu_app`. Senha de banco começada por `change-me` ou com menos de 16 caracteres é recusada em produção (`env.ts` e `init-prod.sh`); `env.ts` recusa também vazia ou igual ao usuário.
 - Variável nova entra em `src/lib/env.ts` (Zod) e em `.env.example`; o servidor valida tudo na inicialização.
 - Segredos nunca são versionados; `.env.example` leva só valores de exemplo.
 - Migrations são etapa separada do container da aplicação: `docker compose ... --profile tools run --rm migrate`.

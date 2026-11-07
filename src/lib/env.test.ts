@@ -74,20 +74,80 @@ describe("parseEnv", () => {
     );
   });
 
-  it("recusa senha de banco de exemplo em produção", () => {
-    const problems = problemsOf({
+  describe("senha de banco em produção", () => {
+    const strong = "9f8e7d6c5b4a39281706f5e4d3c2b1a0";
+    const production = {
       ...base,
       NODE_ENV: "production",
-      DATABASE_URL: "postgresql://bizu_app:change-me-generate-with-openssl@postgres:5432/bizu",
+      DATABASE_URL: `postgresql://bizu_app:${strong}@postgres:5432/bizu`,
+      DIRECT_URL: `postgresql://bizu_owner:${strong}@postgres:5432/bizu`,
       RATE_LIMIT_STORE: "postgres",
       BETTER_AUTH_SECRET: "u1Z9x2Qw8eRtYuIoPaSdFgHjKlZxCvBnM0987654321=",
       CREDENTIALS_ENCRYPTION_KEY: "aB3dE6fG9hJ2kL5mN8pQ1rS4tU7vW0xYzA1bC2dE3fg=",
       AUDIT_SALT: "9f8e7d6c5b4a39281706f5e4d3c2b1a0",
+    };
+    const weak =
+      "senha fraca (vazia, igual ao usuário ou com menos de 16 caracteres): gere com openssl rand -hex 24, aplique com ALTER ROLE e atualize a URL";
+
+    it("aceita senha gerada", () => {
+      expect(problemsOf(production)).toEqual([]);
     });
 
-    expect(problems).toEqual([
-      "DATABASE_URL: use uma senha gerada, não o exemplo do .env.prod.example",
-    ]);
+    it("recusa o valor de exemplo", () => {
+      const problems = problemsOf({
+        ...production,
+        DATABASE_URL: "postgresql://bizu_app:change-me-generate-with-openssl@postgres:5432/bizu",
+      });
+
+      expect(problems).toEqual([
+        "DATABASE_URL: use uma senha gerada, não o exemplo do .env.prod.example",
+      ]);
+    });
+
+    it("recusa as senhas de desenvolvimento do init.sql", () => {
+      const problems = problemsOf({
+        ...production,
+        DATABASE_URL: "postgresql://bizu_app:bizu_app@db.example.com:5432/bizu",
+        DIRECT_URL: "postgresql://bizu_owner:bizu_owner@db.example.com:5432/bizu",
+      });
+
+      expect(problems).toEqual([`DATABASE_URL: ${weak}`, `DIRECT_URL: ${weak}`]);
+    });
+
+    it.each([
+      ["vazia", "postgresql://bizu_app@db.example.com:5432/bizu"],
+      ["vazia depois dos dois-pontos", "postgresql://bizu_app:@db.example.com:5432/bizu"],
+      ["curta", "postgresql://bizu_app:Xy7pQ2mK9vT4wL1@db.example.com:5432/bizu"],
+      [
+        "longa, mas igual ao usuário em outra caixa",
+        "postgresql://servico_da_aplicacao:SERVICO_DA_APLICACAO@db.example.com:5432/bizu",
+      ],
+      ["curta mesmo com escapes", "postgresql://bizu_app:%41%42%43%44%45%46@db.example.com:5432/bizu"],
+    ])("recusa senha %s", (_, url) => {
+      expect(problemsOf({ ...production, DATABASE_URL: url })).toEqual([`DATABASE_URL: ${weak}`]);
+    });
+
+    it("não imprime a senha na mensagem", () => {
+      const problems = problemsOf({
+        ...production,
+        DATABASE_URL: "postgresql://bizu_app:curtinha@db.example.com:5432/bizu",
+      });
+
+      expect(problems.join("\n")).not.toContain("curtinha");
+    });
+
+    it("não derruba com escape inválido na URL", () => {
+      const url = `postgresql://bizu_app:${strong}%ZZ@db.example.com:5432/bizu`;
+
+      expect(problemsOf({ ...production, DATABASE_URL: url })).toEqual([]);
+    });
+
+    it("não vale fora de produção", () => {
+      expect(problemsOf({ ...production, NODE_ENV: "test", DATABASE_URL: base.DATABASE_URL })).toEqual(
+        [],
+      );
+      expect(problemsOf(base)).toEqual([]);
+    });
   });
 
   it("exige a chave de credenciais com 32 bytes em base64", () => {
@@ -105,6 +165,8 @@ describe("parseEnv", () => {
     const env = parseEnv({
       ...base,
       NODE_ENV: "production",
+      DATABASE_URL: "postgresql://bizu_app:9f8e7d6c5b4a39281706f5e4d3c2b1a0@postgres:5432/bizu",
+      DIRECT_URL: "postgresql://bizu_owner:0a1b2c3d4e5f60718293a4b5c6d7e8f9@postgres:5432/bizu",
       BETTER_AUTH_SECRET: "u1Z9x2Qw8eRtYuIoPaSdFgHjKlZxCvBnM0987654321=",
       CREDENTIALS_ENCRYPTION_KEY: "aB3dE6fG9hJ2kL5mN8pQ1rS4tU7vW0xYzA1bC2dE3fg=",
       AUDIT_SALT: "9f8e7d6c5b4a39281706f5e4d3c2b1a0",
