@@ -1,154 +1,158 @@
 # Bizu SaaS
 
-**Bizu SaaS** é o ponto de partida open source para quem vai lançar um SaaS:
-multi-tenant, quatro níveis de login com verificação de e-mail, trial configurável e
-pagamentos em módulos (Pix, boleto e cartão). Tudo sobre Drizzle em qualquer Postgres,
-com documentação viva e fluxo pensado para **AI Software Engineering**.
+**Bizu SaaS** é o ponto de partida open source para quem vai lançar um SaaS: multi-tenant,
+quatro níveis de login com verificação de e-mail, trial configurável e pagamentos em módulos.
+Tudo sobre Drizzle em qualquer Postgres, com documentação viva e fluxo pensado para
+**AI Software Engineering**.
 
-> **Em construção.** O projeto está sendo transformado a partir do antigo Bizu
-> Starter seguindo a spec em [`docs/specs/saas-foundation/`](docs/specs/saas-foundation/spec.md).
-> O estado real de cada fase está em [`docs/context/status.md`](docs/context/status.md).
-> Hoje o site público, a infra local e a autenticação da equipe funcionam; tenants e
-> cobrança entram nas próximas fases.
+[![CI](https://github.com/brunopelatieri/bizu-saas/actions/workflows/ci.yml/badge.svg)](https://github.com/brunopelatieri/bizu-saas/actions/workflows/ci.yml)
+[Licença MIT](LICENSE) · [Changelog](CHANGELOG.md) · [Contribuir](CONTRIBUTING.md) · [Segurança](SECURITY.md)
 
 ---
 
-## 📋 Índice
+## Índice
 
-- [O que o Bizu SaaS entrega](#o-que-o-bizu-saas-entrega)
-- [Níveis de acesso](#níveis-de-acesso)
-- [Resumo Técnico 80/20](#resumo-técnico-8020)
-- [Metodologia](#metodologia)
-- [Como Clonar e Rodar](#como-clonar-e-rodar)
-- [Variáveis Principais](#variáveis-principais)
-- [Scripts Úteis](#scripts-úteis)
-- [Documentação](#documentação)
-- [Autor](#autor)
-
----
-
-## O que o Bizu SaaS entrega
-
-Quando todas as fases da spec estiverem concluídas:
-
-- Landing page, página de preços e blog com SSR e SEO.
-- Autenticação própria sobre Postgres (Better Auth + Drizzle), com verificação de
-  e-mail por link em todos os cadastros, recuperação de senha, 2FA e sessões em banco.
-- Multi-tenant com isolamento por `tenant_id` na aplicação e Row Level Security no
-  Postgres, provado por testes.
-- Papéis `owner`, `admin`, `member` e papéis personalizados por tenant.
-- Área do proprietário (`/admin`), área do owner e equipe (`/app`) e portal do
-  cliente (`/portal`).
-- Planos, trial configurável (inclusive gratuito), assinaturas, inadimplência e
-  webhooks verificados, com Stripe e Asaas como primeiros módulos.
-- E-mails transacionais com provedor substituível, Mailpit no desenvolvimento e fila
-  de jobs no próprio Postgres.
-- Auditoria, personificação com consentimento, base de LGPD, Docker para VPS, CI,
-  migrations, seed e este tutorial.
-
-**Já disponível hoje:** site público com SSR, API Hono em processo único, Drizzle,
-rate limit, headers de segurança, Postgres com papéis de runtime e migração, Mailpit,
-validação de variáveis de ambiente, lint, testes (unitários e de banco) e CI.
+1. [O que é o Bizu SaaS](#1-o-que-é-o-bizu-saas)
+2. [Pré-requisitos](#2-pré-requisitos)
+3. [Clonar e instalar](#3-clonar-e-instalar)
+4. [Subir os serviços e rodar](#4-subir-os-serviços-e-rodar)
+5. [Primeiro acesso](#5-primeiro-acesso)
+6. [Testar o cadastro e a verificação de e-mail](#6-testar-o-cadastro-e-a-verificação-de-e-mail)
+7. [Pagamentos](#7-pagamentos)
+8. [E-mail real](#8-e-mail-real)
+9. [Personalizar e remover módulos](#9-personalizar-e-remover-módulos)
+10. [Deploy em VPS](#10-deploy-em-vps)
+11. [Receber atualizações do template](#11-receber-atualizações-do-template)
+12. [Scripts, documentação, contribuição, segurança e licença](#12-scripts-documentação-contribuição-segurança-e-licença)
 
 ---
 
-## Níveis de acesso
+## 1. O que é o Bizu SaaS
+
+Um **template**, não um produto: cada decisão serve de ponto de partida para projetos
+derivados, simples de entender, de trocar e de remover. Os módulos opcionais (provedor de
+pagamento, e-mail, arquivos, Sentry) ficam em pasta própria e somem ao apagar a pasta e uma
+linha de registro.
+
+**Para quem:** quem vai abrir um SaaS (sozinho ou com um agente de IA) e não quer refazer
+autenticação, tenants, planos, e-mail, LGPD e deploy toda vez.
+
+**Quatro níveis de acesso:**
 
 | Nível | Área | Quem é |
 |---|---|---|
-| Proprietário da plataforma | `/admin` | Quem opera o SaaS: tenants, planos, trial, assinaturas, suporte |
+| Proprietário da plataforma | `/admin` | Quem opera o SaaS: organizações, planos, trial, assinaturas, suporte |
 | Owner da conta | `/app` | Cliente do SaaS, dono de um tenant |
 | Colaborador | `/app` | Equipe do owner, com papel `admin`, `member` ou personalizado |
 | Cliente/lead | `/portal` | Cliente do owner, com login próprio dentro do tenant |
 
----
+**O que vem pronto:**
 
-## Resumo Técnico 80/20
+- Landing, página de preços e blog com SSR e SEO.
+- Autenticação (Better Auth + Drizzle) com verificação de e-mail de uso único, recuperação de
+  senha, 2FA, sessões em banco, e uma segunda instância só para clientes do portal.
+- Multi-tenant com `tenant_id` e Row Level Security no Postgres, provado por testes. Papéis
+  `owner`, `admin`, `member` e personalizados.
+- Planos, trial configurável (inclusive gratuito), limites por plano, assinaturas, inadimplência e
+  webhooks verificados, com o módulo Stripe pronto (veja [Pagamentos](#7-pagamentos)).
+- E-mail transacional com provedor substituível e fila de jobs no próprio Postgres (pg-boss).
+- Auditoria, personificação com consentimento, LGPD (consentimento, exportação, exclusão com
+  carência, retenção), módulo de arquivos, logs JSON e Sentry opcional.
+- Docker de desenvolvimento, **stack de produção com Caddy e TLS**, backup cifrado, CI e este tutorial.
+
+**Demo:** em breve. Enquanto isso, o seed deste tutorial entrega um ambiente completo em minutos.
+
+**Stack:** React 19, TypeScript, React Router v7 (SSR), Vite, Tailwind v4, shadcn/ui, Hono,
+Drizzle, Postgres, Zod, TanStack Query, React Hook Form, Better Auth, pg-boss, Nodemailer,
+Biome, Vitest e Docker.
 
 ```text
-React Router v7 Framework Mode + SSR global
-  |
+React Router v7 Framework Mode + SSR
   |-- /api/*              Hono API -> Drizzle -> Postgres (RLS por tenant)
   |-- /, /sobre, /blog    rotas públicas com SSR e SEO
-  |-- /login, /cadastro   autenticação (Better Auth) com verificação de e-mail
-  |-- /app/**             owner e equipe, client-side, sem loader sensível
-  |-- /admin/**           proprietário (fase 5)
+  |-- /login, /cadastro   autenticação com verificação de e-mail
+  |-- /app/**             owner e equipe (client-side, sem loader sensível)
+  |-- /admin/**           proprietário da plataforma
   `-- /portal/**          clientes e leads, com login próprio
 ```
 
-**Stack principal:** React 19, TypeScript, React Router v7, Vite, Tailwind v4,
-shadcn/ui, Hono, Drizzle, Postgres, Zod, Zustand, TanStack Query, React Hook Form,
-Better Auth, pg-boss, Nodemailer, Biome, Vitest e Docker.
+O estado de cada fase da spec está em [`docs/context/status.md`](docs/context/status.md); a spec
+completa, em [`docs/specs/saas-foundation/`](docs/specs/saas-foundation/spec.md).
 
 ---
 
-## Metodologia
+## 2. Pré-requisitos
 
-PRD e SPEC antes do código, contexto enxuto carregado sob demanda e mudanças pequenas
-e documentadas. Humanos e agentes de IA trabalham com o mesmo mapa técnico.
-
-```text
-PRD -> SPEC -> implementação -> lint + tipos + testes + build -> /code-review -> atualizar contexto
-```
-
-| Nível | O que é | Quando carrega |
-|---|---|---|
-| Fixo | `CLAUDE.md` + `docs/context/INDEX.md` | Toda sessão |
-| Por escopo | Rules em `.claude/rules/` e `.cursor/rules/` | Ao tocar os arquivos cobertos |
-| Sob demanda | `docs/context/**` e skills `ctx-*` | Quando a tarefa pede |
-| Arquivo morto | `docs/context/archive/` | Só por pedido explícito |
-
-Comandos no Claude Code: `/prd <feature>`, `/spec <feature>`, `/ctx-banco-drizzle`,
-`/ctx-auth`, `/ctx-api-hono`, `/ctx-dashboard`, `/ctx-infra-deploy`, `/context-budget`.
-O método completo está em `docs/context/ai-engineering.md`.
+- **Node.js 22.12 ou superior** (`node -v`).
+- **Docker** com Compose v2 (`docker compose version`): sobe o Postgres e o Mailpit.
+- **Git**.
+- Opcional: `openssl` para gerar segredos (o Node serve, veja abaixo).
 
 ---
 
-## Como Clonar e Rodar
-
-**Pré-requisitos:** Node.js 22.12 ou superior, Docker e Git.
+## 3. Clonar e instalar
 
 ```bash
 git clone https://github.com/brunopelatieri/bizu-saas.git
 cd bizu-saas
-
 npm install
 cp .env.example .env.local
 ```
 
-Gere os segredos e cole em `.env.local` (um comando por variável):
+O `.env.local` é ignorado pelo git. Gere os **três segredos** e cole cada um em `.env.local`
+(os valores de exemplo funcionam em desenvolvimento, mas são **recusados em produção**; gere
+agora para pegar o hábito). Com `openssl`:
 
 ```bash
 openssl rand -base64 32   # BETTER_AUTH_SECRET
 ```
 
 ```bash
-openssl rand -base64 32   # CREDENTIALS_ENCRYPTION_KEY
+openssl rand -base64 32   # CREDENTIALS_ENCRYPTION_KEY (precisa ter 32 bytes em base64)
 ```
 
 ```bash
 openssl rand -hex 16      # AUDIT_SALT
 ```
 
-Suba os serviços locais e aplique as migrations:
+Sem `openssl` (Windows, por exemplo), o mesmo com o Node:
+
+```bash
+node -e "const c=require('crypto');console.log('BETTER_AUTH_SECRET='+c.randomBytes(32).toString('base64'));console.log('CREDENTIALS_ENCRYPTION_KEY='+c.randomBytes(32).toString('base64'));console.log('AUDIT_SALT='+c.randomBytes(16).toString('hex'))"
+```
+
+Defina também `SEED_PASSWORD` em `.env.local` (mínimo de 10 caracteres): é a senha de todas as
+contas de exemplo e só vale para desenvolvimento.
+
+---
+
+## 4. Subir os serviços e rodar
 
 ```bash
 docker compose up -d
 ```
 
+Sobe o Postgres 16 (porta `15432` do host; no Windows a `5432` costuma estar reservada) e o
+**Mailpit**. No primeiro start, `docker/postgres/init.sql` cria o banco `bizu` e dois papéis:
+
+| Papel | Usado por | Permissão |
+|---|---|---|
+| `bizu_owner` | `DIRECT_URL`: migrations e instalação da fila | Dono das tabelas |
+| `bizu_app` | `DATABASE_URL`: aplicação em runtime e seed | Sem `BYPASSRLS`: o Row Level Security vale para ele |
+
+Depois, três comandos, nesta ordem:
+
 ```bash
 npm run db:migrate
 ```
-
-Instale a fila de jobs (pg-boss, schema `pgboss`; roda com `DIRECT_URL` e é idempotente):
 
 ```bash
 npm run jobs:install
 ```
 
-Crie os dados de exemplo (proprietário da plataforma, planos e o tenant `acme`). Defina antes
-`SEED_PASSWORD` no `.env.local` (mínimo de 10 caracteres). É idempotente e recusa produção
-sem `SEED_ALLOW_PRODUCTION=1`:
+`jobs:install` cria as tabelas e filas do pg-boss (schema `pgboss`); roda com `DIRECT_URL` e é
+idempotente. Em seguida, os dados de exemplo (idempotente; recusa produção sem
+`SEED_ALLOW_PRODUCTION=1`):
 
 ```bash
 npm run db:seed
@@ -158,35 +162,30 @@ npm run db:seed
 npm run dev
 ```
 
-Todo e-mail passa por essa fila e, em desenvolvimento, é capturado pelo Mailpit em
-`http://localhost:8025`. Para revisar os templates sem enviar nada:
-`npm run email:preview` (grava `.tmp/emails/index.html`).
-
 | Serviço | Endereço |
 |---|---|
 | App em desenvolvimento | `http://localhost:5173` |
 | Postgres | `localhost:15432`, banco `bizu` |
 | Mailpit (e-mails capturados) | `http://localhost:8025` |
 
-### Postgres e papéis
+**Se algo falhar:**
 
-O `docker compose up` cria dois papéis no primeiro start (`docker/postgres/init.sql`):
+| Problema | Solução |
+|---|---|
+| `drizzle-kit` não encontrado | Rode `npm install` antes do migrate |
+| Erro de conexão | Confira `docker compose ps` e se `.env.local` aponta para `localhost:15432` |
+| Porta `15432` ocupada | Crie `docker-compose.override.yml` (ignorado pelo git) com `services.postgres.ports: !override ["15434:5432"]` e troque a porta em `DATABASE_URL` e `DIRECT_URL` |
+| `role "bizu_owner" does not exist` | O volume é antigo: `docker compose down -v` e suba de novo |
+| O app não sobe e lista variáveis | `src/lib/env.ts` valida tudo na inicialização, sem imprimir valores; compare com `.env.example` |
+| `CREDENTIALS_ENCRYPTION_KEY` inválida | Precisa ser base64 de exatamente 32 bytes (use um dos comandos acima) |
 
-| Papel | Usado por | Permissão |
-|---|---|---|
-| `bizu_owner` | `DIRECT_URL`: migrations, seed e instalação da fila | Dono das tabelas |
-| `bizu_app` | `DATABASE_URL`: aplicação em runtime | Sem `BYPASSRLS`; o Row Level Security vale para ele |
+Mais casos em [`docs/context/onboarding.md`](docs/context/onboarding.md).
 
-Em um Postgres próprio, rode o mesmo SQL de `docker/postgres/init.sql` como
-superusuário antes do `db:migrate`. Se você vinha do Bizu Starter, o volume antigo
-usa o banco `portal`: rode `docker compose down -v` antes de subir de novo.
+---
 
-### Autenticação
+## 5. Primeiro acesso
 
-Better Auth com sessão em cookie, sobre o mesmo Postgres. Antes do primeiro acesso, troque
-`BETTER_AUTH_SECRET` no `.env.local` (`openssl rand -base64 32`) e rode as migrations.
-
-**Primeiro acesso com o seed:**
+Entre em `http://localhost:5173/login` com as contas do seed. A senha é a de `SEED_PASSWORD`:
 
 | Conta | Entra em | Papel |
 |---|---|---|
@@ -197,40 +196,39 @@ Better Auth com sessão em cookie, sobre o mesmo Postgres. Antes do primeiro ace
 | `julia@cliente.local` | `/portal/login?org=acme` | cliente ativa nos tenants `acme` e `beta` |
 | `lead@cliente.local` | não entra | lead do `acme`, sem senha, à espera do envio de acesso |
 
-A senha é a de `SEED_PASSWORD`. Em `/admin` você vê organizações, usuários, planos e as
-configurações do período de teste (dias, plano padrão e carência). Uma organização nova
-(cadastro, confirmação do e-mail e onboarding) já nasce em teste no plano padrão, com o aviso
-no topo de `/app`; `/precos` lista os planos ativos. Os `provider_price_ref` dos preços
-ficam vazios até você ligar um provedor (veja [Pagamentos](#pagamentos)).
+O seed também cria os planos `free`, `basic` e `pro` (sem `provider_price_ref`: ficam vazios até
+você ligar um provedor) e o tenant `beta`, em trial.
 
-**Portal do cliente:** clientes e leads têm login próprio, separado da equipe. Em
-`/app/clientes`, cadastre alguém e clique em "Enviar acesso ao portal"; o convite cai no Mailpit
-(`http://localhost:8025`) e abre `/portal/entrar`, onde um botão faz a entrada. Depois disso, a
-pessoa pede um link de 10 minutos em `/portal/login?org=<slug>` ou define uma senha em
-`/portal/conta`. Quem é cliente de mais de um tenant escolhe em `/portal/escolher`.
+- **`/admin`:** organizações, usuários, planos, assinaturas, webhooks e as configurações do
+  período de teste (dias, plano padrão, carência) e do encarregado de dados.
+- **`/app`:** visão geral, clientes, equipe, assinatura e configurações, com o aviso de trial no
+  topo. Convide a equipe em `/app/equipe`: o convite cai no Mailpit, vale 48 horas e a página
+  que ele abre não o consome; um botão aceita.
+- **`/portal`:** em `/app/clientes`, cadastre alguém e clique em "Enviar acesso ao portal". O convite
+  cai no Mailpit e abre `/portal/entrar`. Depois, a pessoa pede um link de 10 minutos em
+  `/portal/login?org=<slug>` ou define uma senha em `/portal/conta`. Quem é cliente de mais de um
+  tenant escolhe em `/portal/escolher`.
+- **Mailpit:** todo e-mail do app aparece em `http://localhost:8025`. Para revisar os templates sem
+  enviar nada: `npm run email:preview` (grava `.tmp/emails/index.html`).
 
-**Primeiro acesso sem o seed:**
+Detalhes em [`docs/context/tech/08-auth.md`](docs/context/tech/08-auth.md),
+[`21-tenant-rbac.md`](docs/context/tech/21-tenant-rbac.md) e
+[`25-portal-clientes.md`](docs/context/tech/25-portal-clientes.md).
 
-1. Com `npm run dev` no ar, cadastre-se em `http://localhost:5173/cadastro`.
+---
+
+## 6. Testar o cadastro e a verificação de e-mail
+
+1. Com `npm run dev` no ar, cadastre-se em `http://localhost:5173/cadastro` (e aceite os termos).
 2. Abra o Mailpit em `http://localhost:8025` e clique no link recebido.
-3. Na página aberta, clique em **Confirmar meu e-mail**.
-4. Em `/app/onboarding`, crie sua organização (nome e identificador). Você vira proprietário
-   dela e entra em `/app`.
+3. Na página aberta, clique em **Confirmar meu e-mail**. O link vale 1 hora e só pode ser usado
+   uma vez; abrir a página não o consome.
+4. Em `/app/onboarding`, crie sua organização (nome e identificador). Você vira owner e entra em
+   `/app`, já em teste no plano padrão.
 
-O link vale por 1 hora e só pode ser usado uma vez; abrir a página não o consome. Sem
-confirmar, o login responde como senha incorreta, e a tela de login oferece o reenvio do link.
-Para testar a recuperação de senha, use `/esqueci-senha`;
-a troca de e-mail fica em `/app/configuracoes`.
-
-**Convidar a equipe:**
-
-1. Em `/app/equipe`, informe o e-mail e o papel e clique em **Enviar convite**.
-2. Em outro navegador ou aba anônima, abra o link que chegou no Mailpit. A página mostra o
-   convite; abri-la não o consome.
-3. Cadastre-se com o e-mail do convite e confirme. O onboarding mostra o convite aberto.
-4. Clique em **Aceitar convite**. A pessoa entra em `/app` com as permissões do papel.
-
-O convite vale 48 horas. Papéis personalizados ficam em `/app/configuracoes`.
+Sem confirmar, o login responde como senha incorreta e a tela oferece o reenvio. Para testar a
+recuperação de senha, use `/esqueci-senha`; a troca de e-mail fica em `/app/configuracoes`. As
+respostas de cadastro, reenvio e reset nunca revelam se um e-mail existe.
 
 Sem o seed, promova sua conta a proprietário da plataforma:
 
@@ -238,83 +236,15 @@ Sem o seed, promova sua conta a proprietário da plataforma:
 update "user" set role = 'platform_owner' where email = 'voce@empresa.com';
 ```
 
-Detalhes em `docs/context/tech/08-auth.md` e `docs/context/tech/21-tenant-rbac.md`.
-
-### Testes
-
-```bash
-npm test
-```
-
-```bash
-npm run test:db
-```
-
-`test:db` precisa do Postgres do Docker no ar e das migrations aplicadas.
-
-**Se `db:migrate` falhar:**
-
-| Problema | Solução |
-|---|---|
-| `drizzle-kit` não encontrado | Rode `npm install` antes do migrate |
-| Erro de conexão | Confira `docker compose ps` e se `.env.local` aponta para `localhost:15432` (no Windows a porta 5432 costuma estar reservada) |
-| `role "bizu_owner" does not exist` | O volume é antigo: `docker compose down -v` e suba de novo |
-
-**Servidor de produção local:**
-
-```bash
-npm run build
-```
-
-```bash
-npm run start
-```
-
-`npm run start` força `NODE_ENV=production` (sem isso o servidor não escuta) e lê o
-`.env.local` se existir. Em produção os segredos de exemplo são recusados: gere
-`BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY` e `AUDIT_SALT` antes.
-
 ---
 
-## Variáveis Principais
+## 7. Pagamentos
 
-| Variável | Descrição |
-|---|---|
-| `APP_URL` | URL pública do app; base dos links de e-mail e dos cookies |
-| `DATABASE_URL` | Conexão runtime (`bizu_app`) |
-| `DIRECT_URL` | Conexão do Drizzle Kit e do seed (`bizu_owner`) |
-| `BETTER_AUTH_SECRET` | Assinatura de tokens e cookies da autenticação |
-| `CREDENTIALS_ENCRYPTION_KEY` | Criptografia de credenciais de provedores por tenant; 32 bytes em base64 |
-| `AUDIT_SALT` | Hash de IP no log de auditoria |
-| `EMAIL_PROVIDER`, `EMAIL_FROM`, `SMTP_*` | Envio de e-mail; `smtp` com Mailpit no dev |
-| `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | Com `EMAIL_PROVIDER=resend`; webhook em `/api/webhooks/email/resend` |
-| `JOBS_MODE` | `inline` (workers no servidor), `worker` (`node build/server/index.js --worker`) ou `off` (só enfileira) |
-| `PORT` | Porta do servidor único em produção |
-| `TRUSTED_PROXY_HOPS` | Reverse proxies na frente do app; use `1` atrás de um proxy |
-| `RATE_LIMIT_STORE` | `memory` em dev; `postgres` é obrigatório em produção, e `memory` derruba a subida |
-| `CSP_REPORT_ONLY` | `true` (padrão) só relata violações em `/api/csp-report`; `false` bloqueia. Valide em report-only antes de virar |
-| `STORAGE_PROVIDER`, `STORAGE_LOCAL_DIR`, `S3_*` | Módulo de arquivos: `local` (padrão, pasta `.data/storage`) ou `s3` (MinIO com `S3_ENDPOINT`) |
-| `MAX_UPLOAD_MB` | Teto de um upload em `/api/files` (padrão 10) |
-| `LOG_LEVEL`, `SENTRY_DSN` | Logs JSON (pino) com `request_id`; Sentry opcional, sem DSN nada é carregado |
+**Ficam desligados por padrão.** Com `PAYMENT_PROVIDERS` vazio, o sistema funciona só com planos
+gratuitos e trial: nada pede chave de provedor agora. Cada provedor é um módulo em
+`src/lib/payments/providers/<id>/` e entra pela variável.
 
-A lista completa, com os módulos de pagamento, está em `.env.example`.
-
-### LGPD, arquivos e backup
-
-- Antes de ir ao ar, troque o controlador nos textos de `src/lib/legal/*.md` e informe o e-mail do encarregado em `/admin/configuracoes`. Os textos são modelos: peça revisão jurídica. Retenção e base legal: [docs/context/lgpd.md](docs/context/lgpd.md).
-- Cada pessoa exporta os próprios dados e agenda a exclusão (30 dias) em `/app/configuracoes/privacidade` e `/portal/conta`; o job `lgpd.delete` anonimiza. O owner também exclui a organização.
-- Com `docker compose --profile backup up -d backup` (chave pública `age` em `BACKUP_AGE_RECIPIENT`), o banco e os arquivos locais saem cifrados todo dia. Restauração e teste mensal: `docs/context/tech/14-deploy.md`.
-- MinIO local opcional: bloco comentado no `docker-compose.yml`.
-
-Em produção, contas de plataforma (`platform_owner`, `platform_support`) só usam `/admin` com 2FA:
-no primeiro acesso, a tela de segurança pede a ativação. Vulnerabilidades: veja [SECURITY.md](SECURITY.md).
-
-## Pagamentos
-
-Com `PAYMENT_PROVIDERS` vazio, o sistema funciona só com planos gratuitos e trial. Cada provedor é um
-módulo em `src/lib/payments/providers/<id>/` e entra pela variável.
-
-Para ligar o Stripe em modo de teste:
+Quando for ligar o **Stripe** em modo de teste:
 
 1. Pegue a chave `sk_test_...` no painel e rode a [Stripe CLI](https://docs.stripe.com/stripe-cli):
 
@@ -322,57 +252,244 @@ Para ligar o Stripe em modo de teste:
    stripe listen --forward-to localhost:5173/api/webhooks/payments/stripe
    ```
 
-2. Preencha o `.env.local` com `PAYMENT_PROVIDERS=stripe`, `STRIPE_SECRET_KEY` e o `whsec_...`
-   impresso pelo comando em `STRIPE_WEBHOOK_SECRET`.
+2. No `.env.local`: `PAYMENT_PROVIDERS=stripe`, `STRIPE_SECRET_KEY` e o `whsec_...` impresso pelo
+   comando em `STRIPE_WEBHOOK_SECRET`.
 3. Crie os preços recorrentes no Stripe e cole cada `price_...` em `/admin/planos`.
-4. Em `/app/assinatura`, preencha os dados de faturamento e assine com o cartão `4242 4242 4242 4242`.
+4. Em `/app/assinatura`, preencha os dados de faturamento e assine com o cartão
+   `4242 4242 4242 4242`.
 
-O passo a passo, com o endpoint de produção e o checklist antes de um release, está no
-[README do módulo](src/lib/payments/providers/stripe/README.md). Para escrever outro módulo, siga o
+O passo a passo, o endpoint de produção e o checklist antes de um release estão no
+[README do módulo](src/lib/payments/providers/stripe/README.md). **Asaas** (Pix e boleto) e os demais
+provedores estão em breve; para escrever o seu, siga o
 [checklist de módulos](src/lib/payments/providers/README.md). Assinaturas e webhooks recebidos
 aparecem em `/admin/assinaturas` e `/admin/webhooks`.
 
 ---
 
-## Scripts Úteis
+## 8. E-mail real
+
+Em desenvolvimento, `EMAIL_PROVIDER=smtp` aponta para o Mailpit. Em produção, escolha:
+
+- **`smtp`:** qualquer servidor (`SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`,
+  `SMTP_SECURE`: `true` na porta 465, `false` na 587).
+- **`resend`:** `EMAIL_PROVIDER=resend`, `RESEND_API_KEY` e `RESEND_WEBHOOK_SECRET`; cadastre
+  `https://seu-dominio/api/webhooks/email/resend` no painel para receber bounces e reclamações,
+  que alimentam a lista de supressão.
+- **`memory`** só serve para testes e é recusado em produção.
+
+Em qualquer um, defina `EMAIL_FROM` com um endereço do **seu domínio** e configure no DNS:
+**SPF**, **DKIM** (o provedor fornece o registro) e **DMARC** (comece com `p=none` e endureça
+depois de ver os relatórios). Sem isso, os e-mails de verificação caem em spam. Teste o envio
+real cadastrando uma conta e abrindo o link. Detalhes e templates em
+[`docs/context/tech/19-email.md`](docs/context/tech/19-email.md).
+
+---
+
+## 9. Personalizar e remover módulos
+
+- **Marca e textos:** `src/lib/constants/` (nome, links e navegação do site), `src/components/landing/`,
+  `src/pages/`, blog em `src/lib/content/posts.ts`, `public/` (ícone, `sitemap.xml` e `robots.txt`, que
+  trazem o domínio do autor: troque pelo seu), e-mails em `src/lib/email/`.
+- **Textos legais:** `src/lib/legal/termos.md` e `privacidade.md` são modelos. Preencha o controlador
+  e revise com um advogado (`docs/context/lgpd.md`).
+- **Planos:** edite em `/admin/planos`; para mudar os do seed, `src/db/seed.ts`.
+- **Contexto e agentes:** adapte o [`CLAUDE.md`](CLAUDE.md), `docs/context/` e as rules em
+  `.claude/rules/` e `.cursor/rules/` (sempre em par) ao seu produto. Método e receitas:
+  [`docs/context/ai-engineering.md`](docs/context/ai-engineering.md) e
+  [`docs/context/receitas.md`](docs/context/receitas.md).
+- **Repositório derivado:** troque o canal de [`SECURITY.md`](SECURITY.md), o
+  [`CODEOWNERS`](.github/CODEOWNERS), `name`, `repository` e `author` do `package.json`.
+
+**Remover um módulo:** apague a pasta, a linha de registro e a variável. O script prova que o resto
+continua compilando e passando nos testes sem ele:
 
 ```bash
-npm run dev          # dev server: React Router + Hono
-npm run build        # build de produção
-npm run start        # roda build/server/index.js
-npm run lint         # lint com Biome
-npm run typecheck    # typegen + TypeScript
-npm test             # testes unitários e de API (sem banco)
-npm run test:db      # testes contra o Postgres do Docker
-npm run db:generate  # gera migrations Drizzle
-npm run db:migrate   # aplica migrations
-npm run db:studio    # abre Drizzle Studio
-npm run jobs:install # tabelas e filas do pg-boss (rode após db:migrate)
-npm run db:seed      # dados de exemplo (SEED_PASSWORD); idempotente
-npm run email:preview # renderiza os e-mails em .tmp/emails/
+npm run check:module-removal -- stripe   # pagamento: src/lib/payments/providers/stripe/
+npm run check:module-removal -- sentry   # monitoramento: src/lib/monitoring/sentry/
+npm run check:module-removal -- s3       # arquivos: src/lib/storage/providers/s3/
 ```
 
 ---
 
-## Documentação
+## 10. Deploy em VPS
 
-| Arquivo | Conteúdo |
+A stack de produção é o [`docker/compose.prod.yml`](docker/compose.prod.yml): `app` (porta 3000,
+atrás do Caddy), `worker` (opcional), `migrate` (só sob demanda), `postgres` (com volume e os papéis
+criados a partir das suas senhas), `caddy` (TLS automático e HSTS) e `backup` (opcional). Funciona
+com `docker compose` ou como stack do Portainer (modo **Repository**; o build precisa do repositório).
+
+> ### Antes de ir ao ar
+>
+> - [ ] **Controlador nos textos legais:** preencha os colchetes de `src/lib/legal/termos.md` e
+>       `src/lib/legal/privacidade.md` e peça revisão jurídica.
+> - [ ] **Encarregado (DPO):** informe o e-mail em `/admin/configuracoes`.
+> - [ ] **2FA do proprietário:** ative na conta de plataforma (a tela de segurança pede no primeiro
+>       acesso). **Sem ele, `/admin` responde 403 em produção.**
+> - [ ] **`CSP_REPORT_ONLY=false`:** comece em `true`, navegue pelas telas reais olhando
+>       `/api/csp-report` e logs, e só então mude para `false` (o navegador passa a bloquear).
+> - [ ] **Segredos gerados:** `BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY` e `AUDIT_SALT`
+>       com os valores do exemplo derrubam a subida. Guarde uma cópia da `CREDENTIALS_ENCRYPTION_KEY`
+>       fora do servidor.
+> - [ ] **E-mail real** com SPF, DKIM e DMARC (`EMAIL_PROVIDER=memory` é recusado).
+> - [ ] **Backup** com cópia fora da VPS e teste de restauração (abaixo).
+
+**Passo a passo** (Ubuntu com Docker Engine e Compose v2.20+; DNS do domínio apontando para a VPS e
+portas 80 e 443 livres):
+
+1. Clone o repositório na VPS e crie o `.env` de produção, que o git ignora:
+
+   ```bash
+   git clone https://github.com/brunopelatieri/bizu-saas.git && cd bizu-saas
+   cp docker/.env.prod.example docker/.env.prod
+   ```
+
+2. Edite `docker/.env.prod`: `SITE_ADDRESS` (domínio), `APP_URL` (`https://...`), e-mail e os
+   segredos. Gere os valores (senhas de Postgres só com letras e números, pois entram em URLs):
+
+   ```bash
+   openssl rand -hex 24      # POSTGRES_SUPERUSER_PASSWORD, BIZU_OWNER_PASSWORD, BIZU_APP_PASSWORD
+   openssl rand -base64 32   # BETTER_AUTH_SECRET e CREDENTIALS_ENCRYPTION_KEY
+   openssl rand -hex 16      # AUDIT_SALT
+   ```
+
+   `TRUSTED_PROXY_HOPS=1` (o Caddy) e `RATE_LIMIT_STORE=postgres` já vêm no exemplo.
+
+3. Confira o arquivo, construa a imagem e suba o banco. A partir daqui, use este atalho:
+
+   ```bash
+   alias bizu='docker compose --env-file docker/.env.prod -f docker/compose.prod.yml'
+   bizu config > /dev/null && bizu build && bizu up -d postgres
+   ```
+
+4. Rode as migrations e a instalação da fila, **fora** do container do app:
+
+   ```bash
+   bizu --profile tools run --rm migrate
+   ```
+
+5. Suba o app e o proxy, e confira:
+
+   ```bash
+   bizu up -d app caddy
+   curl -s https://seu-dominio/api/health && curl -s https://seu-dominio/api/ready
+   ```
+
+6. Crie o proprietário da plataforma. O seed é recusado em produção; cadastre-se em `/cadastro`,
+   confirme o e-mail e promova a conta:
+
+   ```bash
+   bizu exec postgres psql -U postgres -d bizu -c "update \"user\" set role = 'platform_owner' where email = 'voce@empresa.com';"
+   ```
+
+   Entre, ative o 2FA e abra `/admin`.
+
+**Operação:**
+
+- **Atualizar** (nova versão): `git pull`, `bizu build`, `bizu --profile tools run --rm migrate`,
+  `bizu up -d app caddy`. Migrations nunca rodam no start do app.
+- **Worker separado:** `COMPOSE_PROFILES=worker` e `APP_JOBS_MODE=off`; permite várias réplicas de `app`
+  sem Redis (o rate limit já está no Postgres).
+- **Postgres gerenciado:** apague o serviço `postgres`, rode `docker/postgres/init.sql` com o `psql`
+  como superusuário (as senhas entram por `-v`, veja o cabeçalho do arquivo) e ajuste as URLs.
+- **Teste local sem TLS:** `SITE_ADDRESS=http://localhost`, `APP_URL=http://localhost:4181`,
+  `HTTP_PORT=4181` e `HTTPS_PORT=4443`; serve para `/api/health` e `/api/ready`.
+- **Portainer:** Stacks > Add stack > Repository, "Compose path" `docker/compose.prod.yml`, e as variáveis de
+  `docker/.env.prod.example` em "Environment variables". O `migrate` roda pelo terminal do host (passo 4), com
+  as mesmas variáveis.
+- **Backup:** defina `BIZU_BACKUP_PASSWORD` **antes** do primeiro start do Postgres, gere a chave
+  com `age-keygen` (a privada fica fora do servidor), defina `BACKUP_AGE_RECIPIENT=age1...` e suba com
+  `COMPOSE_PROFILES=backup`. Um backup agora: `bizu --profile backup run --rm backup once`. Copie o volume
+  `backups` para fora da VPS e rode o teste mensal de restauração. Passo a passo, restauração e a
+  reaplicação das exclusões LGPD: [`docs/context/tech/14-deploy.md`](docs/context/tech/14-deploy.md).
+
+Variáveis, topologia e riscos: [`docs/context/infra-deploy.md`](docs/context/infra-deploy.md).
+
+### Variáveis principais
+
+| Variável | Descrição |
 |---|---|
-| `docs/context/INDEX.md` | Mapa de todo o contexto: ponto de partida para pessoas e agentes |
-| `docs/context/core.md` | Objetivo, arquitetura e regras de decisão |
-| `docs/context/status.md` | O que está pronto e o que falta, por fase |
-| `docs/specs/saas-foundation/` | PRD e SPEC da transformação em SaaS |
-| `docs/context/receitas.md` | Passo a passo das tarefas comuns |
-| `docs/context/ai-engineering.md` | Método de trabalho, economia de tokens e adaptação do template |
-| `docs/context/tech/` | Especificação técnica, um arquivo por seção |
-| `docs/context/infra-deploy.md` | Topologia, credenciais e riscos de deploy |
-| `docs/context/lgpd.md` | Retenção, base legal e encarregado |
-| `.claude/rules/`, `.cursor/rules/` | Regras por domínio para agentes |
-| `.claude/skills/` | Skills de contexto e de fluxo |
+| `APP_URL` | URL pública do app; base dos links de e-mail e dos cookies |
+| `DATABASE_URL` / `DIRECT_URL` | Runtime (`bizu_app`) / migrations e fila (`bizu_owner`) |
+| `BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY`, `AUDIT_SALT` | Segredos obrigatórios; os de exemplo são recusados em produção |
+| `EMAIL_PROVIDER`, `EMAIL_FROM`, `SMTP_*`, `RESEND_*` | Envio de e-mail |
+| `JOBS_MODE` | `inline` (fila no servidor), `worker` (`node build/server/index.js --worker`) ou `off` |
+| `TRUSTED_PROXY_HOPS` | Proxies na frente do app; `1` atrás do Caddy |
+| `RATE_LIMIT_STORE` | `memory` em dev; `postgres` é obrigatório em produção |
+| `CSP_REPORT_ONLY` | `true` só relata violações; `false` bloqueia |
+| `PAYMENT_PROVIDERS` | Módulos de pagamento ativos; vazio = só planos gratuitos |
+| `STORAGE_PROVIDER`, `STORAGE_LOCAL_DIR`, `S3_*`, `MAX_UPLOAD_MB` | Módulo de arquivos |
+| `LOG_LEVEL`, `SENTRY_DSN` | Logs JSON com `request_id`; Sentry opcional |
+
+A lista completa está em [`.env.example`](.env.example) (desenvolvimento) e em
+[`docker/.env.prod.example`](docker/.env.prod.example) (produção).
 
 ---
 
-## Autor
+## 11. Receber atualizações do template
 
-**Bruno Pelatieri Goulart**
-Enterprise Automation Architect • AI • DevOps • n8n Specialist
+Seu projeto nasceu deste repositório e vai divergir. Para trazer correções e novidades:
+
+```bash
+git remote add template https://github.com/brunopelatieri/bizu-saas.git
+git fetch template
+git merge template/main --allow-unrelated-histories   # só na primeira vez
+```
+
+Resolva os conflitos (esperados em `README.md`, `CLAUDE.md`, `docs/context/` e `package.json`), leia a
+seção **Migração** do [CHANGELOG](CHANGELOG.md) de cada versão entre a sua e a nova, rode
+`npm run db:generate` se mexeu no schema e a verificação completa. O passo a passo, com os
+conflitos que costumam aparecer, está em
+[`docs/context/atualizar-template.md`](docs/context/atualizar-template.md).
+
+---
+
+## 12. Scripts, documentação, contribuição, segurança e licença
+
+```bash
+npm run dev          # dev server: React Router + Hono (porta 5173)
+npm run build        # build de produção
+npm run start        # roda build/server/index.js (NODE_ENV=production, lê .env.local)
+npm run lint         # Biome
+npm run typecheck    # typegen + TypeScript
+npm test             # testes unitários e de API (sem banco)
+npm run test:db      # testes contra o Postgres do Docker (funciona em banco novo, sem seed)
+npm run db:generate  # gera migrations Drizzle
+npm run db:migrate   # aplica migrations
+npm run db:studio    # Drizzle Studio
+npm run jobs:install # tabelas e filas do pg-boss (rode após db:migrate)
+npm run db:seed      # dados de exemplo (SEED_PASSWORD); idempotente
+npm run email:preview # renderiza os e-mails em .tmp/emails/
+npm run check:module-removal -- <módulo>   # prova que o módulo sai sem quebrar
+```
+
+**Metodologia:** PRD e SPEC antes do código, contexto enxuto carregado sob demanda e mudanças
+pequenas e documentadas, para humanos e agentes de IA trabalharem com o mesmo mapa técnico.
+
+```text
+PRD -> SPEC -> implementação -> lint + tipos + testes + build -> /code-review -> atualizar contexto
+```
+
+No Claude Code: `/prd <feature>`, `/spec <feature>`, `/ctx-banco-drizzle`, `/ctx-auth`, `/ctx-api-hono`,
+`/ctx-dashboard`, `/ctx-infra-deploy`, `/context-budget`.
+
+| Arquivo | Conteúdo |
+|---|---|
+| [`docs/context/INDEX.md`](docs/context/INDEX.md) | Mapa de todo o contexto: ponto de partida para pessoas e agentes |
+| [`docs/context/core.md`](docs/context/core.md) | Objetivo, arquitetura e regras de decisão |
+| [`docs/context/status.md`](docs/context/status.md) | O que está pronto e o que falta, por fase |
+| [`docs/specs/saas-foundation/`](docs/specs/saas-foundation/spec.md) | PRD e SPEC da transformação em SaaS |
+| [`docs/context/receitas.md`](docs/context/receitas.md) | Passo a passo das tarefas comuns |
+| [`docs/context/ai-engineering.md`](docs/context/ai-engineering.md) | Método de trabalho e adaptação do template |
+| [`docs/context/tech/`](docs/context/tech/) | Especificação técnica, um arquivo por seção |
+| [`docs/context/infra-deploy.md`](docs/context/infra-deploy.md) | Topologia, credenciais e riscos de deploy |
+| [`docs/context/lgpd.md`](docs/context/lgpd.md) | Retenção, base legal e encarregado |
+| [`docs/context/atualizar-template.md`](docs/context/atualizar-template.md) | Receber atualizações do template |
+| `.claude/rules/`, `.cursor/rules/`, `.claude/skills/` | Regras e skills para agentes |
+
+- **Contribuir:** [CONTRIBUTING.md](CONTRIBUTING.md) (fluxo PRD/SPEC, commits, módulos de pagamento e de
+  armazenamento).
+- **Segurança:** [SECURITY.md](SECURITY.md). Não abra issue pública para vulnerabilidade. Em produção,
+  contas de plataforma só usam `/admin` com 2FA.
+- **Licença:** [MIT](LICENSE).
+
+**Autor:** Bruno Pelatieri Goulart · Enterprise Automation Architect • AI • DevOps • n8n Specialist

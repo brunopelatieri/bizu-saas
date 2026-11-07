@@ -27,7 +27,7 @@ PRD -> SPEC -> implementação -> lint + tipos + testes + build -> revisão -> c
 
 ## Ambiente
 
-Siga o tutorial do [README](README.md#2-clonar-e-instalar) até `npm run dev`. Rode o Postgres do
+Siga o tutorial do [README](README.md#3-clonar-e-instalar) até `npm run dev`. Rode o Postgres do
 `docker-compose.yml`; `npm run test:db` precisa dele com as migrations aplicadas, e funciona em um
 banco novo, sem o seed.
 
