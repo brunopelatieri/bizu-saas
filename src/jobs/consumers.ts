@@ -57,7 +57,7 @@ export async function warnIfMixedConsumers(boss: PgBoss) {
 
     getLogger().warn(
       { consumers },
-      "App em JOBS_MODE=inline e worker dedicado consomem a mesma fila. Nenhum job roda em dobro, mas o processo web continua com a carga. Com o perfil worker, defina APP_JOBS_MODE=off no app.",
+      "App em JOBS_MODE=inline e worker dedicado consomem a mesma fila. Nenhum job roda em dobro, mas o processo web continua com a carga. Com o perfil worker, defina APP_JOBS_MODE=off no app. Trocando de modo agora? Confira em /admin: a instância encerrada some do registro.",
     );
   } catch (error) {
     logError("Falha ao verificar os consumidores da fila", error);
