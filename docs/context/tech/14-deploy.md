@@ -74,8 +74,20 @@ superusuário (`-v bizu_owner_password=... -v bizu_app_password=...`) e ajuste `
 `DIRECT_URL` no compose. `bizu_backup` precisa de `BYPASSRLS` e `pg_read_all_data` (abaixo).
 
 **Teste local sem TLS:** `SITE_ADDRESS=http://localhost`, `APP_URL=http://localhost:4181`,
-`HTTP_PORT=4181`, `HTTPS_PORT=4443`. Validado com `/api/health` e `/api/ready` atrás do Caddy. O login
-completo sobre HTTP puro em produção (cookies `Secure`) não foi exercitado: use HTTPS de verdade.
+`HTTP_PORT=4181`, `HTTPS_PORT=4443`.
+
+**Revalidação da stack (fase 11, depois do code-review):** com `-p` próprio e `.env` de segredos gerados,
+`build` (app e `migrate`), `up postgres`, `--profile tools run --rm migrate`, `up app caddy`, `/api/health`
+(`{"ok":true}`) e `/api/ready` (`{"db":true,"jobs":true}`) atrás do Caddy passaram. Com `APP_JOBS_MODE=off`
+e `--profile worker`, o worker subiu só com a `DIRECT_URL` do `bizu_app` (app e worker não recebem a do
+`bizu_owner`) e enviou o e-mail de confirmação de um cadastro novo (o app não tinha a fila ligada).
+
+**Sessão sobre HTTP:** cadastro, e-mail de confirmação (Mailpit via `SMTP_HOST=host.docker.internal`),
+confirmação no navegador e login funcionam em `http://localhost:4181`. Em produção o Better Auth
+emite `__Secure-bizu.session_token` e `__Secure-bizu.session_data` com `HttpOnly; Secure; SameSite=Lax`
+mesmo com `APP_URL` em HTTP; `localhost` é contexto seguro e o navegador os aceita (curl também). Não
+testado, por inferência do comportamento dos navegadores: em IP ou domínio sem HTTPS o cookie `Secure` é
+descartado e a sessão nunca se forma. Fora de `localhost`, só HTTPS.
 
 ### Compose de desenvolvimento
 
