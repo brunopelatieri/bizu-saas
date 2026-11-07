@@ -9,6 +9,11 @@ updates:
     open-pull-requests-limit: 5
     commit-message:
       prefix: "chore(deps)"
+    ignore:
+      # Acompanha o major do Node em produção (Dockerfile): tipos mais novos expõem APIs que não existem.
+      - dependency-name: "@types/node"
+        update-types:
+          - "version-update:semver-major"
     groups:
       minor-and-patch:
         update-types:

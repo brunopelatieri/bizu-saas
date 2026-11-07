@@ -25,9 +25,9 @@ Não há demo pública deste repositório. O README diz "em breve"; quando exist
 
 `Dockerfile` multi-stage:
 
-1. Estágio `build`: Node 22 Alpine, `npm ci`, `npm run build`. Tem devDeps (`drizzle-kit`, `tsx`),
+1. Estágio `build`: Node 24 Alpine, `npm ci`, `npm run build`. Tem devDeps (`drizzle-kit`, `tsx`),
    `drizzle/` e as fontes. É o alvo (`target: build`) do serviço `migrate`.
-2. Estágio `runtime`: Node 22 Alpine, `npm ci --omit=dev`, só `build/`. Expõe `3000`, healthcheck em
+2. Estágio `runtime`: Node 24 Alpine, `npm ci --omit=dev`, só `build/`. Expõe `3000`, healthcheck em
    `/api/health`, `CMD ["node", "build/server/index.js"]`. Sem `drizzle-kit` nem `drizzle/`.
 
 O `.dockerignore` **não** exclui `drizzle/` (o estágio `build` precisa dele); exclui `docs`, `.env*` e

@@ -83,7 +83,7 @@ completa, em [`docs/specs/saas-foundation/`](docs/specs/saas-foundation/spec.md)
 
 ## 2. Pré-requisitos
 
-- **Node.js 22.12 ou superior** (`node -v`).
+- **Node.js 24.19 ou superior** (`node -v`).
 - **Docker** com Compose v2 (`docker compose version`): sobe o Postgres e o Mailpit.
 - **Git**.
 - Opcional: `openssl` para gerar segredos (o Node serve, veja abaixo).

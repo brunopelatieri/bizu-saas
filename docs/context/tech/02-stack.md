@@ -11,7 +11,7 @@
 
 | Camada | Ferramenta | Uso |
 |--------|------------|-----|
-| Runtime | Node.js 22 | Runtime do build Docker e servidor de producao |
+| Runtime | Node.js 24 | Runtime do build Docker e servidor de producao |
 | Linguagem | TypeScript 5.9 | Tipagem estrita em front, server e configs |
 | Package manager | npm | Instalacao e scripts |
 | Modulos | ESM (`type: module`) | Padrao moderno exigido pela integracao RR/Hono |
