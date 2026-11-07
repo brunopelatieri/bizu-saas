@@ -75,9 +75,7 @@ async function serveExport(c: Context, subject: ExportSubject, exportId: string)
 export const lgpdRoutes = new Hono<AuthEnv>();
 
 lgpdRoutes.onError(handleTenantError);
-lgpdRoutes.use("/api/me/export", sameOrigin, jsonBodyLimit);
 lgpdRoutes.use("/api/me/export/*", sameOrigin, jsonBodyLimit);
-lgpdRoutes.use("/api/me/deletion", sameOrigin, jsonBodyLimit);
 lgpdRoutes.use("/api/me/deletion/*", sameOrigin, jsonBodyLimit);
 
 lgpdRoutes.post(
@@ -187,7 +185,6 @@ lgpdRoutes.post(
 export const portalLgpdRoutes = new Hono<PortalAuthEnv>();
 
 portalLgpdRoutes.onError(handleTenantError);
-portalLgpdRoutes.use("/api/portal/me/export", sameOrigin, jsonBodyLimit);
 portalLgpdRoutes.use("/api/portal/me/export/*", sameOrigin, jsonBodyLimit);
 
 portalLgpdRoutes.post(
@@ -228,7 +225,6 @@ portalLgpdRoutes.get(
     ),
 );
 
-portalLgpdRoutes.use("/api/portal/me/deletion", sameOrigin, jsonBodyLimit);
 portalLgpdRoutes.use("/api/portal/me/deletion/*", sameOrigin, jsonBodyLimit);
 
 const portalPerson = (c: Context<PortalAuthEnv>) => {

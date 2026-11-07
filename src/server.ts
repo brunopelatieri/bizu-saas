@@ -7,6 +7,7 @@ import { EnvError, getEnv } from "@/lib/env";
 import { getLogger } from "@/lib/logger";
 import { flushObservability, initObservability } from "@/lib/observability";
 import { getProviders } from "@/lib/payments/registry";
+import { getStorage } from "@/lib/storage";
 
 // Em desenvolvimento, carrega variáveis do .env.local (DATABASE_URL etc.).
 // Em produção (Docker/VPS) as variáveis são injetadas pelo container.
@@ -21,6 +22,8 @@ try {
   getEnv();
   // `PAYMENT_PROVIDERS` com id sem módulo também é configuração errada, não erro na 1ª venda.
   getProviders();
+  // Idem para o armazenamento: módulo ausente é erro de configuração, não de primeiro upload.
+  getStorage();
 } catch (error) {
   if (error instanceof EnvError) {
     console.error(error.message);

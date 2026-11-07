@@ -115,7 +115,6 @@ meRoutes.get("/api/me", authRateLimit, requireAuth, async (c) => {
 });
 
 meRoutes.use("/api/me/consent/*", sameOrigin, jsonBodyLimit);
-meRoutes.use("/api/me/consent", sameOrigin, jsonBodyLimit);
 
 /** Estado do consentimento para a tela de privacidade: marketing e versões já aceitas. */
 meRoutes.get(

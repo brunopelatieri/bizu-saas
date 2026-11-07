@@ -60,6 +60,7 @@ export type UploadInput = {
  */
 export async function uploadFile(input: UploadInput): Promise<FileRecord> {
   const { tenantId, userId, content } = input;
+  const ownerType = input.ownerType ?? "tenant";
 
   if (content.length === 0) {
     throw new TenantRuleError(400, "EMPTY_FILE", "O arquivo está vazio.");
@@ -85,8 +86,9 @@ export async function uploadFile(input: UploadInput): Promise<FileRecord> {
         .insert(file)
         .values({
           tenantId,
-          ownerType: input.ownerType ?? "tenant",
-          ownerId: input.ownerId ?? tenantId,
+          ownerType,
+          // Só o dono `tenant` tem id previsível; outro tipo sem `ownerId` fica sem dono específico.
+          ownerId: input.ownerId ?? (ownerType === "tenant" ? tenantId : null),
           key,
           name: sanitizeFileName(input.name),
           size: content.length,

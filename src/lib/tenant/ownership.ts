@@ -1,4 +1,4 @@
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { member, organization } from "@/db/schema";
 
@@ -6,7 +6,7 @@ import { member, organization } from "@/db/schema";
 const isOwnerRole = sql`${member.role} ~ '(^|,)owner(,|$)'`;
 
 /**
- * Organizações ativas de que a pessoa é a única proprietária. Excluir a conta (ou removê-la)
+ * Organizações ativas ou suspensas de que a pessoa é a única proprietária. Excluir a conta (ou removê-la)
  * deixaria a organização sem dono: antes é preciso transferir a propriedade ou excluir a
  * organização. Organização já em exclusão não conta.
  */
@@ -16,7 +16,11 @@ export async function soleOwnerTenants(userId: string) {
     .from(member)
     .innerJoin(organization, eq(member.organizationId, organization.id))
     .where(
-      and(eq(member.userId, userId), isOwnerRole, eq(organization.status, "active")),
+      and(
+        eq(member.userId, userId),
+        isOwnerRole,
+        inArray(organization.status, ["active", "suspended"]),
+      ),
     );
 
   const sole: Array<{ id: string; name: string }> = [];

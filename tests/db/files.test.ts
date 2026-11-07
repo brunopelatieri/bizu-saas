@@ -119,6 +119,24 @@ describe("módulo de arquivos (/api/files)", () => {
     expect(await readdir(path.join(dir, "tenants", tenantId))).toHaveLength(0);
   });
 
+  it("o dono do arquivo é o tenant por padrão; outro tipo sem ownerId fica sem dono específico", async () => {
+    const byDefault = await upload(admin);
+    const customer = await upload(admin, {
+      fields: { ownerType: "customer" },
+    });
+    const withId = randomUUID();
+    const explicit = await upload(admin, {
+      fields: { ownerType: "customer", ownerId: withId },
+    });
+
+    const owners = async (response: Response) =>
+      ((await response.json()) as { file: { ownerType: string; ownerId: string | null } }).file;
+
+    expect(await owners(byDefault)).toMatchObject({ ownerType: "tenant", ownerId: tenantId });
+    expect(await owners(customer)).toMatchObject({ ownerType: "customer", ownerId: null });
+    expect(await owners(explicit)).toMatchObject({ ownerType: "customer", ownerId: withId });
+  });
+
   it("recusa tipo fora da lista e conteúdo que não bate com o tipo", async () => {
     const html = await upload(admin, {
       name: "x.html",

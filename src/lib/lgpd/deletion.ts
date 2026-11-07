@@ -371,8 +371,9 @@ export async function cancelDeletion(
         and(
           eq(deletionRequest.subjectType, subject.type),
           eq(deletionRequest.subjectId, subject.id),
+          // Vale até o job executar: `pending` com data vencida ainda não foi anonimizado, e
+          // o `FOR UPDATE` do executor decide a corrida com o cancelamento.
           eq(deletionRequest.status, "pending"),
-          sql`${deletionRequest.scheduledFor} > ${now.toISOString()}::timestamptz`,
         ),
       )
       .returning({ tenantId: deletionRequest.tenantId });

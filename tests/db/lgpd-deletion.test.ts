@@ -287,6 +287,32 @@ describe("cancelar a exclusão da conta", () => {
   });
 });
 
+describe("bordas da carência e da propriedade", () => {
+  it("cancela mesmo depois do prazo, enquanto o job ainda não executou", async () => {
+    const user = await newUser();
+    await del("/api/me", user.cookie, { password: PASSWORD });
+    const request = await requestOf(user.id);
+    await makeDue(request?.id ?? "");
+
+    expect((await call("POST", "/api/me/deletion/cancel", { cookie: user.cookie })).status).toBe(
+      200,
+    );
+    expect(await executeDeletion(request?.id ?? "")).toBe("skipped");
+    const [row] = await owner<{ email: string }[]>`select email from "user" where id = ${user.id}`;
+    expect(row?.email).toBe(user.email);
+  });
+
+  it("o único proprietário de uma organização suspensa também não exclui a conta", async () => {
+    const user = await newUser();
+    const tenant = await newTenant(user, "Suspensa Sem Dono");
+    await owner`update organization set status = 'suspended', access_mode = 'locked' where id = ${tenant.id}`;
+
+    const refused = await del("/api/me", user.cookie, { password: PASSWORD });
+    expect(refused.status).toBe(409);
+    expect(await refused.json()).toMatchObject({ code: "LAST_OWNER" });
+  });
+});
+
 describe("job lgpd.delete: conta de equipe", () => {
   it("anonimiza, remove sessões, 2FA, vínculos e exportações, e mantém a auditoria", async () => {
     const user = await newUser();

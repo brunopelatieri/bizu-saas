@@ -1,7 +1,6 @@
 import { Readable } from "node:stream";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
-import { z } from "zod";
 import { requireAuth } from "@/api/auth";
 import { authRateLimit, MINUTE, sameOrigin, validId } from "@/api/guards";
 import {
@@ -14,16 +13,8 @@ import { handleTenantError } from "@/api/tenant-errors";
 import { getEnv } from "@/lib/env";
 import { deleteFile, openFile, uploadFile } from "@/lib/files";
 import { attachmentHeader } from "@/lib/files/types";
+import { ownerSchema } from "@/lib/schemas/files";
 import { TenantRuleError } from "@/lib/tenant/errors";
-
-/** Campos opcionais do multipart: a quem o arquivo pertence no domínio do projeto. */
-const ownerSchema = z.object({
-  ownerType: z
-    .string()
-    .regex(/^[a-z][a-z0-9_]{0,31}$/)
-    .optional(),
-  ownerId: z.uuid().optional(),
-});
 
 /**
  * Módulo de arquivos do tenant. Sem tela genérica: a exportação LGPD usa o `StorageProvider`
@@ -34,7 +25,6 @@ export const fileRoutes = new Hono<TenantEnv>();
 
 fileRoutes.onError(handleTenantError);
 fileRoutes.use("/api/files/*", sameOrigin, authRateLimit);
-fileRoutes.use("/api/files", sameOrigin, authRateLimit);
 
 fileRoutes.post(
   "/api/files",

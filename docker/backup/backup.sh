@@ -12,6 +12,10 @@
 # O usuário do banco precisa atravessar o RLS: superusuário ou um papel com BYPASSRLS e
 # pg_read_all_data (veja docs/context/tech/14-deploy.md). Sem isso o pg_dump falha, em vez de
 # gerar um backup vazio em silêncio.
+#
+# Cada etapa confere o próprio resultado: `set -e` não vale dentro de uma função chamada com
+# `||`, e é assim que o modo `loop` chama `run_once`. Os arquivos temporários em claro (`.dump.*`,
+# `.storage.*`) saem em qualquer desfecho, inclusive se o processo for encerrado.
 set -eu
 
 : "${BACKUP_AGE_RECIPIENT:?defina BACKUP_AGE_RECIPIENT com a chave pública age (age-keygen)}"
@@ -25,27 +29,52 @@ KEEP_DAYS="${BACKUP_KEEP_DAYS:-14}"
 INTERVAL_HOURS="${BACKUP_INTERVAL_HOURS:-24}"
 STORAGE_DIR="${BACKUP_STORAGE_DIR:-/storage}"
 
+# Nada em claro sobra no volume: nem desta rodada, nem de uma que foi morta no meio.
+cleanup_plain() {
+  rm -f "$OUT_DIR"/.dump.* "$OUT_DIR"/.storage.* "$OUT_DIR"/*.partial
+}
+trap cleanup_plain EXIT
+sleeper=
+trap 'kill "$sleeper" 2>/dev/null || true; exit 143' TERM INT
+
+backup_database() {
+  stamp="$1"
+  plain="$OUT_DIR/.dump.$stamp"
+  final="$OUT_DIR/bizu-$stamp.dump.age"
+
+  pg_dump --format=custom --no-owner --no-privileges --file="$plain" || return 1
+  age --recipient "$BACKUP_AGE_RECIPIENT" --output "$final.partial" "$plain" || return 1
+  rm -f "$plain"
+  mv "$final.partial" "$final" || return 1
+  echo "backup: banco em $final"
+}
+
+backup_files() {
+  stamp="$1"
+  plain="$OUT_DIR/.storage.$stamp"
+  final="$OUT_DIR/bizu-$stamp.storage.tar.age"
+
+  # Sem arquivos locais (provedor s3, ou nada enviado ainda), não há o que guardar.
+  if [ ! -d "$STORAGE_DIR" ] || [ -z "$(ls -A "$STORAGE_DIR" 2>/dev/null)" ]; then
+    return 0
+  fi
+
+  tar -C "$STORAGE_DIR" -cf "$plain" . || return 1
+  age --recipient "$BACKUP_AGE_RECIPIENT" --output "$final.partial" "$plain" || return 1
+  rm -f "$plain"
+  mv "$final.partial" "$final" || return 1
+  echo "backup: arquivos em $final"
+}
+
 run_once() {
-  stamp="$(date -u +%Y%m%d-%H%M%S)"
-  dump="$OUT_DIR/bizu-$stamp.dump.age"
-  tmp="$dump.partial"
-
   mkdir -p "$OUT_DIR"
+  cleanup_plain
+  stamp="$(date -u +%Y%m%d-%H%M%S)"
 
-  # `pipefail` não existe no sh do Alpine: o pg_dump grava num arquivo e a cifra lê dele.
-  pg_dump --format=custom --no-owner --no-privileges --file="$OUT_DIR/.dump.$stamp"
-  age --recipient "$BACKUP_AGE_RECIPIENT" --output "$tmp" "$OUT_DIR/.dump.$stamp"
-  rm -f "$OUT_DIR/.dump.$stamp"
-  mv "$tmp" "$dump"
-  echo "backup: banco em $dump"
-
-  if [ -d "$STORAGE_DIR" ] && [ -n "$(ls -A "$STORAGE_DIR" 2>/dev/null)" ]; then
-    files="$OUT_DIR/bizu-$stamp.storage.tar.age"
-    tar -C "$STORAGE_DIR" -cf "$OUT_DIR/.storage.$stamp" .
-    age --recipient "$BACKUP_AGE_RECIPIENT" --output "$files.partial" "$OUT_DIR/.storage.$stamp"
-    rm -f "$OUT_DIR/.storage.$stamp"
-    mv "$files.partial" "$files"
-    echo "backup: arquivos em $files"
+  if ! backup_database "$stamp" || ! backup_files "$stamp"; then
+    cleanup_plain
+    echo "backup: FALHOU" >&2
+    return 1
   fi
 
   find "$OUT_DIR" -name 'bizu-*.age' -mtime "+$KEEP_DAYS" -print -delete
@@ -58,8 +87,10 @@ case "${1:-loop}" in
   loop)
     while true; do
       # Uma rodada que falha não derruba o serviço: tenta de novo no próximo intervalo.
-      run_once || echo "backup: FALHOU, nova tentativa em ${INTERVAL_HOURS}h" >&2
-      sleep "$((INTERVAL_HOURS * 3600))"
+      run_once || echo "backup: nova tentativa em ${INTERVAL_HOURS}h" >&2
+      sleep "$((INTERVAL_HOURS * 3600))" &
+      sleeper=$!
+      wait "$sleeper"
     done
     ;;
   *)

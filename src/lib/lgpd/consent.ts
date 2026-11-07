@@ -47,8 +47,9 @@ export async function recordConsent(
 export async function currentConsents(
   subject: { type: ConsentSubjectType; id: string },
 ) {
+  // Uma linha por tipo (a mais recente): o histórico cresce e `/api/me` chama isto sempre.
   const rows = await getDb()
-    .select({
+    .selectDistinctOn([consentLog.kind], {
       kind: consentLog.kind,
       version: consentLog.version,
       accepted: consentLog.accepted,
@@ -61,12 +62,9 @@ export async function currentConsents(
         eq(consentLog.subjectId, subject.id),
       ),
     )
-    .orderBy(desc(consentLog.createdAt), desc(consentLog.id));
+    .orderBy(consentLog.kind, desc(consentLog.createdAt), desc(consentLog.id));
 
-  const latest = new Map<ConsentKind, (typeof rows)[number]>();
-  for (const row of rows) if (!latest.has(row.kind)) latest.set(row.kind, row);
-
-  return latest;
+  return new Map<ConsentKind, (typeof rows)[number]>(rows.map((row) => [row.kind, row]));
 }
 
 /** Documentos cuja versão vigente a pessoa ainda não aceitou (nunca aceitou, ou versão antiga). */
