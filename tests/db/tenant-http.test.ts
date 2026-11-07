@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { type ServerType, serve } from "@hono/node-server";
 import type postgres from "postgres";
@@ -43,10 +44,10 @@ describe("rotas de equipe sobre o servidor Node", () => {
   let tenantId: string;
   let ipCounter = 0;
 
-  function request(method: string, path: string, init: RequestInit = {}) {
+  function request(method: string, path: string, init: RequestInit = {}, origin = base) {
     ipCounter += 1;
 
-    return fetch(`${base}${path}`, {
+    return fetch(`${origin}${path}`, {
       method,
       ...init,
       headers: {
@@ -56,6 +57,24 @@ describe("rotas de equipe sobre o servidor Node", () => {
         ...init.headers,
       },
     });
+  }
+
+  /**
+   * Servidor descartável para corpo acima do limite: o 413 sai com o corpo ainda em trânsito e o
+   * servidor fecha o socket em seguida, mas o `fetch` já o devolveu ao pool. Num origin próprio
+   * (outra porta) esse socket morto nunca é reaproveitado pelos testes seguintes, que no CI
+   * falhavam com "other side closed" ao reusá-lo.
+   */
+  async function withThrowawayServer<T>(run: (origin: string) => Promise<T>) {
+    const throwaway = await new Promise<Server>((resolve) => {
+      const instance = serve({ fetch: api.fetch, port: 0 }, () => resolve(instance as Server));
+    });
+    try {
+      return await run(`http://127.0.0.1:${(throwaway.address() as AddressInfo).port}`);
+    } finally {
+      throwaway.closeAllConnections();
+      await new Promise((resolve) => throwaway.close(resolve));
+    }
   }
 
   beforeAll(async () => {
@@ -301,12 +320,14 @@ describe("rotas de equipe sobre o servidor Node", () => {
     }
 
     it("webhook em pedaços acima de 1 MB é recusado", async () => {
-      const response = await fetch(`${base}/api/webhooks/payments/${STUB_ID}`, {
-        method: "POST",
-        headers: { "X-Stub-Signature": "ok", "X-Forwarded-For": "10.41.1.1" },
-        body: streamed(2 * 1024 * 1024),
-        duplex: "half",
-      } as RequestInit);
+      const response = await withThrowawayServer((origin) =>
+        fetch(`${origin}/api/webhooks/payments/${STUB_ID}`, {
+          method: "POST",
+          headers: { "X-Stub-Signature": "ok", "X-Forwarded-For": "10.41.1.1" },
+          body: streamed(2 * 1024 * 1024),
+          duplex: "half",
+        } as RequestInit),
+      );
 
       expect(response.status).toBe(413);
     });
@@ -389,11 +410,18 @@ describe("rotas de equipe sobre o servidor Node", () => {
       },
     });
 
-    const response = await request("POST", "/api/tenant", {
-      headers: { "Content-Type": "application/json" },
-      body: stream,
-      duplex: "half",
-    } as RequestInit);
+    const response = await withThrowawayServer((origin) =>
+      request(
+        "POST",
+        "/api/tenant",
+        {
+          headers: { "Content-Type": "application/json" },
+          body: stream,
+          duplex: "half",
+        } as RequestInit,
+        origin,
+      ),
+    );
 
     expect(response.status).toBe(413);
   });
