@@ -51,7 +51,7 @@ Não há demo pública deste repositório; o README diz "em breve".
 - `docker/postgres/init.sql` aceita as senhas por variáveis do `psql` (`bizu_owner_password`, `bizu_app_password`, `bizu_backup_password`); sem elas, usa as de desenvolvimento, que o app recusa em produção.
 - Só o `migrate` leva a `DIRECT_URL` do `bizu_owner`; `app` e `worker` recebem a do `bizu_app`. Senha de banco fraca ou começada por `change-me` é recusada em produção.
 - O estágio `build` do `Dockerfile` é o alvo do `migrate` (tem `drizzle-kit`, `tsx` e `drizzle/`).
-- Migrations rodam fora do container da aplicação, como etapa separada.
+- Migrations rodam fora do container da aplicação, como etapa separada. Em produção, `app` e `worker` recusam subir quando faltam migrations do build (`src/db/schema-status.ts`).
 - Atrás de reverse proxy, defina `TRUSTED_PROXY_HOPS=1` (um valor por proxy na frente).
 - HSTS é configurado no reverse proxy, não no app. Só inclua subdomínios se todos usarem HTTPS.
 

@@ -2,7 +2,7 @@
 
 - **Escopo:** Modelo de deploy, container, stack de produção, variáveis de ambiente, backup e restauração.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-testes-operacao.md` (seção "Deploy e operação")
-- **Paths do código:** `Dockerfile`, `.dockerignore`, `docker/compose.prod.yml`, `docker/.env.prod.example`, `docker/caddy/`, `docker/postgres/`, `docker/backup/`
+- **Paths do código:** `Dockerfile`, `.dockerignore`, `docker/compose.prod.yml`, `docker/.env.prod.example`, `docker/caddy/`, `docker/postgres/`, `docker/backup/`, `src/db/schema-status.ts`
 
 
 ## 14. Deploy em VPS Ubuntu + Docker + Caddy (ou Portainer)
@@ -61,13 +61,27 @@ bizu up -d app caddy
 ```
 
 Atualizar: `git pull`, `bizu build`, `bizu --profile tools run --rm migrate`, `bizu up -d app caddy`.
-Migrations nunca rodam no start do app. Um primeiro proprietário nasce por cadastro e
+Migrations nunca rodam no start do app.
+
+**Esqueceu o `migrate`:** em produção, `app` e `worker` recusam subir (exit 1) quando o banco não tem as
+migrations do build, tanto no banco vazio quanto numa atualização, e o log traz o comando a rodar.
+Rode-o e suba de novo com `bizu up -d app caddy`: o `app` se recupera sozinho nos próximos restarts, mas o
+`caddy` espera o `app` saudável e só sobe com esse `up`. Enquanto o `migrate` roda, o `app` pode
+reiniciar mais de uma vez: com `inline`, ele também encerra até a fila estar instalada. Sem essa recusa, o erro passava despercebido:
+`/api/health` não toca no banco, então o container ficava `healthy`, o Caddy subia e o site ia ao ar com
+login e cadastro quebrados. Banco à frente do build é normal (as migrations vêm antes da imagem) e banco
+fora do ar ou sem permissão não encerra nada: o erro vai para o log e `/api/ready` responde 503 com
+`schema: false`.
+
+Um primeiro proprietário nasce por cadastro e
 `update "user" set role = 'platform_owner'` (o seed é recusado em produção); o 2FA dele é obrigatório,
 senão `/admin` responde 403.
 
 **Portainer:** Stacks > Add stack > **Repository** (o build precisa do repositório; o Web editor não
 serve), "Compose path" `docker/compose.prod.yml`, variáveis em "Environment variables" (perfis por
-`COMPOSE_PROFILES`). O `migrate` roda no terminal do host.
+`COMPOSE_PROFILES`). O `migrate` roda no terminal do host, **antes** do primeiro deploy e de cada
+atualização; sem ele, o `up` da stack falha com o `app` em restart e a causa está nos logs do `app`
+(validado com `docker compose`, não no Portainer).
 
 **Postgres gerenciado:** apague o serviço `postgres`, rode `docker/postgres/init.sql` com o `psql` como
 superusuário (`-v bizu_owner_password=... -v bizu_app_password=...`) e ajuste `DATABASE_URL` e

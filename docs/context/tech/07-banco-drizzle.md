@@ -152,5 +152,6 @@ usa `SEED_PASSWORD`. Conteúdo e regras em `tech/23-billing-planos.md`. Roda com
 - `deletion_request` e `data_export` (RLS forçado; `tenant_id` nulo para pedidos de pessoa, que só se leem com `withPlatformScope`): índices únicos parciais garantem **um pendente por assunto**.
 - `file` (tenant, RLS forçado): metadados do módulo de arquivos; `key` única.
 - Migrations `0017_arquivos` e `0018_lgpd`, ambas com `FORCE ROW LEVEL SECURITY` e `GRANT` no fim do SQL, como `0015`.
+- `0019_leitura_migracoes_runtime` dá ao `bizu_app` leitura de `drizzle.__drizzle_migrations`: `src/db/schema-status.ts` compara o registro mais recente com o último `when` do journal, que entra no bundle. Na subida em produção, faltar migration encerra o processo (`tech/14-deploy.md`); banco à frente do build é normal.
 - `platform_setting` ganha `dpo_email` e `audit_retention_days`.
 - Em testes, o dono (`bizu_owner`) também está sujeito ao RLS: leia essas tabelas com `set_config('app.bypass_tenant', 'on', true)`.

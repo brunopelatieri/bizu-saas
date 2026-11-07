@@ -7,6 +7,9 @@
 #   docker compose --env-file docker/.env.prod -f docker/compose.prod.yml --profile tools run --rm migrate
 #   docker compose --env-file docker/.env.prod -f docker/compose.prod.yml up -d app caddy
 #
+# Sem o passo do migrate, `app` e `worker` encerram na subida dizendo o que rodar, e o `caddy` não
+# sobe: o `up` da stack inteira falha de propósito. Rode o migrate e repita o último comando.
+#
 # Portainer: Stacks > Add stack > Repository, com este arquivo como "Compose path" e as
 # variáveis de docker/.env.prod.example na seção "Environment variables". O build precisa do
 # repositório, então o modo "Web editor" não serve. Perfis: COMPOSE_PROFILES=worker,backup.
@@ -96,6 +99,8 @@ services:
     logging: *logging
 
   # Aplicação: assets, /api/* e SSR no mesmo processo. O healthcheck vem do Dockerfile.
+  # Não depende do `migrate`: migration é etapa manual, nunca efeito de um `up` (a spec proíbe).
+  # A proteção está no app, que recusa subir se faltar migration (src/db/schema-status.ts).
   # APP_JOBS_MODE=inline (padrão) roda a fila aqui. Ao ligar o perfil `worker`, defina
   # APP_JOBS_MODE=off, senão app e worker consomem a mesma fila. O compose não impõe isso: quem
   # sobe por último loga um `warn`, e /admin mostra a combinação (tech/20-jobs.md).

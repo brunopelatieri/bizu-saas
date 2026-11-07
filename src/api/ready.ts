@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import { logError } from "@/api/log";
 import { getDb } from "@/db";
+import { schemaIsBehind } from "@/db/schema-status";
 import { getBoss } from "@/jobs/boss";
 import { QUEUE } from "@/jobs/queues";
 
@@ -9,15 +10,21 @@ export const READY_TIMEOUT_MS = 2000;
 export type ReadyChecks = {
   db: () => Promise<unknown>;
   jobs: () => Promise<unknown>;
+  schema: () => Promise<unknown>;
 };
 
-/** `SELECT 1` no Postgres e a fila `email.send` existente no pg-boss. */
+/** `SELECT 1`, a fila `email.send` no pg-boss e as migrations que este build espera. */
 export const defaultReadyChecks: ReadyChecks = {
   db: () => getDb().execute(sql`select 1`),
   jobs: async () => {
     const boss = await getBoss();
     if (!(await boss.getQueue(QUEUE.emailSend))) {
       throw new Error("fila email.send não existe; rode npm run jobs:install");
+    }
+  },
+  schema: async () => {
+    if (await schemaIsBehind()) {
+      throw new Error("faltam migrations; rode npm run db:migrate");
     }
   },
 };
@@ -40,17 +47,18 @@ function withTimeout(task: () => Promise<unknown>, ms: number) {
 }
 
 /**
- * Prontidão para tráfego (`GET /api/ready`): banco e fila respondem em até 2 s.
+ * Prontidão para tráfego (`GET /api/ready`): banco, fila e schema respondem em até 2 s.
  * Nunca devolve o motivo da falha: o detalhe vai para o log, não para o cliente.
  */
 export async function checkReady(
   checks: ReadyChecks = defaultReadyChecks,
   timeoutMs = READY_TIMEOUT_MS,
 ) {
-  const [db, jobs] = await Promise.all([
+  const [db, jobs, schema] = await Promise.all([
     withTimeout(checks.db, timeoutMs),
     withTimeout(checks.jobs, timeoutMs),
+    withTimeout(checks.schema, timeoutMs),
   ]);
 
-  return { ok: db && jobs, db, jobs };
+  return { ok: db && jobs && schema, db, jobs, schema };
 }

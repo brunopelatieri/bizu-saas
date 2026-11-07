@@ -110,6 +110,7 @@
 | Perfis `worker` e `backup` inativos | Variáveis do `backup` com `:-`, validadas pelo `backup.sh` | O Compose interpola perfis inativos, e `config` falharia sem elas |
 | `README` com demo | "Demo: em breve"; nota da Vercel removida | Nenhuma demo existe para este repositório |
 | `dependabot.yml` (npm semanal) | npm e GitHub Actions, semanal, agrupados por menor/patch e major | Actions desatualizadas são a outra fonte comum de alerta |
+| Migrations em job separado, sem automação no start | Mantido, e o app recusa subir em produção quando faltam migrations; `/api/ready` ganha `schema`; migration `0019` dá ao `bizu_app` leitura de `drizzle.__drizzle_migrations` | Sem o `migrate`, `/api/health` seguia 200 e o site ia ao ar quebrado. `depends_on` no `migrate` resolveria rodando migration a cada `up`, o que a spec proíbe |
 | Job `module-removal` no CI | Entregue depois da fase 11, em matriz (`stripe`, `sentry`, `s3`) | Não estava no escopo da fase 11; o job só roda `npm run check:module-removal -- <id>`, sem banco |
 
 ## Desvios da spec na fase 9

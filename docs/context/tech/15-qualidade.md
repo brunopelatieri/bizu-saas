@@ -51,7 +51,7 @@ npm run build && npm run start
 ```
 
 O script define `NODE_ENV=production` (sem isso o servidor encerra sem escutar) e
-carrega o `.env.local`. Confira `/api/health`, `/api/ready` (`{ db, jobs }`), `/api/me`
+carrega o `.env.local`. Confira `/api/health`, `/api/ready` (`{ db, jobs, schema }`), `/api/me`
 (401) e um cadastro em `/cadastro` com o e-mail chegando no Mailpit.
 
 ---

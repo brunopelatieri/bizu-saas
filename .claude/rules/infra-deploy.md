@@ -21,7 +21,7 @@ paths:
 - Só o `migrate` recebe a `DIRECT_URL` do `bizu_owner`; `app` e `worker` levam a do `bizu_app`. Senha de banco começada por `change-me` ou com menos de 16 caracteres é recusada em produção (`env.ts` e `init-prod.sh`); `env.ts` recusa também vazia ou igual ao usuário.
 - Variável nova entra em `src/lib/env.ts` (Zod) e em `.env.example`; o servidor valida tudo na inicialização.
 - Segredos nunca são versionados; `.env.example` leva só valores de exemplo.
-- Migrations são etapa separada do container da aplicação: `docker compose ... --profile tools run --rm migrate`.
+- Migrations são etapa separada do container da aplicação: `docker compose ... --profile tools run --rm migrate`. Nunca as ligue ao `up` com `depends_on`: em produção, `app` e `worker` recusam subir quando faltam migrations (`src/db/schema-status.ts`).
 - Atrás de reverse proxy, defina `TRUSTED_PROXY_HOPS`; sem isso, todos dividem o mesmo rate limit.
 - HSTS é configurado no reverse proxy, não no app.
 - Produção exige `RATE_LIMIT_STORE=postgres` e `CREDENTIALS_ENCRYPTION_KEY` com 32 bytes em base64. `CSP_REPORT_ONLY=true` só relata: valide nas telas reais antes de virar para `false`.

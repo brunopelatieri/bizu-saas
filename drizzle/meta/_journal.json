@@ -134,6 +134,13 @@
       "when": 1794007309588,
       "tag": "0018_lgpd",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794029495796,
+      "tag": "0019_leitura_migracoes_runtime",
+      "breakpoints": true
     }
   ]
 }
