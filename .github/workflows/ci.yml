@@ -56,3 +56,20 @@ jobs:
       - run: npm run test:db
       - run: npm run build
       - run: npm audit --omit=dev --audit-level=high
+
+  # Prova que Stripe, Sentry e S3 saem apagando a pasta: typecheck e testes sem ela.
+  # Não precisa de banco (npm test roda sem Postgres).
+  module-removal:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        module: [stripe, sentry, s3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check:module-removal -- ${{ matrix.module }}

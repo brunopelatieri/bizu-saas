@@ -37,6 +37,9 @@ pull requests, com um servico `postgres:16` onde `docker/postgres/init.sql` e ap
 via `psql` antes de `db:migrate` e `test:db`, e fecha com
 `npm audit --omit=dev --audit-level=high`.
 
+Um segundo job, `module-removal`, roda `npm run check:module-removal -- <id>` em matriz (`stripe`,
+`sentry`, `s3`), sem banco: se algo fora da pasta do módulo passar a depender dele, o CI falha.
+
 Testes unitarios e de API ficam ao lado do codigo (`src/**/*.test.ts`): autenticacao,
 protecoes da API, `env.ts` e e-mail com provedor `memory`. Testes com banco real
 ficam em `tests/db/` (`vitest.db.config.ts`, sem paralelismo entre arquivos).
