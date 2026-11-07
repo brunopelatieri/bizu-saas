@@ -12,6 +12,9 @@ RUN npm ci
 COPY . .
 RUN npm run build
 
+# Este estágio também é o alvo `migrate` do docker/compose.prod.yml (`target: build`): tem
+# drizzle-kit, tsx, drizzle/ e as fontes. O runtime não leva nada disso.
+
 # ---------------------------------------------------------------------------
 # Stage 2 — Runtime (apenas deps de produção + artefatos de build)
 # ---------------------------------------------------------------------------

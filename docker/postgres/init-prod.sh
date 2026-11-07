@@ -1,0 +1,28 @@
+#!/bin/sh
+# Primeiro start do volume do Postgres de produção (docker/compose.prod.yml).
+# O entrypoint da imagem executa este script uma vez (ou o carrega com `source`, se o arquivo
+# não tiver o bit de execução) e o psql do próprio container roda o init.sql com as senhas que
+# vêm do ambiente, em vez das de desenvolvimento.
+#
+# Tudo roda num subshell: carregado por `source`, o script não pode mexer nas opções nem nos
+# parâmetros do entrypoint.
+(
+  set -eu
+
+  : "${BIZU_OWNER_PASSWORD:?defina BIZU_OWNER_PASSWORD}"
+  : "${BIZU_APP_PASSWORD:?defina BIZU_APP_PASSWORD}"
+
+  # Sem BIZU_BACKUP_PASSWORD, o papel de backup não é criado (o serviço `backup` é opcional).
+  if [ -n "${BIZU_BACKUP_PASSWORD:-}" ]; then
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres \
+      -v "bizu_owner_password=$BIZU_OWNER_PASSWORD" \
+      -v "bizu_app_password=$BIZU_APP_PASSWORD" \
+      -v "bizu_backup_password=$BIZU_BACKUP_PASSWORD" \
+      -f /opt/bizu/init.sql
+  else
+    psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres \
+      -v "bizu_owner_password=$BIZU_OWNER_PASSWORD" \
+      -v "bizu_app_password=$BIZU_APP_PASSWORD" \
+      -f /opt/bizu/init.sql
+  fi
+)

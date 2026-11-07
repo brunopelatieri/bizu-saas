@@ -1,0 +1,19 @@
+# Reverse proxy do docker/compose.prod.yml: TLS automático (Let's Encrypt) para o domínio
+# em SITE_ADDRESS. Para testar sem TLS, use SITE_ADDRESS=http://localhost.
+{$SITE_ADDRESS:localhost} {
+	encode zstd gzip
+
+	header {
+		# HSTS aqui, não no app. Sem includeSubDomains: só inclua se todo subdomínio tiver HTTPS.
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	# Sem `trusted_proxies`, o Caddy descarta o X-Forwarded-For do cliente e põe o IP da conexão:
+	# é o salto em que TRUSTED_PROXY_HOPS=1 confia. Com outro proxy na frente (Cloudflare, por
+	# exemplo), aumente o valor e configure `trusted_proxies` aqui.
+	reverse_proxy app:3000 {
+		health_uri /api/health
+		health_interval 30s
+	}
+}
