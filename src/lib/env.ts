@@ -131,15 +131,6 @@ export const envSchema = z
     PAYMENT_PROVIDERS: csvList,
     STRIPE_SECRET_KEY: optionalString,
     STRIPE_WEBHOOK_SECRET: optionalString,
-    ASAAS_API_KEY: optionalString,
-    ASAAS_WEBHOOK_TOKEN: optionalString,
-    ASAAS_SANDBOX: booleanString(true),
-    MERCADOPAGO_ACCESS_TOKEN: optionalString,
-    MERCADOPAGO_WEBHOOK_SECRET: optionalString,
-    PAGARME_SECRET_KEY: optionalString,
-    PAGARME_WEBHOOK_SECRET: optionalString,
-    PAGBANK_TOKEN: optionalString,
-    PAGBANK_SANDBOX: booleanString(true),
 
     STORAGE_PROVIDER: z.enum(["local", "s3"]).default("local"),
     STORAGE_LOCAL_DIR: z.string().default(".data/storage"),
@@ -190,11 +181,6 @@ export const envSchema = z
       env.PAYMENT_PROVIDERS.includes("stripe"),
       ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"],
       "obrigatória com stripe em PAYMENT_PROVIDERS",
-    );
-    requireWhen(
-      env.PAYMENT_PROVIDERS.includes("asaas"),
-      ["ASAAS_API_KEY", "ASAAS_WEBHOOK_TOKEN"],
-      "obrigatória com asaas em PAYMENT_PROVIDERS",
     );
     requireWhen(
       env.STORAGE_PROVIDER === "s3",

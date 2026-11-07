@@ -32,7 +32,7 @@ Não há demo pública deste repositório; o README diz "em breve".
 
 - Em produção, as variáveis vêm de `docker/.env.prod` (não versionado, modelo em `docker/.env.prod.example`) ou do Portainer, e o compose as injeta com `${VAR}`.
 - Variável `VITE_*` é fixada no build e vai para o navegador; nunca a use em segredos.
-- `ASAAS_SANDBOX` tem padrão `false` no `docker/compose.prod.yml` (produção usa a API real); `true` só para testar com a conta sandbox.
+- Só há variáveis de pagamento para módulos que existem em `src/lib/payments/providers/` (hoje, `STRIPE_*`). Ao criar um módulo, declare as variáveis dele em `env.ts`, `.env.example`, `docker/compose.prod.yml` e `docker/.env.prod.example`; ao removê-lo, tire-as.
 - Em dev, ficam em `.env.local` (ignorado pelo git).
 - Só `.env.example` é versionado, sempre com valores de exemplo.
 - `src/lib/env.ts` valida tudo na inicialização e, em produção, recusa os segredos de

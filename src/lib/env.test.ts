@@ -49,10 +49,10 @@ describe("parseEnv", () => {
     expect(problemsOf({ ...base, EMAIL_PROVIDER: "resend" })).toContain(
       "RESEND_API_KEY: obrigatória com EMAIL_PROVIDER=resend",
     );
-    expect(problemsOf({ ...base, PAYMENT_PROVIDERS: "stripe, asaas" })).toEqual(
+    expect(problemsOf({ ...base, PAYMENT_PROVIDERS: "stripe" })).toEqual(
       expect.arrayContaining([
         "STRIPE_SECRET_KEY: obrigatória com stripe em PAYMENT_PROVIDERS",
-        "ASAAS_WEBHOOK_TOKEN: obrigatória com asaas em PAYMENT_PROVIDERS",
+        "STRIPE_WEBHOOK_SECRET: obrigatória com stripe em PAYMENT_PROVIDERS",
       ]),
     );
   });

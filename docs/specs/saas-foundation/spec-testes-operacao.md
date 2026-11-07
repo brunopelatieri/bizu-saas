@@ -36,8 +36,9 @@ Cenários obrigatórios (mapeiam os critérios de aceite do PRD):
   `POST /api/billing/checkout` personificado → 403 + auditoria; expira em 1 h.
 - **Jobs:** handler idempotente (rodar duas vezes = mesmo estado); dead letter
   após 5 falhas.
-- **Módulo removível:** CI roda um job extra que apaga `providers/asaas/` e
-  `PAYMENT_PROVIDERS=stripe` e repete lint, typecheck, test e build.
+- **Módulo removível:** CI roda um job extra que apaga a pasta de um módulo
+  (`npm run check:module-removal -- <id>`, hoje `stripe`, `s3` e `sentry`) e repete
+  typecheck e testes.
 
 CI (`ci.yml`): serviço `postgres:16` com `init.sql` montado; `npm ci`, `lint`,
 `typecheck`, `db:migrate`, `test`, `test:db`, `build`, `npm audit --omit=dev
@@ -62,12 +63,13 @@ CI (`ci.yml`): serviço `postgres:16` com `init.sql` montado; `npm ci`, `lint`,
 | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET` | se resend | | |
 | `JOBS_MODE` | não | `inline` | `inline`, `worker`, `off` |
 | `RATE_LIMIT_STORE` | não | `postgres` | `memory` em dev |
-| `PAYMENT_PROVIDERS` | não | `stripe,asaas` | módulos ativos; vazio = só planos gratuitos |
+| `PAYMENT_PROVIDERS` | não | `stripe` | módulos ativos; vazio = só planos gratuitos |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | se stripe | `sk_test_...`, `whsec_...` | |
-| `ASAAS_API_KEY`, `ASAAS_WEBHOOK_TOKEN`, `ASAAS_SANDBOX` | se asaas | `$aact_hmlg_...`, token ≥ 32 chars, `true` | |
-| `MERCADOPAGO_ACCESS_TOKEN`, `MERCADOPAGO_WEBHOOK_SECRET` | módulo futuro | | |
-| `PAGARME_SECRET_KEY`, `PAGARME_WEBHOOK_SECRET` | módulo futuro | | segredo de URL |
-| `PAGBANK_TOKEN`, `PAGBANK_SANDBOX` | módulo futuro | | |
+
+Variáveis de Asaas, Mercado Pago, Pagar.me e PagBank só entram em `env.ts` e nos exemplos
+quando o módulo existir em `providers/<id>/` (Asaas: token de webhook ≥ 32 chars e
+`ASAAS_SANDBOX`; Pagar.me: segredo na URL do webhook).
+
 | `STORAGE_PROVIDER`, `STORAGE_LOCAL_DIR`, `S3_*` | módulo de arquivos | `local` | |
 | `CSP_REPORT_ONLY` | não | `true` | |
 | `SEED_PASSWORD`, `SEED_ALLOW_PRODUCTION` | dev | | |
