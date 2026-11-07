@@ -118,7 +118,7 @@ export function ProjectsPage() {
               Node process único · react-router-hono-server
             </div>
             <pre className="overflow-x-auto px-5 py-5 text-xs leading-relaxed text-muted-foreground">
-{`React Router v7 Framework Mode + SSR global
+{`React Router v8 Framework Mode + SSR global
   |
   |-- /api/*              Hono API -> Drizzle -> Postgres (RLS por tenant)
   |-- /, /precos, /blog   rotas públicas com SSR e SEO

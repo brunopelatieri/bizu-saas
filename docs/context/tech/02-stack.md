@@ -12,7 +12,7 @@
 | Camada | Ferramenta | Uso |
 |--------|------------|-----|
 | Runtime | Node.js 24 | Runtime do build Docker e servidor de producao |
-| Linguagem | TypeScript 5.9 | Tipagem estrita em front, server e configs |
+| Linguagem | TypeScript 7 | Tipagem estrita em front, server e configs |
 | Package manager | npm | Instalacao e scripts |
 | Modulos | ESM (`type: module`) | Padrao moderno exigido pela integracao RR/Hono |
 
@@ -20,13 +20,13 @@
 
 | Ferramenta | Versao atual | Uso |
 |------------|--------------|-----|
-| React | 19.2 | UI |
-| React DOM | 19.2 | Render/hidratacao |
-| React Router | 7.18 | Framework Mode, SSR, loaders, meta functions e rotas |
-| `@react-router/dev` | 7.18 | CLI `react-router dev/build/typegen` |
-| `@react-router/node` | 7.18 | Utilitarios server-side do RR |
-| Vite | 7.3 | Build tool por baixo do Framework Mode |
-| `react-router-hono-server` | 2.21 | Servidor Hono integrado ao build/SSR do RR |
+| React | 19.3 | UI |
+| React DOM | 19.3 | Render/hidratacao |
+| React Router | 8.5 | Framework Mode, SSR, loaders, meta functions e rotas |
+| `@react-router/dev` | 8.5 | CLI `react-router dev/build/typegen` |
+| `@react-router/node` | 8.5 | Utilitarios server-side do RR |
+| Vite | 8.3 | Build tool por baixo do Framework Mode (Rolldown) |
+| `react-router-hono-server` | 4.1 | Servidor Hono integrado ao build/SSR do RR; exige Node 24.19+ |
 
 ### UI / Design System
 
@@ -58,11 +58,12 @@
 | Ferramenta | Uso |
 |------------|-----|
 | Hono | API HTTP em `src/api/app.ts` |
+| `@hono/node-server` 2 | `getConnInfo` e os testes HTTP o importam direto; `overrides` no `package.json` usa a mesma versao no `react-router-hono-server` |
 | Better Auth | Autenticação, com `@better-auth/drizzle-adapter` (`src/lib/auth/server.ts`) |
 | `@hono/zod-validator` | Validacao Zod nas rotas Hono |
 | Drizzle ORM | ORM tipado para Postgres |
 | Drizzle Kit | Migrations, generate, studio |
-| postgres.js | Driver Postgres |
+| postgres.js 4 | Driver Postgres |
 | Postgres 16 | Banco proprio da aplicacao |
 | dotenv | Carregamento de `.env.local` em desenvolvimento |
 

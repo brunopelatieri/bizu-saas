@@ -116,6 +116,9 @@ await withPlatformScope("motivo", (tx) => tx.select().from(auditLog));
   `init.sql` com `psql` antes do `db:migrate`; ele usa `\gexec` e `\connect`.
 - Senhas do `init.sql` são de desenvolvimento; em produção, troque-as e reflita nas URLs.
 - Pooler em modo transaction (PgBouncer): acrescente `?prepare=false` à `DATABASE_URL`.
+- postgres.js 4 deixa o servidor decidir o tipo de cada parâmetro (`infer: false`). Em SQL cru, envie
+  `Date` como `${data.toISOString()}::timestamptz`: sem cast, o Postgres pode recusar a consulta.
+  O `PGSSLMODE` do ambiente agora vale; a URL e a opção `ssl` têm precedência.
 
 ## Testes com banco
 

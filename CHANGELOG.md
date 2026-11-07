@@ -8,6 +8,41 @@ incompatível: leia sempre a seção **Migração** antes de atualizar um projet
 
 ## [Não lançado]
 
+### Alterado
+
+- **Node 24.19 ou superior** em `engines`, `Dockerfile` e CI, piso do `react-router-hono-server` 4.
+- **React Router 8**, `react-router-hono-server` 4, `@hono/node-server` 2, Vite 8 (Rolldown), React 19.3,
+  TypeScript 7, postgres.js 4, dotenv 18 e `@hookform/resolvers` 7. `@types/node` fica no major do
+  runtime (24), e o Dependabot deixa de propor majors dele.
+
+### Removido
+
+- `@vitejs/plugin-react`, que nada importava: o plugin do React Router já cuida do Fast Refresh.
+
+### Segurança
+
+- `npm audit` cai de 9 para 4 alertas moderados. Saem os de `serveStatic` e da cadeia do
+  `react-router-hono-server`. Sobram os de `drizzle-kit`, sem efeito em produção
+  (`docs/context/tech/16-bugs-riscos.md`, RISK-004).
+
+### Migração
+
+Sem migration nem variável nova. Para projetos derivados:
+
+1. **Node:** instale o Node 24.19+ antes de tudo, na máquina, no CI e em imagens próprias. Apague
+   `node_modules` e rode `npm ci`.
+2. **Load context:** `getLoadContext` passa a devolver um `RouterContextProvider`. Troque
+   `declare module "react-router" { interface AppLoadContext }` por `createContext` do `react-router`
+   e `context.chave` por `context.get(meuContexto)`. Veja `src/lib/csp-nonce.ts`.
+3. **`meta`:** troque `({ data })` por `({ loaderData })`, também nos itens de `matches`.
+4. **tsconfig:** remova `baseUrl`, que o TypeScript 7 recusa. `paths` continua igual. Código que
+   usa a API do compilador (`import ts from "typescript"`) não funciona no pacote 7.
+5. **SQL cru com postgres.js:** o servidor agora decide o tipo dos parâmetros. Um `Date` sem cast
+   pode virar erro (`${data}::timestamptz` resolve) e o `PGSSLMODE` do ambiente passa a valer. Se
+   você criou colunas `timestamp` sem fuso e escreve fora do Drizzle, leia o guia de atualização
+   do postgres.js. `sql.array()` não existe mais.
+6. **`overrides`:** mantenha o bloco do `package.json`; sem ele, voltam os alertas corrigidos.
+
 ## [0.1.0] - 2026-11-07
 
 Primeira versão pública. O antigo Bizu Starter virou o **Bizu SaaS**, seguindo a spec

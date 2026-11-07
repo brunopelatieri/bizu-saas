@@ -104,7 +104,7 @@ export default workerOnly
       },
       configure(server) {
         server.use("*", requestLogger);
-        // Rotas de negócio (/api/*) são resolvidas antes do handler SSR do RR7.
+        // Rotas de negócio (/api/*) são resolvidas antes do handler SSR do React Router.
         server.route("/", api);
       },
     });

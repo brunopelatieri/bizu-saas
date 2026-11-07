@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/lib/constants/navigation";
 
 const stackBadges = [
-  "React Router v7",
+  "React Router v8",
   "Hono",
   "Drizzle",
   "Postgres",

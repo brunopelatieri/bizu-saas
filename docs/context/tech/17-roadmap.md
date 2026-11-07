@@ -14,5 +14,4 @@ As fases 0 a 11 estão em `spec-plano.md`; o estado em `docs/context/status.md`.
 - White label: subdomínio e domínio próprio por tenant, tema por tenant.
 - Notificações dentro do produto, API pública com chaves e webhooks de saída.
 - Testes end-to-end com Playwright.
-- Migração para React Router 8 e `react-router-hono-server` 4.
 - Blog em tabela Drizzle.

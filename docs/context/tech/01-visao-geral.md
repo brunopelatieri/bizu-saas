@@ -40,7 +40,7 @@ Node process único: react-router-hono-server
 
 ## Decisão importante: SSR e áreas autenticadas
 
-O React Router v7 não tem flag de SSR por rota. O `ssr` em `react-router.config.ts` é
+O React Router não tem flag de SSR por rota. O `ssr` em `react-router.config.ts` é
 global. A estratégia adotada é:
 
 - `ssr: true` global.
