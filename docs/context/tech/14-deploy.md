@@ -132,6 +132,7 @@ Runtime (a lista completa está em `.env.example`; a validação, em `src/lib/en
 - `CSP_REPORT_ONLY`: `true` relata em `/api/csp-report`; `false` bloqueia
 - `LOG_LEVEL` (`info`), `SENTRY_DSN` (opcional), `STORAGE_PROVIDER` (`local` ou `s3`),
   `STORAGE_LOCAL_DIR`, `S3_*`, `MAX_UPLOAD_MB`, `PAYMENT_PROVIDERS` (vazio = sem cobrança)
+- `ASAAS_SANDBOX`: padrão `false` na stack de produção (API real); `true` só para testar com a conta sandbox. O padrão de desenvolvimento (`.env.example`, `src/lib/env.ts`) é `true`
 
 Em Postgres próprio, as migrations rodam em etapa separada (`npm run db:migrate` com `DIRECT_URL`),
 antes de subir a nova imagem, depois do `init.sql` com o `psql`.
