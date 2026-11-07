@@ -95,7 +95,7 @@ export function assertSeedAllowed(env: Record<string, string | undefined>) {
 export type SeedSummary = {
   users: number;
   plans: number;
-  tenant: string;
+  tenants: string[];
   customers: number;
 };
 
@@ -313,7 +313,7 @@ export async function runSeed(password: string): Promise<SeedSummary> {
   return {
     users: ids.size,
     plans: SEED_PLANS.length,
-    tenant: "acme",
+    tenants: ["acme", "beta"],
     customers: Object.keys(SEED_CUSTOMERS).length,
   };
 }
@@ -327,14 +327,15 @@ async function main() {
     const summary = await runSeed(password);
 
     console.log(
-      `Seed concluído: ${summary.users} usuários, ${summary.plans} planos, ${summary.customers} clientes e o tenant ${summary.tenant}.`,
+      `Seed concluído: ${summary.users} usuários, ${summary.plans} planos, ${summary.customers} clientes e os tenants ${summary.tenants.join(" e ")}.`,
     );
     console.log(
-      `Entre em /login com ${SEED_USERS.platformOwner.email} (admin) ou ${SEED_USERS.acmeOwner.email} (tenant), senha em SEED_PASSWORD.`,
+      `Entre em /login com ${SEED_USERS.platformOwner.email} (vai a /admin) ou ${SEED_USERS.acmeOwner.email} (vai a /app, tenant acme em teste no plano Pro), senha em SEED_PASSWORD.`,
     );
     console.log(
-      `Portal: ${SEED_CUSTOMERS.julia.email} em /portal/login?org=acme, com a mesma senha.`,
+      `Portal: ${SEED_CUSTOMERS.julia.email} em /portal/login?org=acme (também cliente do beta), com a mesma senha. ${SEED_CUSTOMERS.lead.email} é um lead sem acesso até o owner enviar o convite.`,
     );
+    console.log("Os e-mails enviados pelo app chegam ao Mailpit em http://localhost:8025.");
     process.exit(0);
   } catch (error) {
     logError("Falha no seed", error);
