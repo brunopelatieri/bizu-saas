@@ -1,0 +1,11 @@
+# Quem revisa por padrão. Em projetos derivados, troque pelo seu usuário ou time.
+* @brunopelatieri
+
+# Áreas sensíveis: revisão obrigatória, com /security-review.
+/src/lib/auth/ @brunopelatieri
+/src/lib/crypto/ @brunopelatieri
+/src/lib/payments/ @brunopelatieri
+/src/db/ @brunopelatieri
+/drizzle/ @brunopelatieri
+/docker/ @brunopelatieri
+/.github/ @brunopelatieri

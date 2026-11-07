@@ -3,7 +3,16 @@
   "version": "0.1.0",
   "description": "Ponto de partida open source para SaaS multi-tenant: quatro níveis de login, trial, pagamentos em módulos, Drizzle em qualquer Postgres.",
   "private": true,
-  "homepage": "https://bizu.bru.ia.br",
+  "homepage": "https://github.com/brunopelatieri/bizu-saas#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/brunopelatieri/bizu-saas.git"
+  },
+  "bugs": {
+    "url": "https://github.com/brunopelatieri/bizu-saas/issues"
+  },
+  "author": "Bruno Pelatieri Goulart",
+  "license": "MIT",
   "type": "module",
   "engines": {
     "node": ">=22.12"

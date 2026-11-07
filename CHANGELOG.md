@@ -1,0 +1,88 @@
+# Changelog
+
+Todas as mudanças relevantes deste projeto ficam aqui. O formato segue o
+[Keep a Changelog](https://keepachangelog.com/pt-BR/1.1.0/) e o versionamento segue o
+[SemVer](https://semver.org/lang/pt-BR/). Em `0.x`, uma versão menor pode trazer mudança
+incompatível: leia sempre a seção **Migração** antes de atualizar um projeto derivado
+(`docs/context/atualizar-template.md`).
+
+## [Não lançado]
+
+## [0.1.0] - 2026-11-07
+
+Primeira versão pública. O antigo Bizu Starter virou o **Bizu SaaS**, seguindo a spec
+`docs/specs/saas-foundation/` (fases 0 a 11; a fase 7, módulo Asaas, ficou para depois).
+
+### Adicionado
+
+- **Plataforma:** React Router v7 (Framework Mode, SSR) e Hono em processo único, Drizzle sobre
+  Postgres com dois papéis (`bizu_owner` para migrations, `bizu_app` no runtime, sem `BYPASSRLS`),
+  variáveis validadas com Zod em `src/lib/env.ts`, logs JSON com `request_id` (pino).
+- **Quatro níveis de acesso:** proprietário da plataforma (`/admin`), owner e colaboradores do
+  tenant (`/app`) e clientes/leads (`/portal`), com Better Auth em duas instâncias (`auth` e
+  `portalAuth`), verificação de e-mail de uso único, recuperação de senha, troca de e-mail e magic
+  link no portal.
+- **Multi-tenant e RBAC:** organizações com onboarding, equipe, convites, papéis personalizados,
+  `requireTenant`, `requirePermission`, Row Level Security forçado com `withTenant` e `audit_log`.
+- **Planos e trial:** planos, preços, trial configurável (inclusive gratuito), limites e features por
+  plano, estados `read_only` e `locked`, job `billing.trial`, `/precos` público.
+- **Cobrança em módulos:** `PaymentProvider` com registro por `PAYMENT_PROVIDERS` (vazio por
+  padrão: só planos gratuitos e trial), máquina de estados, checkout, faturas, caixa de entrada de
+  webhooks, dunning e reconciliação, e o módulo Stripe.
+- **Portal do cliente:** `/app/clientes` com limite do plano, acesso por magic link ou senha, escolha
+  de tenant para quem é cliente de mais de um.
+- **Segurança:** 2FA (obrigatório para a conta de plataforma em produção), personificação com
+  consentimento e auditoria dupla, CSRF, CSP com nonce (começa em report-only), rate limit em
+  Postgres, credenciais de provedores cifradas (AES-256-GCM) com rotação de chave.
+- **LGPD e arquivos:** registro de consentimento com re-aceite por versão, `/legal/termos` e
+  `/legal/privacidade`, exportação dos dados em zip, exclusão de conta, de cliente e de organização
+  com 30 dias de carência e anonimização, retenção (`maintenance.prune`), módulo de arquivos
+  (`StorageProvider` `local` e `s3`).
+- **E-mail e jobs:** fila `email.send` com retry e supressão, provedores `smtp`, `resend` e `memory`,
+  14 templates, pg-boss no schema `pgboss` (`JOBS_MODE=inline|worker|off`), `/api/health` e
+  `/api/ready`, Sentry opcional.
+- **Operação:** `docker/compose.prod.yml` (app, worker, migrate, Postgres, Caddy com TLS e backup
+  cifrado com `age`), `docker/.env.prod.example`, `npm run db:seed`, `npm run check:module-removal`.
+- **Repositório público:** README em formato de tutorial, `CONTRIBUTING.md`, `SECURITY.md`,
+  Dependabot, modelos de issue e de PR, `CODEOWNERS`, guia de atualização do template.
+
+### Alterado
+
+- `/dashboard` passou a `/app`. O projeto agora se chama `bizu-saas` (`package.json`) e os textos
+  "Bizu Starter" foram trocados por "Bizu SaaS".
+- `docker/postgres/init.sql` aceita as senhas dos papéis por variáveis do `psql` (padrão de
+  desenvolvimento intacto) e cria o `bizu_backup` quando recebe `bizu_backup_password`.
+- O estágio `build` do `Dockerfile` passou a levar `drizzle/` (antes excluído pelo
+  `.dockerignore`), para o serviço `migrate` do compose de produção.
+
+### Segurança
+
+- Em produção, a subida é recusada com `BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY` ou
+  `AUDIT_SALT` iguais aos exemplos, com `RATE_LIMIT_STORE=memory` ou com `EMAIL_PROVIDER=memory`.
+- Nenhum token (verificação, reset, convite, magic link) é consumido em GET, e as respostas de
+  cadastro, reenvio e reset não revelam se um e-mail existe.
+
+### Migração
+
+Esta é a primeira versão com migrations numeradas do SaaS. Para quem vinha do Bizu Starter ou de um
+fork anterior:
+
+1. **Banco:** crie os papéis com `docker/postgres/init.sql` (como superusuário) e rode
+   `npm run db:migrate`, que aplica o journal inteiro (`0000` a `0018`), e depois
+   `npm run jobs:install`. As migrations não criam papéis.
+2. **Volume antigo do Starter:** o banco antigo se chamava `portal`. Em desenvolvimento, apague o
+   volume (`docker compose down -v`); em produção, migre os dados à mão: o schema mudou por completo.
+3. **Variáveis novas:** compare seu `.env` com `.env.example`. Passam a ser obrigatórias
+   `DIRECT_URL`, `BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY` (32 bytes em base64) e
+   `AUDIT_SALT`. Em produção também `RATE_LIMIT_STORE=postgres` e `TRUSTED_PROXY_HOPS=1` atrás de
+   um proxy. Um `.env.local` antigo com `CREDENTIALS_ENCRYPTION_KEY` que não seja base64 de 32 bytes
+   derruba a subida.
+4. **Rotas:** `/dashboard` virou `/app`; ajuste links e favoritos.
+5. **Antes de ir ao ar:** preencha o controlador em `src/lib/legal/termos.md` e `privacidade.md`,
+   informe o e-mail do encarregado em `/admin/configuracoes`, ative o 2FA da conta do proprietário
+   e passe `CSP_REPORT_ONLY` para `false` depois de validar.
+6. **Compose:** em produção, use `docker/compose.prod.yml`; as migrations rodam no serviço `migrate`,
+   nunca no start do app.
+
+[Não lançado]: https://github.com/brunopelatieri/bizu-saas/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/brunopelatieri/bizu-saas/releases/tag/v0.1.0

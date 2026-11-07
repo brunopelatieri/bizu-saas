@@ -19,7 +19,7 @@ npm run dev
 - Postgres local na porta **15432** do host (5432 costuma estar reservada no Windows).
   Banco `bizu`; `docker/postgres/init.sql` cria `bizu_owner` (migrations) e `bizu_app`
   (runtime, sem `BYPASSRLS`) no primeiro start do volume.
-- Volume antigo do Bizu Starter (banco `portal`): `docker compose down -v` e suba de novo.
+- Volume antigo (banco `portal`, de antes do Bizu SaaS): `docker compose down -v` e suba de novo.
 - Porta `15432` ocupada por outro projeto: crie `docker-compose.override.yml` (ignorado
   pelo git) com `services.postgres.ports: !override ["15434:5432"]` e troque a porta em
   `.env.local`.

@@ -1,0 +1,46 @@
+name: Feature ou módulo
+description: Uma ideia nova, incluindo um módulo de pagamento ou de armazenamento.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        O Bizu SaaS é um template: o que entra deve ser simples de entender, de trocar e de remover.
+        Feature relevante começa por PRD e SPEC (veja o `CONTRIBUTING.md`).
+  - type: textarea
+    id: problema
+    attributes:
+      label: Que problema isso resolve
+      description: Para quem, em que situação, e o que a pessoa faz hoje.
+    validations:
+      required: true
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Proposta
+      description: Como você imagina. Para módulo de pagamento, cite provedor, métodos e como é a conta de teste.
+    validations:
+      required: true
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: Tipo
+      options:
+        - Núcleo do template
+        - Módulo de pagamento
+        - Módulo de armazenamento
+        - Documentação
+        - Outro
+    validations:
+      required: true
+  - type: textarea
+    id: alternativas
+    attributes:
+      label: Alternativas consideradas
+  - type: checkboxes
+    id: contribuicao
+    attributes:
+      label: Contribuição
+      options:
+        - label: Posso abrir o PR (com PRD/SPEC, se for relevante)

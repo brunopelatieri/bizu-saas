@@ -1,0 +1,56 @@
+name: Bug
+description: Algo não funciona como o README ou a documentação dizem.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Obrigado por reportar. **Vulnerabilidade de segurança não entra aqui**: veja o `SECURITY.md`.
+        Não cole segredos, tokens, e-mails reais nem dados pessoais.
+  - type: textarea
+    id: o-que-aconteceu
+    attributes:
+      label: O que aconteceu
+      description: E o que você esperava que acontecesse.
+    validations:
+      required: true
+  - type: textarea
+    id: passos
+    attributes:
+      label: Passos para reproduzir
+      placeholder: |
+        1. npm run db:seed
+        2. Entrar em /app com acme.owner@bizu.local
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs ou mensagem de erro
+      description: Do terminal, do navegador ou do container. Remova dados pessoais.
+      render: shell
+  - type: input
+    id: versao
+    attributes:
+      label: Versão ou commit
+      placeholder: v0.1.0 ou 1a2b3c4
+    validations:
+      required: true
+  - type: dropdown
+    id: ambiente
+    attributes:
+      label: Onde rodou
+      options:
+        - Desenvolvimento local (npm run dev)
+        - Build local (npm run start)
+        - Docker compose de produção
+        - Outro
+    validations:
+      required: true
+  - type: input
+    id: sistema
+    attributes:
+      label: Sistema, Node e Docker
+      placeholder: Windows 11, Node 22.12, Docker 29
