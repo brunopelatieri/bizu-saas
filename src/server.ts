@@ -2,7 +2,9 @@ import { config } from "dotenv";
 import type { SecureHeadersVariables } from "hono/secure-headers";
 import { createHonoServer } from "react-router-hono-server/node";
 import { api } from "@/api/app";
+import { logError } from "@/api/log";
 import { requestLogger } from "@/api/request-logger";
+import { SCHEMA_BEHIND_MESSAGE, schemaIsBehind } from "@/db/schema-status";
 import { EnvError, getEnv } from "@/lib/env";
 import { getLogger } from "@/lib/logger";
 import { flushObservability, initObservability } from "@/lib/observability";
@@ -35,6 +37,18 @@ try {
 // Sentry (opcional): sem SENTRY_DSN nada é carregado.
 await initObservability();
 
+// Sem as migrations, `/api/health` responde 200 e o site vai ao ar quebrado: em produção, recusar
+// subir é o que torna a falha visível. Em dev, o aviso basta para não travar quem está migrando.
+try {
+  if (await schemaIsBehind()) {
+    console.error(SCHEMA_BEHIND_MESSAGE);
+    if (getEnv().NODE_ENV === "production") process.exit(1);
+  }
+} catch (error) {
+  // Banco fora ou sem permissão não prova que falta migration; /api/ready segue acusando.
+  logError("Não foi possível conferir as migrations na subida", error);
+}
+
 // `node build/server/index.js --worker`: só os workers de jobs, sem HTTP (JOBS_MODE=worker).
 // Também funciona em dev: `npx tsx --tsconfig tsconfig.app.json src/server.ts --worker`.
 const workerOnly = process.argv.includes("--worker");
@@ -50,19 +64,24 @@ async function stopOnSignal(stop: () => Promise<void>) {
 
 if (workerOnly) {
   const { startJobs } = await import("@/jobs");
-  const jobs = await startJobs();
+  const jobs = await startJobs({ consumer: "worker" });
   await stopOnSignal(jobs.stop);
   getLogger().info("Workers de jobs em execução (sem HTTP).");
 } else if (getEnv().JOBS_MODE === "inline") {
   // Fila no mesmo processo. Com `off` ou `worker`, este processo só enfileira.
   const { startJobs } = await import("@/jobs");
   try {
-    const jobs = await startJobs();
+    const jobs = await startJobs({ consumer: "inline" });
     await stopOnSignal(jobs.stop);
   } catch (error) {
-    // Sem a fila instalada o site continua de pé; /api/ready acusa a falha.
-    const { logError } = await import("@/api/log");
     logError("Jobs não iniciaram; rode npm run jobs:install", error);
+    // Em produção, seguir de pé deixaria a fila sem consumidor e sem retentativa, com
+    // /api/ready em 200: é o que acontece se o restart cair entre `db:migrate` e `jobs:install`.
+    // Encerrar faz o restart tentar de novo, como no `--worker`. Em dev, o site continua.
+    if (getEnv().NODE_ENV === "production") {
+      await flushObservability();
+      process.exit(1);
+    }
   }
 }
 

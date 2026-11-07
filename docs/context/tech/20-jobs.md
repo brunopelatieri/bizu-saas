@@ -2,7 +2,7 @@
 
 - **Escopo:** Fila no Postgres com pg-boss 12: instalação, modos de execução, filas, retry, dead letter, manutenção e prontidão.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-email-jobs.md`
-- **Paths do código:** `src/jobs/` (`boss.ts`, `queues.ts`, `index.ts`, `email.ts`, `billing.ts`, `webhooks.ts`, `maintenance.ts`, `install.ts`), `src/server.ts`, `src/api/ready.ts`, `drizzle/0005_email_jobs.sql`
+- **Paths do código:** `src/jobs/` (`boss.ts`, `consumers.ts`, `queues.ts`, `index.ts`, `email.ts`, `billing.ts`, `webhooks.ts`, `maintenance.ts`, `install.ts`), `src/server.ts`, `src/api/ready.ts`, `drizzle/0005_email_jobs.sql`
 
 ## Instalação
 
@@ -15,7 +15,9 @@
    `createSchema: false` em `boss.ts`.
 
 Sem o passo 2, `sendEmail` falha (fila inexistente), o `email_message` fica `failed` e
-`/api/ready` devolve 503 com `jobs: false`.
+`/api/ready` devolve 503 com `jobs: false`. Em produção, o `--worker` e o app em `inline` encerram
+se a fila não subir, e o restart tenta de novo: de pé, o app ficaria sem consumidor e sem nova
+tentativa, com `/api/ready` em 200 assim que as filas existissem. Em dev, o site continua e só loga.
 
 ## Modos (`JOBS_MODE`)
 
@@ -33,8 +35,29 @@ Sem o passo 2, `sendEmail` falha (fila inexistente), o `email_message` fica `fai
   (HMR do dev não duplica).
 - Scripts que usam `sendEmail` fora do servidor devem chamar `stopBoss()` e encerrar o
   cliente do Drizzle antes de sair, senão o processo não termina.
+- Aviso de `inline` com worker ao mesmo tempo: seção "Consumidores concorrentes" abaixo.
 - PgBouncer em modo transaction quebra o LISTEN/NOTIFY do pg-boss; aponte a conexão da
   fila para o Postgres direto ou use pooler em modo session.
+
+## Consumidores concorrentes
+
+Réplicas do `app` em `inline` ou do `worker` são normais. A combinação errada é `inline` no app
+**e** o serviço `--worker`: o compose não consegue impedi-la, porque o modo do app vem de uma
+variável e o worker de um perfil. Ela não corrompe nada: o pg-boss entrega cada job a um só
+consumidor e os handlers são idempotentes. O dano é operacional: os jobs seguem no processo web
+que o worker deveria aliviar, e a concorrência soma as duas configurações. Por isso avisa, sem
+recusar a subida.
+
+- `startJobs` recebe `consumer` e vira `instanceName` no registro nativo do pg-boss
+  (`bizu-jobs-inline`, `bizu-jobs-worker`). Cada instância se anuncia no `start()`, renova a
+  linha a cada 30 s (`pgboss.instance`) e sai dela no `stop()`; depois de uma queda, fica como
+  viva por até 90 s. Sem tabela nem timer nossos. Por isso o aviso pode sair uma vez, sem
+  motivo real, na troca de modo; `/admin` mostra o estado atual.
+- Ao subir, depois de entrar no registro, `warnIfMixedConsumers` loga em `warn` com a correção.
+  Quem sobe por último enxerga o outro, em qualquer ordem; o aviso sai no log desse processo.
+- `/admin` mostra "Consumidores da fila" ao vivo (`getJobConsumers`), inclusive o caso oposto:
+  ninguém consumindo. `/api/ready` não muda: a combinação não torna o app indisponível.
+- Falha nessa leitura só gera log; nunca impede os jobs de rodar.
 
 ## Filas (`queues.ts`)
 
@@ -65,18 +88,21 @@ handler em `registerWorkers` (`index.ts`); depois `npm run jobs:install`.
 
 ## Prontidão
 
-`GET /api/ready` → `{ db, jobs }`, 200 se ambos `true`, 503 caso contrário; cada checagem
+`GET /api/ready` → `{ db, jobs, schema }`, 200 se todos `true`, 503 caso contrário; cada checagem
 tem timeout de 2 s (`src/api/ready.ts`). `db` é `SELECT 1`; `jobs` confirma que o
-pg-boss conecta e a fila `email.send` existe. `/api/health` continua liveness simples.
+pg-boss conecta e a fila `email.send` existe; `schema` confere as migrations do build
+(`src/db/schema-status.ts`, `tech/14-deploy.md`). `/api/health` continua liveness simples: não toca no
+banco, então um app com a fila ou o schema quebrados segue `healthy` para o Docker.
 
 ## Testes
 
 `tests/db/email-queue.test.ts` (`npm run test:db`, exige `db:migrate` + `jobs:install`):
 enfileirar → worker → `sent`, supressão, retries esgotados → `failed` + `email.send.dead`,
-`maintenance.prune` e `checkReady`. `tests/db/billing.test.ts` chama `runBillingTrial(now, { tenantIds })`
+`maintenance.prune` e `checkReady`. `tests/db/job-consumers.test.ts` sobe instâncias reais do pg-boss
+como `bizu_app` e confere contagem e aviso. `tests/db/billing.test.ts` chama `runBillingTrial(now, { tenantIds })`
 diretamente, com relógio e tenants controlados, como `billing-lifecycle.test.ts` nos outros jobs de
 cobrança; `billing-queue.test.ts` confere filas, crons e a política `exclusive` no pg-boss real. Unitários sem banco: `src/jobs/email.test.ts`,
-`src/api/ready.test.ts`.
+`src/jobs/consumers.test.ts`, `src/api/ready.test.ts`.
 
 ## Filas da fase 10
 

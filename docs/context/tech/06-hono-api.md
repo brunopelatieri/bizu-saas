@@ -14,7 +14,7 @@ Rotas atuais:
 | Metodo | Rota | Funcao |
 |--------|------|--------|
 | GET | `/api/health` | Liveness simples |
-| GET | `/api/ready` | Prontidão: `{ db, jobs }` (`SELECT 1` e fila `email.send`, timeout 2 s cada); 503 se algum falhar (`src/api/ready.ts`) |
+| GET | `/api/ready` | Prontidão: `{ db, jobs, schema }` (`SELECT 1`, fila `email.send` e migrations do build, timeout 2 s cada); 503 se algum falhar (`src/api/ready.ts`) |
 | POST | `/api/webhooks/email/:provider` | Eventos de entrega, bounce e reclamação do provedor de e-mail (`src/api/webhooks-email.ts`): corpo bruto, assinatura conferida antes do JSON (400 se inválida), 404 se `:provider` não for o configurado; hard bounce e reclamação criam `email_suppression` |
 | POST | `/api/webhooks/payments/:provider` | Eventos do provedor de pagamento (`src/api/webhooks-payments.ts`): corpo bruto até 1 MB, assinatura antes do JSON, 400 + rastro sem corpo se inválida, 429 após 20 erros por IP no minuto, 404 fora de `PAYMENT_PROVIDERS`. Grava `payment_event` e enfileira `webhook.process`; repetido responde 200 `duplicate` |
 | * | `/api/billing/*` | Assinatura do owner, liberada em `read_only` (`tech/24-billing-cobranca.md`) |

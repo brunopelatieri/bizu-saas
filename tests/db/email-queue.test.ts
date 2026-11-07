@@ -173,6 +173,6 @@ describe("manutenção e prontidão", () => {
   });
 
   it("/api/ready enxerga banco e fila", async () => {
-    expect(await checkReady()).toEqual({ ok: true, db: true, jobs: true });
+    expect(await checkReady()).toEqual({ ok: true, db: true, jobs: true, schema: true });
   });
 });

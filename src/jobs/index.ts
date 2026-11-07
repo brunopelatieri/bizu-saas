@@ -1,5 +1,6 @@
 import type { PgBoss } from "pg-boss";
 import { startBoss, stopBoss } from "@/jobs/boss";
+import { type JobConsumer, warnIfMixedConsumers } from "@/jobs/consumers";
 import {
   handleBillingDunning,
   handleBillingPeriodEnd,
@@ -76,11 +77,15 @@ export async function registerWorkers(
  * Sobe os workers neste processo: `JOBS_MODE=inline` (dentro do servidor HTTP) ou
  * `--worker` (`JOBS_MODE=worker`, sem HTTP). Devolve a função que para tudo.
  */
-export async function startJobs(options: { pollingIntervalSeconds?: number } = {}) {
-  const boss = await startBoss("worker");
+export async function startJobs({
+  consumer = "inline",
+  ...options
+}: { consumer?: JobConsumer; pollingIntervalSeconds?: number } = {}) {
+  const boss = await startBoss("worker", consumer);
   await registerQueues(boss);
   await registerSchedules(boss);
   await registerWorkers(boss, options);
+  await warnIfMixedConsumers(boss);
 
   return { boss, stop: stopBoss };
 }

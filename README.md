@@ -388,7 +388,8 @@ portas 80 e 443 livres):
 **Operação:**
 
 - **Atualizar** (nova versão): `git pull`, `bizu build`, `bizu --profile tools run --rm migrate`,
-  `bizu up -d app caddy`. Migrations nunca rodam no start do app.
+  `bizu up -d app caddy`. Migrations nunca rodam no start do app: se faltar alguma, `app` e `worker` recusam
+  subir e o log diz o que rodar.
 - **Worker separado:** `COMPOSE_PROFILES=worker` e `APP_JOBS_MODE=off`; permite várias réplicas de `app`
   sem Redis (o rate limit já está no Postgres).
 - **Postgres gerenciado:** apague o serviço `postgres`, rode `docker/postgres/init.sql` com o `psql`
@@ -401,7 +402,8 @@ portas 80 e 443 livres):
   `Secure`: o login "dá certo" e não há sessão. Fora de `localhost`, use HTTPS.
 - **Portainer:** Stacks > Add stack > Repository, "Compose path" `docker/compose.prod.yml`, e as variáveis de
   `docker/.env.prod.example` em "Environment variables". O `migrate` roda pelo terminal do host (passo 4), com
-  as mesmas variáveis.
+  as mesmas variáveis, antes do primeiro deploy e de cada atualização; sem ele, o deploy falha com o `app` em
+  restart, e a causa está nos logs do `app`.
 - **Backup:** defina `BIZU_BACKUP_PASSWORD` **antes** do primeiro start do Postgres, gere a chave
   com `age-keygen` (a privada fica fora do servidor), defina `BACKUP_AGE_RECIPIENT=age1...` e suba com
   `COMPOSE_PROFILES=backup`. Um backup agora: `bizu --profile backup run --rm backup once`. Copie o volume

@@ -5,13 +5,21 @@ import { z } from "zod";
  *
  * - Nova variável entra aqui e em `.env.example`, com comentário de uso.
  * - Falta ou valor inválido derruba o processo listando os nomes, nunca os valores.
- * - Em produção, segredos com o valor de exemplo (`change-me...`) são recusados.
+ * - Em produção, segredos com o valor de exemplo (`change-me...`) e senhas de banco fracas
+ *   são recusados.
  * - Só o servidor lê este módulo. O navegador recebe apenas `VITE_*`.
  */
 
 const PLACEHOLDER_PREFIX = "change-me";
 /** A chave de exemplo é base64 válido de um texto que começa com `change-me`. */
 const PLACEHOLDER_KEY_PREFIX = Buffer.from(PLACEHOLDER_PREFIX).toString("base64");
+/**
+ * Mesmo piso de `secret`. Cobre as senhas de desenvolvimento do `init.sql` (o nome do papel),
+ * que ele aplica em silêncio quando rodado à mão sem as variáveis do psql.
+ */
+const MIN_DATABASE_PASSWORD_LENGTH = 16;
+/** Banco na própria máquina: é o smoke de `npm run start`, em produção com o `.env.local`. */
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 const emptyToUndefined = (value: unknown) =>
   typeof value === "string" && value.trim() === "" ? undefined : value;
@@ -52,6 +60,34 @@ const secret = z.string().min(16, "mínimo de 16 caracteres");
 const encryptionKey = z
   .string()
   .regex(/^[A-Za-z0-9+/]{43}=$/, "use 32 bytes em base64 (openssl rand -base64 32)");
+
+const decodeUrlPart = (value: string) => {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+};
+
+/** Motivo para recusar a senha da URL em produção. URL malformada fica com o `z.url`. */
+function databasePasswordProblem(url: string) {
+  if (!URL.canParse(url)) return undefined;
+
+  const { hostname, username, password: encoded } = new URL(url);
+  const password = decodeUrlPart(encoded);
+
+  if (password.startsWith(PLACEHOLDER_PREFIX)) {
+    return "use uma senha gerada, não o exemplo do .env.prod.example";
+  }
+  if (LOOPBACK_HOSTS.has(hostname)) return undefined;
+  if (
+    password.length < MIN_DATABASE_PASSWORD_LENGTH ||
+    password.toLowerCase() === decodeUrlPart(username).toLowerCase()
+  ) {
+    return `senha fraca (vazia, igual ao usuário ou com menos de ${MIN_DATABASE_PASSWORD_LENGTH} caracteres): gere com openssl rand -hex 24, aplique com ALTER ROLE e atualize a URL`;
+  }
+  return undefined;
+}
 
 export const envSchema = z
   .object({
@@ -183,19 +219,9 @@ export const envSchema = z
           });
         }
       }
-      // Senha do banco copiada do exemplo (`change-me...`): URL malformada não conta aqui,
-      // o `z.url` acima já a recusa.
       for (const key of ["DATABASE_URL", "DIRECT_URL"] as const) {
-        const password = URL.canParse(env[key])
-          ? decodeURIComponent(new URL(env[key]).password)
-          : "";
-        if (password.startsWith(PLACEHOLDER_PREFIX)) {
-          ctx.addIssue({
-            code: "custom",
-            path: [key],
-            message: "use uma senha gerada, não o exemplo do .env.prod.example",
-          });
-        }
+        const message = databasePasswordProblem(env[key]);
+        if (message) ctx.addIssue({ code: "custom", path: [key], message });
       }
       // Com memória, cada réplica contaria sozinha e o limite cairia em silêncio no
       // primeiro `scale`. Recusar na subida é mais barato que descobrir no incidente.

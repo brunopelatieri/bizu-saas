@@ -2,7 +2,7 @@
 
 - **Escopo:** Modelo de deploy, container, stack de produção, variáveis de ambiente, backup e restauração.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-testes-operacao.md` (seção "Deploy e operação")
-- **Paths do código:** `Dockerfile`, `.dockerignore`, `docker/compose.prod.yml`, `docker/.env.prod.example`, `docker/caddy/`, `docker/postgres/`, `docker/backup/`
+- **Paths do código:** `Dockerfile`, `.dockerignore`, `docker/compose.prod.yml`, `docker/.env.prod.example`, `docker/caddy/`, `docker/postgres/`, `docker/backup/`, `src/db/schema-status.ts`
 
 
 ## 14. Deploy em VPS Ubuntu + Docker + Caddy (ou Portainer)
@@ -40,7 +40,7 @@ O `.dockerignore` **não** exclui `drizzle/` (o estágio `build` precisa dele); 
 | `postgres` | sempre | `postgres:16-alpine`, volume `postgres_data`, sem porta publicada. No primeiro start do volume, `docker/postgres/init-prod.sh` roda `docker/postgres/init.sql` com as senhas do ambiente (papéis `bizu_owner`, `bizu_app` e, com `BIZU_BACKUP_PASSWORD`, `bizu_backup`) |
 | `app` | sempre | imagem `runtime`, `JOBS_MODE=${APP_JOBS_MODE:-inline}`, volume `storage` em `/data/storage`, healthcheck do Dockerfile |
 | `caddy` | sempre | portas `HTTP_PORT`/`HTTPS_PORT` (80/443), TLS para `SITE_ADDRESS`, volumes `caddy_data` e `caddy_config` |
-| `worker` | `worker` | mesma imagem, `--worker`, sem porta e sem healthcheck; use com `APP_JOBS_MODE=off` |
+| `worker` | `worker` | mesma imagem, `--worker`, sem porta e sem healthcheck; use com `APP_JOBS_MODE=off` (esquecer gera `warn` no log e alerta em `/admin`, `tech/20-jobs.md`) |
 | `migrate` | `tools` | estágio `build`; `npm run db:migrate && npm run jobs:install` com `DIRECT_URL` |
 | `backup` | `backup` | `docker/backup/`; `pg_dump` cifrado com `age` e `/data/storage`, como `bizu_backup` |
 
@@ -48,7 +48,7 @@ Variáveis: `docker/.env.prod.example` (copie para `docker/.env.prod`, não vers
 interpola tudo com `${VAR}`: obrigatórias com `:?` (falha dizendo qual falta), opcionais com `:-`
 (vazio vira ausente em `src/lib/env.ts`). Como o Compose interpola até serviços de perfis inativos, as
 do `backup` usam `:-`; o `backup.sh` recusa subir sem elas. Senhas de Postgres só com letras e
-números (entram em URLs).
+números (entram em URLs) e pelo menos 16 caracteres: `init-prod.sh` e `src/lib/env.ts` recusam menos.
 
 Rotina:
 
@@ -61,17 +61,33 @@ bizu up -d app caddy
 ```
 
 Atualizar: `git pull`, `bizu build`, `bizu --profile tools run --rm migrate`, `bizu up -d app caddy`.
-Migrations nunca rodam no start do app. Um primeiro proprietário nasce por cadastro e
+Migrations nunca rodam no start do app.
+
+**Esqueceu o `migrate`:** em produção, `app` e `worker` recusam subir (exit 1) quando o banco não tem as
+migrations do build, tanto no banco vazio quanto numa atualização, e o log traz o comando a rodar.
+Rode-o e suba de novo com `bizu up -d app caddy`: o `app` se recupera sozinho nos próximos restarts, mas o
+`caddy` espera o `app` saudável e só sobe com esse `up`. Enquanto o `migrate` roda, o `app` pode
+reiniciar mais de uma vez: com `inline`, ele também encerra até a fila estar instalada. Sem essa recusa, o erro passava despercebido:
+`/api/health` não toca no banco, então o container ficava `healthy`, o Caddy subia e o site ia ao ar com
+login e cadastro quebrados. Banco à frente do build é normal (as migrations vêm antes da imagem) e banco
+fora do ar ou sem permissão não encerra nada: o erro vai para o log e `/api/ready` responde 503 com
+`schema: false`.
+
+Um primeiro proprietário nasce por cadastro e
 `update "user" set role = 'platform_owner'` (o seed é recusado em produção); o 2FA dele é obrigatório,
 senão `/admin` responde 403.
 
 **Portainer:** Stacks > Add stack > **Repository** (o build precisa do repositório; o Web editor não
 serve), "Compose path" `docker/compose.prod.yml`, variáveis em "Environment variables" (perfis por
-`COMPOSE_PROFILES`). O `migrate` roda no terminal do host.
+`COMPOSE_PROFILES`). O `migrate` roda no terminal do host, **antes** do primeiro deploy e de cada
+atualização; sem ele, o `up` da stack falha com o `app` em restart e a causa está nos logs do `app`
+(validado com `docker compose`, não no Portainer).
 
 **Postgres gerenciado:** apague o serviço `postgres`, rode `docker/postgres/init.sql` com o `psql` como
 superusuário (`-v bizu_owner_password=... -v bizu_app_password=...`) e ajuste `DATABASE_URL` e
-`DIRECT_URL` no compose. `bizu_backup` precisa de `BYPASSRLS` e `pg_read_all_data` (abaixo).
+`DIRECT_URL` no compose. Sem as variáveis `-v`, o `init.sql` cria os papéis com as senhas de
+desenvolvimento e o app recusa subir: corrija com `ALTER ROLE ... PASSWORD`. `bizu_backup` precisa de
+`BYPASSRLS` e `pg_read_all_data` (abaixo).
 
 **Teste local sem TLS:** `SITE_ADDRESS=http://localhost`, `APP_URL=http://localhost:4181`,
 `HTTP_PORT=4181`, `HTTPS_PORT=4443`.
@@ -108,7 +124,7 @@ Runtime (a lista completa está em `.env.example`; a validação, em `src/lib/en
 
 - `NODE_ENV=production`, `PORT=3000`
 - `APP_URL` com `https://`, `TRUSTED_PROXY_HOPS=1` (um por reverse proxy)
-- `DATABASE_URL` (`bizu_app`), `DIRECT_URL` (`bizu_owner`; exigida em todo processo, mas só migrations e `jobs:install` a usam: no compose, `app` e `worker` recebem a do `bizu_app` e só o `migrate` leva a do dono). Senha de banco que começa por `change-me` é recusada em produção
+- `DATABASE_URL` (`bizu_app`), `DIRECT_URL` (`bizu_owner`; exigida em todo processo, mas só migrations e `jobs:install` a usam: no compose, `app` e `worker` recebem a do `bizu_app` e só o `migrate` leva a do dono). Em produção, as duas URLs são recusadas com senha vazia, igual ao usuário, com menos de 16 caracteres ou começada por `change-me`; em loopback (`localhost`, smoke de `npm run start`) só o `change-me` é recusado
 - `BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY` (32 bytes em base64), `AUDIT_SALT`: valores
   gerados; os de exemplo derrubam o processo em produção
 - `RATE_LIMIT_STORE=postgres`: `memory` derruba o processo em produção
@@ -132,7 +148,7 @@ antes de subir a nova imagem, depois do `init.sql` com o `psql`.
 - `LOG_LEVEL=debug` inclui `/api/health`, `/api/ready` e `/assets/*`.
 - `SENTRY_DSN` liga o envio de erros (`src/lib/monitoring/sentry/`); sem ele, nada e carregado.
   Define a variavel tambem no `worker`.
-- `GET /api/health` (liveness) e `GET /api/ready` (banco e fila, 2 s); `/admin` mostra webhooks
+- `GET /api/health` (liveness) e `GET /api/ready` (banco, fila e migrations, 2 s); `/admin` mostra webhooks
   com falha e jobs mortos.
 
 ### Arquivos

@@ -88,3 +88,4 @@ Overview sem MRR e jobs mortos; `/admin/jobs`; detalhe de usuário; revogar sess
 
 - `/admin/configuracoes` edita também `dpoEmail` (aparece em `/legal/*`) e `auditRetentionDays` (30 a 3650, padrão 365).
 - `/admin` mostra "Jobs mortos": soma das filas `*.dead` do pg-boss (`src/lib/admin/jobs.ts`), `—` se a fila não responder.
+- `/admin` mostra "Consumidores da fila": processos vivos por modo (`inline`, `worker`), com alerta para os dois juntos ou nenhum (`tech/20-jobs.md`).

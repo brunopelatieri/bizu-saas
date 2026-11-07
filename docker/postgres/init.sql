@@ -14,9 +14,9 @@
 --   bizu_backup  opcional (só se `bizu_backup_password` for definida): atravessa o RLS e lê
 --                tudo, para o `pg_dump` do serviço de backup. Cria bancos para o restore-test.
 --
--- Senhas: por padrão, as de desenvolvimento (iguais ao nome do papel). Em produção, passe-as
--- como variáveis do psql, sem editar este arquivo (docker/postgres/init-prod.sh faz isso no
--- compose de produção; à mão, use):
+-- Senhas: por padrão, as de desenvolvimento (iguais ao nome do papel), que o app recusa em
+-- produção (src/lib/env.ts). Em produção, passe-as como variáveis do psql, sem editar este
+-- arquivo (docker/postgres/init-prod.sh faz isso no compose de produção; à mão, use):
 --
 --   psql -h <host> -U postgres \
 --     -v bizu_owner_password="$BIZU_OWNER_PASSWORD" \

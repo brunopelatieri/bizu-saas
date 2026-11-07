@@ -25,7 +25,7 @@ alwaysApply: false
 - Rotas de tenant não importam `@/db`: os dados passam por `src/lib/tenant/`.
 - Permissões são validadas no servidor, com `requireAuth` + `requireTenant` + `requirePermission`.
 - Loaders acessam o banco direto, sem chamada HTTP interna.
-- Migrations rodam fora do container da aplicação.
+- Migrations rodam fora do container da aplicação. O `bizu_app` lê `drizzle.__drizzle_migrations` (migration `0019`) para conferir o build na subida.
 - `consent_log` (sem tenant), `deletion_request` e `data_export` (RLS; linha sem tenant só com `withPlatformScope`) e `file` (tenant) são da fase 10; pedido pendente é um por assunto (índice único parcial).
 - Dado pessoal novo entra na exportação (`src/lib/lgpd/export.ts`) e na anonimização (`src/lib/lgpd/deletion.ts`) no mesmo trabalho, e na tabela de retenção de `docs/context/lgpd.md`.
 

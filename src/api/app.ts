@@ -47,7 +47,7 @@ api.use("*", securityHeaders);
 
 api.get("/api/health", (c) => c.json({ ok: true }));
 
-// Prontidão (banco + fila): o motivo da falha não vai na resposta.
+// Prontidão (banco, fila e schema): o motivo da falha não vai na resposta.
 api.get("/api/ready", async (c) => {
   const { ok, ...checks } = await checkReady();
   return c.json(checks, ok ? 200 : 503);
