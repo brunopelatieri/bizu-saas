@@ -20,7 +20,20 @@ type Overview = {
   failedWebhooks: number;
   /** `null`: a fila não respondeu. */
   deadJobs: number | null;
+  /** Processos consumindo a fila. `null`: a fila não respondeu. */
+  jobConsumers: { inline: number; worker: number } | null;
 };
+
+function jobConsumersHint(consumers: Overview["jobConsumers"]) {
+  if (!consumers) return "A fila não respondeu";
+  if (consumers.inline > 0 && consumers.worker > 0) {
+    return "App e worker na mesma fila: defina APP_JOBS_MODE=off no app";
+  }
+  if (consumers.inline + consumers.worker === 0) {
+    return "Ninguém processa a fila: confira JOBS_MODE e o worker";
+  }
+  return "Processos ativos, por modo";
+}
 
 function Stat({
   label,
@@ -118,6 +131,15 @@ export function AdminOverviewPage() {
                     ? "A fila não respondeu"
                     : "Esgotaram as tentativas (filas .dead)"
                 }
+              />
+              <Stat
+                label="Consumidores da fila"
+                value={
+                  data.jobConsumers
+                    ? `${data.jobConsumers.inline} inline, ${data.jobConsumers.worker} worker`
+                    : "—"
+                }
+                hint={jobConsumersHint(data.jobConsumers)}
               />
             </div>
           </>

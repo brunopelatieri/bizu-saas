@@ -40,7 +40,7 @@ O `.dockerignore` **não** exclui `drizzle/` (o estágio `build` precisa dele); 
 | `postgres` | sempre | `postgres:16-alpine`, volume `postgres_data`, sem porta publicada. No primeiro start do volume, `docker/postgres/init-prod.sh` roda `docker/postgres/init.sql` com as senhas do ambiente (papéis `bizu_owner`, `bizu_app` e, com `BIZU_BACKUP_PASSWORD`, `bizu_backup`) |
 | `app` | sempre | imagem `runtime`, `JOBS_MODE=${APP_JOBS_MODE:-inline}`, volume `storage` em `/data/storage`, healthcheck do Dockerfile |
 | `caddy` | sempre | portas `HTTP_PORT`/`HTTPS_PORT` (80/443), TLS para `SITE_ADDRESS`, volumes `caddy_data` e `caddy_config` |
-| `worker` | `worker` | mesma imagem, `--worker`, sem porta e sem healthcheck; use com `APP_JOBS_MODE=off` |
+| `worker` | `worker` | mesma imagem, `--worker`, sem porta e sem healthcheck; use com `APP_JOBS_MODE=off` (esquecer gera `warn` no log e alerta em `/admin`, `tech/20-jobs.md`) |
 | `migrate` | `tools` | estágio `build`; `npm run db:migrate && npm run jobs:install` com `DIRECT_URL` |
 | `backup` | `backup` | `docker/backup/`; `pg_dump` cifrado com `age` e `/data/storage`, como `bizu_backup` |
 

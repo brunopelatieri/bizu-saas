@@ -50,14 +50,14 @@ async function stopOnSignal(stop: () => Promise<void>) {
 
 if (workerOnly) {
   const { startJobs } = await import("@/jobs");
-  const jobs = await startJobs();
+  const jobs = await startJobs({ consumer: "worker" });
   await stopOnSignal(jobs.stop);
   getLogger().info("Workers de jobs em execução (sem HTTP).");
 } else if (getEnv().JOBS_MODE === "inline") {
   // Fila no mesmo processo. Com `off` ou `worker`, este processo só enfileira.
   const { startJobs } = await import("@/jobs");
   try {
-    const jobs = await startJobs();
+    const jobs = await startJobs({ consumer: "inline" });
     await stopOnSignal(jobs.stop);
   } catch (error) {
     // Sem a fila instalada o site continua de pé; /api/ready acusa a falha.

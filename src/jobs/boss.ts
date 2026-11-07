@@ -1,5 +1,6 @@
 import { PgBoss } from "pg-boss";
 import { logError } from "@/api/log";
+import { consumerInstanceName, type JobConsumer } from "@/jobs/consumers";
 import { getEnv } from "@/lib/env";
 
 /**
@@ -20,12 +21,14 @@ type Holder = { role: BossRole; boss: PgBoss; started: Promise<PgBoss> };
 // Em dev o módulo recarrega (HMR): a instância fica em `globalThis` para não duplicar.
 const globals = globalThis as typeof globalThis & { __bizuBoss?: Holder };
 
-export function createBoss(role: BossRole): PgBoss {
+export function createBoss(role: BossRole, consumer?: JobConsumer): PgBoss {
   const env = getEnv();
   const boss = new PgBoss({
     connectionString: role === "installer" ? env.DIRECT_URL : env.DATABASE_URL,
     schema: BOSS_SCHEMA,
     application_name: `bizu-jobs-${role}`,
+    // Nome no registro de instâncias do pg-boss: é o que distingue app e worker (`consumers.ts`).
+    instanceName: consumer && consumerInstanceName(consumer),
     max: role === "worker" ? 10 : 4,
     // O schema vem da migration (com os GRANTs do runtime); só o instalador mexe nas tabelas.
     createSchema: false,
@@ -39,7 +42,7 @@ export function createBoss(role: BossRole): PgBoss {
 }
 
 /** Inicia (uma vez) e devolve a instância do papel pedido. */
-export function startBoss(role: BossRole): Promise<PgBoss> {
+export function startBoss(role: BossRole, consumer?: JobConsumer): Promise<PgBoss> {
   const current = globals.__bizuBoss;
   if (current) {
     if (current.role === role || role === "producer") return current.started;
@@ -48,7 +51,7 @@ export function startBoss(role: BossRole): Promise<PgBoss> {
     );
   }
 
-  const boss = createBoss(role);
+  const boss = createBoss(role, consumer);
   const started = boss.start().then(() => boss);
   globals.__bizuBoss = { role, boss, started };
   // Falha de conexão não deve deixar a promessa "presa": a próxima chamada tenta de novo.

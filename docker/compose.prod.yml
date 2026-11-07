@@ -97,7 +97,8 @@ services:
 
   # Aplicação: assets, /api/* e SSR no mesmo processo. O healthcheck vem do Dockerfile.
   # APP_JOBS_MODE=inline (padrão) roda a fila aqui. Ao ligar o perfil `worker`, defina
-  # APP_JOBS_MODE=off, senão app e worker consomem a mesma fila.
+  # APP_JOBS_MODE=off, senão app e worker consomem a mesma fila. O compose não impõe isso: quem
+  # sobe por último loga um `warn`, e /admin mostra a combinação (tech/20-jobs.md).
   # APP_IMAGE aponta para um registry quando você publica a imagem em vez de construir na VPS.
   app:
     image: ${APP_IMAGE:-bizu-saas:local}
