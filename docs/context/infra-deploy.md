@@ -22,7 +22,7 @@ Não há demo pública deste repositório; o README diz "em breve".
 
 | Ambiente | Aplicação | Banco |
 |---|---|---|
-| Dev | `http://localhost:5173` | `localhost:15432` (Mailpit em `localhost:8025`) |
+| Dev | `http://localhost:5173` | `localhost:15437` (Mailpit em `localhost:8025`) |
 | Container | Porta `3000` (`PORT`), atrás do Caddy em 80/443 | `DATABASE_URL` |
 
 - Healthcheck: `GET /api/health`, usado pelo `HEALTHCHECK` do `Dockerfile`.

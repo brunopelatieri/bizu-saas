@@ -134,7 +134,7 @@ contas de exemplo e só vale para desenvolvimento.
 docker compose up -d
 ```
 
-Sobe o Postgres 16 (porta `15432` do host; no Windows a `5432` costuma estar reservada) e o
+Sobe o Postgres 16 (porta `15437` do host; no Windows a `5432` costuma estar reservada) e o
 **Mailpit**. No primeiro start, `docker/postgres/init.sql` cria o banco `bizu` e dois papéis:
 
 | Papel | Usado por | Permissão |
@@ -167,7 +167,7 @@ npm run dev
 | Serviço | Endereço |
 |---|---|
 | App em desenvolvimento | `http://localhost:5173` |
-| Postgres | `localhost:15432`, banco `bizu` |
+| Postgres | `localhost:15437`, banco `bizu` |
 | Mailpit (e-mails capturados) | `http://localhost:8025` |
 
 **Se algo falhar:**
@@ -175,8 +175,8 @@ npm run dev
 | Problema | Solução |
 |---|---|
 | `drizzle-kit` não encontrado | Rode `npm install` antes do migrate |
-| Erro de conexão | Confira `docker compose ps` e se `.env.local` aponta para `localhost:15432` |
-| Porta `15432` ocupada | Crie `docker-compose.override.yml` (ignorado pelo git) com `services.postgres.ports: !override ["15434:5432"]` e troque a porta em `DATABASE_URL` e `DIRECT_URL` |
+| Erro de conexão | Confira `docker compose ps` e se `.env.local` aponta para `localhost:15437` |
+| Porta `15437` ocupada | Crie `docker-compose.override.yml` (ignorado pelo git) com `services.postgres.ports: !override ["15438:5432"]` e troque a porta em `DATABASE_URL` e `DIRECT_URL` |
 | `role "bizu_owner" does not exist` | O volume é antigo: `docker compose down -v` e suba de novo |
 | O app não sobe e lista variáveis | `src/lib/env.ts` valida tudo na inicialização, sem imprimir valores; compare com `.env.example` |
 | `CREDENTIALS_ENCRYPTION_KEY` inválida | Precisa ser base64 de exatamente 32 bytes (use um dos comandos acima) |

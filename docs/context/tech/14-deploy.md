@@ -111,7 +111,7 @@ descartado e a sessão nunca se forma. Fora de `localhost`, só HTTPS.
 
 `docker-compose.yml` é só de desenvolvimento:
 
-- `postgres:16-alpine`, porta local `15432`, superusuário `postgres`, volume `postgres_data`.
+- `postgres:16-alpine`, porta local `15437`, superusuário `postgres`, volume `postgres_data`.
   `docker/postgres/init.sql` roda no primeiro start do volume (senhas de desenvolvimento por
   padrão) e cria o banco `bizu` e os papéis `bizu_owner` (migrations) e `bizu_app` (runtime, sem
   `BYPASSRLS`).

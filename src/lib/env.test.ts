@@ -3,8 +3,8 @@ import { EnvError, parseEnv } from "@/lib/env";
 
 const base = {
   APP_URL: "http://localhost:5173",
-  DATABASE_URL: "postgresql://bizu_app:bizu_app@localhost:15432/bizu",
-  DIRECT_URL: "postgresql://bizu_owner:bizu_owner@localhost:15432/bizu",
+  DATABASE_URL: "postgresql://bizu_app:bizu_app@localhost:15437/bizu",
+  DIRECT_URL: "postgresql://bizu_owner:bizu_owner@localhost:15437/bizu",
   BETTER_AUTH_SECRET: "change-me-better-auth-secret-with-32-bytes",
   CREDENTIALS_ENCRYPTION_KEY: "Y2hhbmdlLW1lLWNyZWRlbnRpYWxzLWtleS0zMmJ5dGU=",
   AUDIT_SALT: "change-me-audit-salt",
@@ -142,7 +142,7 @@ describe("parseEnv", () => {
       expect(problemsOf({ ...production, DATABASE_URL: url })).toEqual([]);
     });
 
-    it.each(["localhost:15432", "127.0.0.1:5432", "[::1]:5432"])(
+    it.each(["localhost:15437", "127.0.0.1:5432", "[::1]:5432"])(
       "aceita senha de desenvolvimento em loopback: é o smoke de npm run start (%s)",
       (host) => {
         const problems = problemsOf({

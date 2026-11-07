@@ -51,8 +51,8 @@ CI (`ci.yml`): serviço `postgres:16` com `init.sql` montado; `npm ci`, `lint`,
 | `PORT` | não | `3000` | |
 | `APP_URL` | sim | `http://localhost:5173` | links, cookies, `trustedOrigins` |
 | `TRUSTED_PROXY_HOPS` | não | `0` | rate limit e IP |
-| `DATABASE_URL` | sim | `postgresql://bizu_app:bizu_app@localhost:15432/bizu` | runtime (RLS) |
-| `DIRECT_URL` | sim | `postgresql://bizu_owner:bizu_owner@localhost:15432/bizu` | migrations, seed, pg-boss install |
+| `DATABASE_URL` | sim | `postgresql://bizu_app:bizu_app@localhost:15437/bizu` | runtime (RLS) |
+| `DIRECT_URL` | sim | `postgresql://bizu_owner:bizu_owner@localhost:15437/bizu` | migrations, seed, pg-boss install |
 | `BETTER_AUTH_SECRET` | sim | `openssl rand -base64 32` | assinatura de tokens e cookies |
 | `CREDENTIALS_ENCRYPTION_KEY` | sim | base64 de 32 bytes | credenciais por tenant |
 | `AUDIT_SALT` | sim | aleatório | hash de IP |
