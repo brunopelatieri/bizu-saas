@@ -89,7 +89,10 @@
   },
   "overrides": {
     "react-router-hono-server": {
-      "@hono/node-server": "$@hono/node-server"
+      "@hono/node-server": "$@hono/node-server",
+      "@hono/vite-dev-server": {
+        "minimatch": "^11.0.5"
+      }
     }
   }
 }
