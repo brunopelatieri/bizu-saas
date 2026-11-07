@@ -12,6 +12,8 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 import {
+  type BillingProviderId,
+  billingProviderIds,
   type InvoiceStatus,
   invoiceStatuses,
   type PaymentMethod,
@@ -45,7 +47,13 @@ const timestamps = {
     .$onUpdate(() => new Date()),
 };
 
-export type { InvoiceStatus, PaymentMethod, PaymentProviderId, PriceInterval };
+export type {
+  BillingProviderId,
+  InvoiceStatus,
+  PaymentMethod,
+  PaymentProviderId,
+  PriceInterval,
+};
 
 /** Limites do plano. Chave ausente ou `null` = ilimitado. */
 export type PlanLimits = {
@@ -53,6 +61,8 @@ export type PlanLimits = {
   customers?: number | null;
   storage_mb?: number | null;
   custom_roles?: number | null;
+  /** Organizações que o dono pode ter (`src/lib/billing/organizations.ts`). */
+  organizations?: number | null;
 };
 
 export const plan = pgTable(
@@ -79,7 +89,8 @@ export const planPrice = pgTable(
     planId: uuid("plan_id")
       .notNull()
       .references(() => plan.id, { onDelete: "cascade" }),
-    provider: text("provider", { enum: paymentProviderIds }).notNull(),
+    // `manual`: preço da cobrança manual, sem referência no provedor.
+    provider: text("provider", { enum: billingProviderIds }).notNull(),
     interval: text("interval", { enum: priceIntervals }).notNull(),
     amountCents: integer("amount_cents").notNull(),
     currency: char("currency", { length: 3 }).notNull().default("BRL"),
@@ -258,7 +269,7 @@ export const billingProfile = pgTable(
   ],
 ).enableRLS();
 
-/** Espelho local da fatura do provedor. */
+/** Espelho local da fatura do provedor, ou fatura manual (`provider = manual`). */
 export const invoice = pgTable(
   "invoice",
   {
@@ -269,8 +280,8 @@ export const invoice = pgTable(
     subscriptionId: uuid("subscription_id")
       .notNull()
       .references(() => subscription.id, { onDelete: "cascade" }),
-    provider: text("provider", { enum: paymentProviderIds }).notNull(),
-    // Nulo só entre o checkout inline e o primeiro evento do provedor.
+    provider: text("provider", { enum: billingProviderIds }).notNull(),
+    // Nulo entre o checkout inline e o primeiro evento do provedor, e sempre na manual.
     providerRef: text("provider_ref"),
     amountCents: integer("amount_cents").notNull(),
     currency: char("currency", { length: 3 }).notNull().default("BRL"),
@@ -278,6 +289,9 @@ export const invoice = pgTable(
     paymentMethod: text("payment_method", { enum: paymentMethods }),
     dueAt: timestamptz("due_at"),
     paidAt: timestamptz("paid_at"),
+    // Período que a fatura cobre. A manual sempre preenche; o provedor pode deixar nulo.
+    periodStart: timestamptz("period_start"),
+    periodEnd: timestamptz("period_end"),
     hostedUrl: text("hosted_url"),
     pixPayload: text("pix_payload"),
     boletoLine: text("boleto_line"),

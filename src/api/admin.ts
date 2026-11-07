@@ -42,11 +42,14 @@ import {
   loadSubscriptionForSync,
 } from "@/lib/billing/checkout";
 import { listPaymentEvents, reprocessEvent } from "@/lib/billing/inbox";
+import { markManualUnpaid, recordManualPayment } from "@/lib/billing/manual";
 import { syncSubscription } from "@/lib/billing/reconcile";
 import { loadSettings } from "@/lib/billing/settings";
 import { changeTenantPlan } from "@/lib/billing/subscription";
 import {
   changeTenantPlanSchema,
+  manualPaymentSchema,
+  manualUnpaidSchema,
   planPriceSchema,
   planSchema,
   platformSettingsSchema,
@@ -402,6 +405,64 @@ adminRoutes.post(
     return c.json({ subscription: { id, status: updated.status } });
   },
 );
+
+/**
+ * Cobrança manual: o proprietário marca quem pagou e quem não pagou
+ * (`src/lib/billing/manual.ts`). A transição, a fatura e a auditoria saem na mesma transação.
+ */
+adminRoutes.post(
+  "/api/admin/subscriptions/:id/manual-payment",
+  ownerOnly,
+  validId,
+  zValidator("json", manualPaymentSchema, validationError),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const result = await recordManualPayment(id, c.req.valid("json"), {
+      userId: c.get("user").id,
+      ip: clientKey(c),
+    });
+
+    return c.json(manualResult(result));
+  },
+);
+
+adminRoutes.post(
+  "/api/admin/subscriptions/:id/manual-unpaid",
+  ownerOnly,
+  validId,
+  zValidator("json", manualUnpaidSchema, validationError),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const result = await markManualUnpaid(id, c.req.valid("json"), {
+      userId: c.get("user").id,
+      ip: clientKey(c),
+    });
+
+    return c.json(manualResult(result));
+  },
+);
+
+function manualResult({
+  subscription,
+  invoice,
+}: Awaited<ReturnType<typeof recordManualPayment>>) {
+  return {
+    subscription: {
+      id: subscription.id,
+      status: subscription.status,
+      currentPeriodStart: subscription.currentPeriodStart,
+      currentPeriodEnd: subscription.currentPeriodEnd,
+      graceUntil: subscription.graceUntil,
+    },
+    invoice: {
+      id: invoice.id,
+      status: invoice.status,
+      amountCents: invoice.amountCents,
+      periodStart: invoice.periodStart,
+      periodEnd: invoice.periodEnd,
+    },
+  };
+}
 
 adminRoutes.post(
   "/api/admin/subscriptions/:id/sync",

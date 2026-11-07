@@ -34,12 +34,12 @@ import {
   LIMIT_LABELS,
   limitMetrics,
   PROVIDER_LABELS,
-  paymentProviderIds,
+  billingProviderIds,
   priceIntervals,
 } from "@/lib/billing/constants";
 import { planPriceSchema, updatePlanSchema } from "@/lib/schemas/admin";
 
-const providerItems = paymentProviderIds.map((value) => ({
+const providerItems = billingProviderIds.map((value) => ({
   value,
   label: PROVIDER_LABELS[value],
 }));
@@ -249,13 +249,19 @@ function PriceRow({
         </p>
       </TableCell>
       <TableCell>
-        <Input
-          aria-label="Referência no provedor"
-          placeholder="price_..."
-          value={ref}
-          onChange={(e) => setRef(e.target.value)}
-          readOnly={readOnly}
-        />
+        {price.provider === "manual" ? (
+          <span className="text-xs text-muted-foreground">
+            Cobrança manual: marcada em Organizações.
+          </span>
+        ) : (
+          <Input
+            aria-label="Referência no provedor"
+            placeholder="price_..."
+            value={ref}
+            onChange={(e) => setRef(e.target.value)}
+            readOnly={readOnly}
+          />
+        )}
       </TableCell>
       <TableCell className="space-x-2 text-right">
         {readOnly ? null : (
@@ -279,7 +285,7 @@ function PriceRow({
 }
 
 function NewPriceForm({ planId }: { planId: string }) {
-  const [provider, setProvider] = useState<string>(paymentProviderIds[0]);
+  const [provider, setProvider] = useState<string>(billingProviderIds[0]);
   const [interval, setInterval] = useState<string>("month");
   const [amount, setAmount] = useState("");
   const create = useAdminMutation("Preço criado.");

@@ -24,10 +24,12 @@ só o caminho da interface. Sem `loader` de servidor. Em produção, sem 2FA, to
 |---|---|---|
 | `GET /api/admin/overview` | plataforma | tenants por estado, usuários, testes acabando em 7 dias, planos ativos, webhooks com falha |
 | `GET /api/admin/tenants?q&status&page` | plataforma | `status` é o estado de cobrança; 20 por página |
-| `GET /api/admin/tenants/:id` | plataforma | membros, assinatura, últimos eventos e auditoria |
+| `GET /api/admin/tenants/:id` | plataforma | membros, assinatura (período, vencimento, carência, `billingMode`), 12 últimas faturas, preços manuais do plano, últimos eventos e auditoria |
 | `POST /api/admin/tenants/:id/suspend` `{ reason? }` | owner | `suspended` + `locked`; e-mail `tenant-suspended` aos proprietários (falha no aviso só vai para o log: a suspensão vale e é auditada); 409 `ALREADY_SUSPENDED` |
 | `POST /api/admin/tenants/:id/unsuspend` | owner | volta `full`, ou `read_only` se a assinatura expirou; 409 `NOT_SUSPENDED` |
-| `PUT /api/admin/tenants/:id/plan` `{ planId }` | owner | plano gratuito encerra o trial, destrava o `read_only` e larga a referência do provedor; plano pago mantém o estado; 409 `PROVIDER_SUBSCRIPTION_ACTIVE` com assinatura viva no provedor (`unpaid` conta como viva: cancele antes) |
+| `PUT /api/admin/tenants/:id/plan` `{ planId }` | owner | plano gratuito encerra o trial, destrava o `read_only`, limpa o período e larga a referência do provedor; plano pago mantém o estado, e do gratuito (sem período) vence **agora**; faturas manuais abertas viram `void`; 409 `PROVIDER_SUBSCRIPTION_ACTIVE` com assinatura viva no provedor (`unpaid` conta como viva: cancele antes) |
+| `POST /api/admin/subscriptions/:id/manual-payment` `{ invoiceId?, planPriceId?, method? }` | owner | cobrança manual: fatura aberta (ou nova) paga, assinatura `active` com período novo; 409 `PROVIDER_SUBSCRIPTION_ACTIVE`, `FREE_PLAN`, `MANUAL_PRICE_REQUIRED`, `INVOICE_NOT_OPEN` |
+| `POST /api/admin/subscriptions/:id/manual-unpaid` `{ invoiceId?, immediate? }` | owner | fatura `failed`, assinatura `past_due` com carência ou, com `immediate`, `unpaid` + `read_only`; 409 `ALREADY_PAST_DUE` |
 | `GET /api/admin/subscriptions?status&q&page` | plataforma | sem referências do provedor; traz `alert` da reconciliação |
 | `POST /api/admin/subscriptions/:id/cancel` | owner | imediato, no provedor e aqui; 409 `ALREADY_CANCELED` |
 | `POST /api/admin/subscriptions/:id/sync` | owner | busca do provedor, corrige e alerta; conferido e igual, o alerta sai; 409 `NO_PROVIDER_SUBSCRIPTION` |
@@ -49,7 +51,7 @@ tenant levam o `tenant_id`. Tabelas de tenant são lidas com `withPlatformScope(
 | Rota | Arquivo |
 |---|---|
 | `/admin` | `pages/admin/overview-page.tsx` |
-| `/admin/tenants`, `/admin/tenants/:id` | `tenants-page.tsx`, `tenant-detail-page.tsx` |
+| `/admin/tenants`, `/admin/tenants/:id` | `tenants-page.tsx`, `tenant-detail-page.tsx`; cobrança manual em `components/admin/manual-billing-card.tsx` |
 | `/admin/usuarios` | `users-page.tsx` |
 | `/admin/planos`, `/admin/planos/:id` | `plans-page.tsx`, `plan-detail-page.tsx` |
 | `/admin/assinaturas` | `subscriptions-page.tsx` |

@@ -1,7 +1,7 @@
 import type postgres from "postgres";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { runBillingTrial } from "@/jobs/billing";
-import { runSeed, SEED_CUSTOMERS, SEED_USERS } from "@/db/seed";
+import { runSeed, SEED_CUSTOMERS, SEED_MANUAL_TENANTS, SEED_USERS } from "@/db/seed";
 import { checkLimit } from "@/lib/billing/limits";
 import { computeTrialEnd, DAY_MS } from "@/lib/billing/trial";
 import { createMemoryProvider } from "@/lib/email/providers/memory";
@@ -533,14 +533,15 @@ describe("seed", () => {
 
     const emails = Object.values(SEED_USERS).map(({ email }) => email);
     const customers = Object.values(SEED_CUSTOMERS).map(({ email }) => email);
+    const slugs = ["acme", "beta", ...SEED_MANUAL_TENANTS.map(({ slug }) => slug)];
     await owner.begin(async (tx) => {
       await tx`select set_config('app.bypass_tenant', 'on', true)`;
       await tx`
         delete from audit_log where tenant_id in (
-          select id from organization where slug in ('acme', 'beta')
+          select id from organization where slug in ${tx(slugs)}
         )
       `;
-      await tx`delete from organization where slug in ('acme', 'beta')`;
+      await tx`delete from organization where slug in ${tx(slugs)}`;
       await tx`delete from "user" where email in ${tx(emails)}`;
       await tx`delete from portal_user where email in ${tx(customers)}`;
       await tx`delete from plan where slug in ('free', 'basic', 'pro')`;
@@ -563,7 +564,11 @@ describe("seed", () => {
     await runSeed("senha-do-seed-123");
 
     expect(await counts()).toEqual(first);
-    expect(first).toEqual({ users: 5, plans: 3, tenants: 1 });
+    expect(first).toEqual({
+      users: Object.keys(SEED_USERS).length,
+      plans: 3,
+      tenants: 1,
+    });
 
     const [roles] = await owner<{ role: string }[]>`
       select role from "user" where email = ${SEED_USERS.platformOwner.email}
@@ -578,6 +583,17 @@ describe("seed", () => {
         select count(*)::int as total from member where organization_id = ${acme?.id as string}
       `,
     ).toEqual([{ total: 3 }]);
+
+    // Cobrança manual: um tenant vencido, em somente leitura, com a fatura em aberto.
+    const [expired] = await owner<{ id: string; access_mode: string }[]>`
+      select id, access_mode from organization where slug = 'cliente-vencido'
+    `;
+    expect(expired?.access_mode).toBe("read_only");
+    expect((await subscriptionOf(expired?.id as string))?.status).toBe("unpaid");
+    const [freePlan] = await owner<{ limits: { organizations?: number } }[]>`
+      select limits from plan where slug = 'free'
+    `;
+    expect(freePlan?.limits.organizations).toBe(1);
   });
 
   it("não promove conta que outra pessoa cadastrou sem confirmar o e-mail", async () => {

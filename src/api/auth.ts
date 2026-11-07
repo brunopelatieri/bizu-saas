@@ -5,6 +5,7 @@ import { withImpersonator } from "@/lib/audit";
 import { AUTH_COOKIE_PREFIX } from "@/lib/auth/constants";
 import { getAuth } from "@/lib/auth/server";
 import { impersonationExpired } from "@/lib/auth/sessions";
+import { getEnv } from "@/lib/env";
 import { type AuthUser, type PlatformRole, toAuthUser } from "@/lib/auth/types";
 
 export type AuthSession = { id: string; expiresAt: Date };
@@ -53,11 +54,15 @@ export const resolveSession: ResolveSession = async (headers) => {
 };
 
 /**
- * Exige sessão válida e e-mail verificado. O gate do `ProtectedRoute` roda no cliente
+ * Exige sessão válida e, com `EMAIL_VERIFICATION_REQUIRED`, e-mail verificado. O gate do `ProtectedRoute` roda no cliente
  * e não protege dados: toda rota privada da API deve usar este middleware.
  * Falha fechada: se o Auth estiver indisponível, a rota não abre.
  */
-export function createRequireAuth(resolve: ResolveSession) {
+export function createRequireAuth(
+  resolve: ResolveSession,
+  /** `EMAIL_VERIFICATION_REQUIRED`, lido a cada requisição (os testes trocam). */
+  verificationRequired: () => boolean = () => getEnv().EMAIL_VERIFICATION_REQUIRED,
+) {
   return createMiddleware<AuthEnv>(async (c, next) => {
     const { headers } = c.req.raw;
 
@@ -79,7 +84,7 @@ export function createRequireAuth(resolve: ResolveSession) {
       return c.json({ error: "Sessão inválida ou expirada." }, 401);
     }
 
-    if (!resolved.user.emailVerified) {
+    if (!resolved.user.emailVerified && verificationRequired()) {
       return c.json(
         { error: "Confirme seu e-mail para entrar.", code: "EMAIL_NOT_VERIFIED" },
         403,

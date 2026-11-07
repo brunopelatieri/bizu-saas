@@ -171,7 +171,7 @@ describe("autenticação", () => {
       const response = await signUp(email);
 
       expect(response.status).toBe(200);
-      expect(await response.json()).toEqual({ ok: true });
+      expect(await response.json()).toEqual({ ok: true, verifyEmail: true });
       expect(response.headers.getSetCookie()).toEqual([]);
 
       await waitForBackgroundTasks();
@@ -429,7 +429,7 @@ describe("autenticação", () => {
       await stalePendingSignup(email);
 
       const signup = await signUp(email);
-      expect(await signup.json()).toEqual({ ok: true });
+      expect(await signup.json()).toEqual({ ok: true, verifyEmail: true });
       expect(await templatesSentTo(email)).toEqual(["verify-email"]);
 
       const token = await lastToken(email, "verify-email");

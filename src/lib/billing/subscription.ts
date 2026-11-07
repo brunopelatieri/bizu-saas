@@ -11,8 +11,10 @@ import type {
   SubscriptionEventSource,
   SubscriptionStatus,
 } from "@/db/schema/billing";
+import { voidOpenManualInvoices } from "@/lib/billing/manual";
 import { initialSubscription } from "@/lib/billing/trial";
 import { loadSettings } from "@/lib/billing/settings";
+import { isProviderManaged } from "@/lib/billing/state-machine";
 import { TenantRuleError } from "@/lib/tenant/errors";
 
 export type TenantPlan = {
@@ -131,16 +133,19 @@ export async function startTrial(tenantId: string, now = new Date()) {
 
 /**
  * Troca o plano de um tenant (proprietário, em `/admin`). Plano gratuito encerra o
- * trial, devolve o acesso total e larga o vínculo com o provedor, como `endSubscription`:
- * sem isso, a reconciliação e o fim de período desfariam a troca. Plano pago mantém o
- * estado e o trial como estavam. Quem tem assinatura viva no provedor (`unpaid` ainda é
- * viva) precisa ser cancelado antes: trocar só aqui deixaria a cobrança correndo por um
- * plano que o tenant não tem mais.
+ * trial, devolve o acesso total, limpa o período e larga o vínculo com o provedor, como
+ * `endSubscription`: sem isso, a reconciliação e o fim de período desfariam a troca. Plano
+ * pago mantém o estado e o trial como estavam; saindo do gratuito (`active` sem período), a
+ * cobrança manual vence **agora**: o job abre a fatura e a carência começa. Faturas manuais em
+ * aberto são anuladas, porque o valor era do plano antigo. Quem tem assinatura viva no
+ * provedor (`unpaid` ainda é viva) precisa ser cancelado antes: trocar só aqui deixaria a
+ * cobrança correndo por um plano que o tenant não tem mais.
  */
 export async function changeTenantPlan(
   tenantId: string,
   planId: string,
   reason = "admin_plan_change",
+  now = new Date(),
 ) {
   const [target] = await getDb().select().from(plan).where(eq(plan.id, planId));
   if (!target) return null;
@@ -159,6 +164,8 @@ export async function changeTenantPlan(
           tenantId,
           planId,
           status: "active",
+          // Plano pago sem provedor: vence agora, como quem sai do gratuito.
+          ...(target.isFree ? {} : { currentPeriodStart: now, currentPeriodEnd: now }),
         })
         .returning();
       if (!created) return null;
@@ -174,10 +181,7 @@ export async function changeTenantPlan(
       return created;
     }
 
-    if (
-      current.providerSubscriptionRef &&
-      ["active", "past_due", "unpaid", "trialing", "paused"].includes(current.status)
-    ) {
+    if (isProviderManaged(current)) {
       throw new TenantRuleError(
         409,
         "PROVIDER_SUBSCRIPTION_ACTIVE",
@@ -187,6 +191,9 @@ export async function changeTenantPlan(
 
     const toFree = target.isFree;
     const next: SubscriptionStatus = toFree ? "active" : current.status;
+    // Do gratuito (ativo, sem período) para o pago: a cobrança manual vence agora.
+    const startsBilling =
+      !toFree && current.status === "active" && current.currentPeriodEnd === null;
     const [updated] = await tx
       .update(subscription)
       .set({
@@ -200,11 +207,16 @@ export async function changeTenantPlan(
               cancelAtPeriodEnd: false,
               graceUntil: null,
               pendingPlanId: null,
+              currentPeriodStart: null,
+              currentPeriodEnd: null,
             }
           : {}),
+        ...(startsBilling ? { currentPeriodStart: now, currentPeriodEnd: now } : {}),
       })
       .where(eq(subscription.id, current.id))
       .returning();
+
+    if (planId !== current.planId) await voidOpenManualInvoices(tx, current.id);
 
     if (toFree) {
       await tx

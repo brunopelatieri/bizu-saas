@@ -13,6 +13,15 @@ export const paymentProviderIds = [
 ] as const;
 export type PaymentProviderId = (typeof paymentProviderIds)[number];
 
+/**
+ * Cobrança sem módulo: o proprietário da plataforma marca o pagamento em `/admin`. Não é um
+ * módulo de `src/lib/payments/providers/` (`getProvider("manual")` é `null`); só aparece em
+ * `plan_price.provider` (preço manual) e `invoice.provider` (fatura manual).
+ */
+export const MANUAL_PROVIDER = "manual" as const;
+export const billingProviderIds = [MANUAL_PROVIDER, ...paymentProviderIds] as const;
+export type BillingProviderId = (typeof billingProviderIds)[number];
+
 export const priceIntervals = ["month", "year"] as const;
 export type PriceInterval = (typeof priceIntervals)[number];
 
@@ -74,7 +83,8 @@ export const paymentEventStatuses = [
   "duplicate",
 ] as const;
 
-export const PROVIDER_LABELS: Record<PaymentProviderId, string> = {
+export const PROVIDER_LABELS: Record<BillingProviderId, string> = {
+  manual: "Manual",
   stripe: "Stripe",
   asaas: "Asaas",
   mercadopago: "Mercado Pago",
@@ -93,6 +103,7 @@ export const limitMetrics = [
   "customers",
   "storage_mb",
   "custom_roles",
+  "organizations",
 ] as const;
 export type LimitMetric = (typeof limitMetrics)[number];
 
@@ -101,6 +112,7 @@ export const LIMIT_LABELS: Record<LimitMetric, string> = {
   customers: "clientes",
   storage_mb: "armazenamento (MB)",
   custom_roles: "papéis personalizados",
+  organizations: "organizações",
 };
 
 export function formatMoney(cents: number, currency = "BRL") {

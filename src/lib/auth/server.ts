@@ -10,7 +10,6 @@ import {
   CLIENT_IP_HEADER,
   INVITATION_TTL_SECONDS,
   MAX_CUSTOM_ROLES,
-  MAX_TENANTS_PER_USER,
   TRUST_DEVICE_SECONDS,
 } from "@/lib/auth/constants";
 import {
@@ -31,6 +30,7 @@ import {
 } from "@/lib/auth/permissions";
 import { logError } from "@/api/log";
 import { getEnv } from "@/lib/env";
+import { organizationLimitReached } from "@/lib/billing/organizations";
 import { recordSignupConsent } from "@/lib/lgpd/consent";
 import { preferredTenantId } from "@/lib/tenant/membership";
 
@@ -42,6 +42,8 @@ const TWO_FACTOR_AUDIT: Record<string, AuditAction> = {
 
 function createAuth() {
   const env = getEnv();
+  // Desligada (padrão), o cadastro entra direto (`tech/08-auth.md`).
+  const verify = env.EMAIL_VERIFICATION_REQUIRED;
 
   return betterAuth({
     appName: "Bizu SaaS",
@@ -80,7 +82,10 @@ function createAuth() {
 
     emailAndPassword: {
       enabled: true,
-      requireEmailVerification: true,
+      requireEmailVerification: verify,
+      // O cadastro nunca abre sessão: a resposta é a mesma para e-mail novo e existente, e
+      // `onExistingUserSignUp` avisa o dono. Sem verificação, o cliente entra em seguida.
+      autoSignIn: false,
       minPasswordLength: 10,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: ({ user, token }) =>
@@ -98,8 +103,8 @@ function createAuth() {
     },
 
     emailVerification: {
-      sendOnSignUp: true,
-      sendOnSignIn: true,
+      sendOnSignUp: verify,
+      sendOnSignIn: verify,
       expiresIn: 3600,
       autoSignInAfterVerification: true,
       sendVerificationEmail: ({ user, token }) =>
@@ -212,10 +217,13 @@ function createAuth() {
           enabled: true,
           maximumRolesPerOrganization: MAX_CUSTOM_ROLES,
         },
-        allowUserToCreateOrganization: (user) => user.emailVerified,
-        organizationLimit: MAX_TENANTS_PER_USER,
+        allowUserToCreateOrganization: (user) => !verify || user.emailVerified,
+        // Mesma regra de `POST /api/tenant` (`plan.limits.organizations`), para quem chamar
+        // `auth.api.createOrganization` direto.
+        organizationLimit: (user) => organizationLimitReached(user.id),
         invitationExpiresIn: INVITATION_TTL_SECONDS,
-        requireEmailVerificationOnInvitation: true,
+        // Sem verificação, aceitar exige o id do convite, que só chega pelo e-mail.
+        requireEmailVerificationOnInvitation: verify,
         cancelPendingInvitationsOnReInvite: true,
         // Exclusão de tenant tem carência e fluxo próprio (fase 10).
         disableOrganizationDeletion: true,
@@ -253,4 +261,9 @@ let instance: Auth | undefined;
 export function getAuth(): Auth {
   if (!instance) instance = createAuth();
   return instance;
+}
+
+/** Descarta a instância (testes que trocam `EMAIL_VERIFICATION_REQUIRED`). */
+export function resetAuthForTests() {
+  instance = undefined;
 }

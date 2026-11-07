@@ -8,7 +8,28 @@ incompatível: leia sempre a seção **Migração** antes de atualizar um projet
 
 ## [Não lançado]
 
+### Adicionado
+
+- **Cobrança manual como padrão** (`docs/specs/cobranca-manual/spec.md`): sem módulo de pagamento, o
+  proprietário registra em `/admin/tenants/:id` quem pagou e quem não pagou
+  (`POST /api/admin/subscriptions/:id/manual-payment` e `.../manual-unpaid`). Preço manual em
+  `plan_price` (`provider = manual`), fatura manual em `invoice`, vencimento no job
+  `billing.period_end` e carência no `billing.dunning`, com auditoria.
+- **Limite de organizações por dono** no plano (`limits.organizations`), editável em
+  `/admin/planos/:id` e conferido em `POST /api/tenant` (403 `PLAN_LIMIT_REACHED`). Trial, vencida e
+  sem assinatura valem 1.
+- **`EMAIL_VERIFICATION_REQUIRED`**: liga a verificação de e-mail. O padrão é desligada: o cadastro
+  entra direto.
+- Seed com preços manuais, limite de organizações e três tenants na cobrança manual (em dia, em
+  atraso e vencido).
+
 ### Alterado
+
+- O cadastro nunca abre sessão (`autoSignIn: false`) e devolve `{ ok: true, verifyEmail }`.
+- `GET /api/me/invitations` só lista convites com o e-mail verificado.
+- Do gratuito para um plano pago, a troca de plano no `/admin` vence a cobrança na hora; trocar de
+  plano anula as faturas manuais em aberto.
+- O teto fixo de 3 organizações por usuário (`MAX_TENANTS_PER_USER`) sai: vale o do plano.
 
 - **Node 24.19 ou superior** em `engines`, `Dockerfile` e CI, piso do `react-router-hono-server` 4.
 - `.nvmrc` com a versão do Node (lida pelo CI via `node-version-file`) e `engine-strict=true` no
@@ -29,7 +50,16 @@ incompatível: leia sempre a seção **Migração** antes de atualizar um projet
 
 ### Migração
 
-Sem migration nem variável nova. Para projetos derivados:
+Cobrança manual e verificação opcional:
+
+1. `npm run db:migrate` aplica `0020_cobranca_manual` (só colunas novas e nulas em `invoice`).
+2. **A verificação de e-mail passa a ser desligada por padrão.** Para manter o comportamento antigo,
+   ponha `EMAIL_VERIFICATION_REQUIRED=true` no `.env.local` e no `docker/.env.prod`.
+3. Planos sem `limits.organizations` ficam ilimitados para quem paga; trial e vencida valem 1.
+   Defina o valor em `/admin/planos/:id` (o seed preenche os planos dele).
+4. Cadastre um preço `Manual` nos planos pagos para registrar pagamentos sem provedor.
+
+Node e dependências (sem migration nem variável nova). Para projetos derivados:
 
 1. **Node:** instale o Node 24.19+ antes de tudo, na máquina, no CI e em imagens próprias. Apague
    `node_modules` e rode `npm ci`.

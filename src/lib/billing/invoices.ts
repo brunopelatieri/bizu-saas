@@ -142,6 +142,8 @@ const publicColumns = {
   paymentMethod: invoice.paymentMethod,
   dueAt: invoice.dueAt,
   paidAt: invoice.paidAt,
+  periodStart: invoice.periodStart,
+  periodEnd: invoice.periodEnd,
   hostedUrl: invoice.hostedUrl,
   createdAt: invoice.createdAt,
 };

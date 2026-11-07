@@ -22,6 +22,9 @@ export default defineConfig({
       APP_URL: "http://localhost:5173",
       EMAIL_PROVIDER: "memory",
       TRUSTED_PROXY_HOPS: "1",
+      // Os testes de auth cobrem o fluxo com verificação; `auth-no-verification.test.ts`
+      // troca para o padrão do template (desligada).
+      EMAIL_VERIFICATION_REQUIRED: "true",
     },
     // Testes compartilham um banco: nada de paralelismo entre arquivos.
     fileParallelism: false,

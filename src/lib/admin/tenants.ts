@@ -4,15 +4,19 @@ import { withPlatformScope } from "@/db/rls";
 import {
   auditLog,
   customer,
+  invoice,
   member,
   organization,
   paymentEvent,
   plan,
+  planPrice,
   subscription,
   subscriptionEvent,
   user,
 } from "@/db/schema";
+import { MANUAL_PROVIDER } from "@/lib/billing/constants";
 import { listTenantOwners } from "@/lib/billing/notify";
+import { isProviderManaged } from "@/lib/billing/state-machine";
 import type { BillingState } from "@/lib/billing/state";
 import { appLink } from "@/lib/auth/links";
 import { sendEmail } from "@/lib/email/send";
@@ -156,18 +160,67 @@ export async function getTenantDetail(tenantId: string) {
 
     const { subscription: sub, plan: currentPlan, ...tenant } = row;
 
+    // Cobrança manual: faturas para marcar pagas ou não pagas e os preços manuais do plano.
+    const invoices = sub
+      ? await tx
+          .select({
+            id: invoice.id,
+            provider: invoice.provider,
+            amountCents: invoice.amountCents,
+            currency: invoice.currency,
+            status: invoice.status,
+            paymentMethod: invoice.paymentMethod,
+            dueAt: invoice.dueAt,
+            paidAt: invoice.paidAt,
+            periodStart: invoice.periodStart,
+            periodEnd: invoice.periodEnd,
+            createdAt: invoice.createdAt,
+          })
+          .from(invoice)
+          .where(eq(invoice.subscriptionId, sub.id))
+          .orderBy(desc(invoice.createdAt))
+          .limit(12)
+      : [];
+    const manualPrices = currentPlan
+      ? await tx
+          .select({
+            id: planPrice.id,
+            interval: planPrice.interval,
+            amountCents: planPrice.amountCents,
+            currency: planPrice.currency,
+          })
+          .from(planPrice)
+          .where(
+            and(
+              eq(planPrice.planId, currentPlan.id),
+              eq(planPrice.provider, MANUAL_PROVIDER),
+              eq(planPrice.active, true),
+            ),
+          )
+      : [];
+
     return {
       tenant,
       subscription: sub && {
+        id: sub.id,
         status: sub.status,
         trialEndsAt: sub.trialEndsAt,
         planId: sub.planId,
+        planPriceId: sub.planPriceId,
+        currentPeriodStart: sub.currentPeriodStart,
+        currentPeriodEnd: sub.currentPeriodEnd,
+        graceUntil: sub.graceUntil,
+        cancelAtPeriodEnd: sub.cancelAtPeriodEnd,
+        // `provider`: cobrada pelo módulo; `manual`: marcada aqui.
+        billingMode: isProviderManaged(sub) ? "provider" : "manual",
       },
       plan: currentPlan && {
         id: currentPlan.id,
         name: currentPlan.name,
         isFree: currentPlan.isFree,
       },
+      invoices,
+      manualPrices,
       members,
       events,
       audit,

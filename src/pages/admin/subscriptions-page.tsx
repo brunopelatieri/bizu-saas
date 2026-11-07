@@ -169,7 +169,9 @@ export function AdminSubscriptionsPage() {
                         </TableCell>
                         <TableCell>{row.planName}</TableCell>
                         <TableCell>
-                          {row.provider ? PROVIDER_LABELS[row.provider] : "–"}
+                          {row.linked && row.provider
+                            ? PROVIDER_LABELS[row.provider]
+                            : "Manual"}
                         </TableCell>
                         <TableCell>{formatDate(row.currentPeriodEnd)}</TableCell>
                         <TableCell>

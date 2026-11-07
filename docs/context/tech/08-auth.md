@@ -27,7 +27,7 @@ pelo outro. 2FA, sessões e personificação estão em `tech/26-seguranca.md`. A
 
 | Rota | Quem responde | Regra |
 |---|---|---|
-| `POST /api/auth/sign-up/email` | `auth-ext.ts` + Better Auth | exige `signupSchema`; corpo sempre `{ ok: true }` |
+| `POST /api/auth/sign-up/email` | `auth-ext.ts` + Better Auth | exige `signupSchema`; corpo sempre `{ ok: true, verifyEmail }`, nunca abre sessão |
 | `POST /api/auth/verify-email` | `auth-ext.ts` + guard + Better Auth | só POST; devolve `{ step }` (`verified`, `change-approved`, `change-done`) |
 | `GET /api/auth/verify-email` | `auth-ext.ts` | 405: o token nunca é consumido em GET |
 | `POST /api/auth-ext/resend-verification` | `auth-ext.ts` | `{ ok: true }`; 3 por 15 min por IP, 3 por hora por e-mail |
@@ -49,6 +49,25 @@ Auth e surgiu rota em `/admin/*` ou `/two-factor/*`? Os testes em `tests/db/auth
 
 ## Verificação de e-mail
 
+**Opcional:** `EMAIL_VERIFICATION_REQUIRED` (padrão `false`), variável e não `platform_setting`,
+porque muda a construção da instância (`docs/specs/cobranca-manual/spec.md`).
+
+| | Ligada | Desligada (padrão) |
+|---|---|---|
+| Cadastro | `{ ok: true, verifyEmail: true }`, tela "Confirme seu e-mail" | `{ ok: true, verifyEmail: false }`; o cliente entra com a mesma senha |
+| `requireAuth` | 403 `EMAIL_NOT_VERIFIED` | aceita não verificado |
+| Cadastro pendente de 24 h | apagado no novo cadastro | nunca apagado: a conta já é usável |
+| Criar organização, aceitar convite | só verificado | qualquer conta; aceitar exige o id do convite (que só chega por e-mail) |
+| `GET /api/me/invitations` | verificado | **verificado**, senão `[]`: quem cadastrasse o e-mail alheio veria os convites |
+
+Nas duas posições o cadastro tem `autoSignIn: false`: a resposta não tem cookie e é a mesma para
+e-mail novo e existente (o Better Auth devolve a resposta genérica e `onExistingUserSignUp` avisa o
+dono). Desligada, o login logo após o cadastro revela se o e-mail já tinha conta: é o custo de
+entrar direto. `/verificar-email` continua igual e serve para confirmar depois. Os testes de banco
+rodam com a verificação ligada; `tests/db/auth-no-verification.test.ts` cobre o padrão.
+
+Com a verificação ligada:
+
 1. Cadastro, reenvio ou login sem verificação chamam `sendVerificationLink`, que ignora
    a `url` do Better Auth, grava `sha256(token)` e envia `/verificar-email?token=`.
 2. A página só renderiza. O botão faz `POST /api/auth/verify-email`.
@@ -62,7 +81,7 @@ dispara um novo link (`sendOnSignIn`). `hideUnverified` (`auth-ext.ts`) faz a tr
 proxy para o Better Auth, que confere a senha antes da verificação: sem ela, cadastrar um e-mail
 com uma senha qualquer e tentar entrar diria se ele já existia. A tela de login não sabe por que
 a entrada falhou, então o reenvio fica fixo nela, em "Não recebeu o link de confirmação?".
-`requireAuth` também recusa `emailVerified = false`.
+`requireAuth` também recusa `emailVerified = false` (só com a verificação ligada).
 
 A linha é consumida antes do Better Auth rodar. Se ele falhar nesse instante, o link
 se perde e a pessoa pede outro: a falha é fechada.
@@ -95,7 +114,7 @@ quando `afterEmailVerification` roda o usuário já tem o novo.
 - Cookies `bizu.session_token` e `bizu.session_data`: `HttpOnly`, `SameSite=Lax`, e
   `Secure` com prefixo `__Secure-` em produção.
 - `requireAuth` responde 401 sem cookie, sem consultar nada; 401 com sessão inválida; 503
-  se o Auth falhar; 403 sem e-mail verificado.
+  se o Auth falhar; 403 sem e-mail verificado, com `EMAIL_VERIFICATION_REQUIRED=true`.
 - `requireAuth` lê a sessão com `disableCookieCache`: sessão revogada cai na hora. O cache
   de 5 min do cookie vale só para `/get-session`, que alimenta a interface.
 - `apiFetch`, ao receber 401 em `/app`, encerra a sessão antes de ir ao login. Sem isso o

@@ -50,8 +50,11 @@ type AuthContextValue = {
    * `twoFactor: true` quando a senha passou, mas a sessão ainda depende do desafio em `/2fa`.
    */
   signIn: (values: LoginInput) => Promise<{ twoFactor: boolean }>;
-  /** Não abre sessão: a conta só entra depois de confirmar o e-mail. */
-  signUp: (values: SignupInput) => Promise<void>;
+  /**
+   * Não abre sessão. `verifyEmail`: a plataforma exige o link antes do primeiro login; sem
+   * ele, quem chama entra com a mesma senha.
+   */
+  signUp: (values: SignupInput) => Promise<{ verifyEmail: boolean }>;
   /** Na personificação, encerra só ela e devolve o suporte à própria sessão. */
   signOut: () => Promise<void>;
   /** Relê a sessão depois de uma mudança feita fora do `authClient`. */
@@ -94,11 +97,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback(async (values: SignupInput) => {
-    const { error } = await authClient.$fetch("/sign-up/email", {
-      method: "POST",
-      body: values,
-    });
+    const { data, error } = await authClient.$fetch<{ verifyEmail?: boolean }>(
+      "/sign-up/email",
+      { method: "POST", body: values },
+    );
     if (error) throw toAuthActionError(error);
+
+    // Sem o campo (servidor antigo), o fluxo seguro: pedir a confirmação.
+    return { verifyEmail: data?.verifyEmail !== false };
   }, []);
 
   const impersonating = Boolean(data?.session.impersonatedBy);

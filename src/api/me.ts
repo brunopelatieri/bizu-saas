@@ -187,6 +187,14 @@ meRoutes.post(
   },
 );
 
-meRoutes.get("/api/me/invitations", authRateLimit, requireAuth, async (c) =>
-  c.json({ invitations: await listInvitationsFor(c.get("user").email) }),
-);
+/**
+ * Só com o e-mail verificado: com a verificação desligada, quem cadastrasse o e-mail de outra
+ * pessoa veria (e aceitaria) os convites dela. Sem verificar, o convite entra pelo link.
+ */
+meRoutes.get("/api/me/invitations", authRateLimit, requireAuth, async (c) => {
+  const { email, emailVerified } = c.get("user");
+
+  return c.json({
+    invitations: emailVerified ? await listInvitationsFor(email) : [],
+  });
+});

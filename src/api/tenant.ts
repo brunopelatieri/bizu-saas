@@ -24,6 +24,7 @@ import { cancelDeletion, requestTenantDeletion } from "@/lib/lgpd/deletion";
 import { confirmIdentity } from "@/lib/lgpd/identity";
 import { confirmIdentitySchema } from "@/lib/schemas/lgpd";
 import { getAuth } from "@/lib/auth/server";
+import { assertCanCreateOrganization } from "@/lib/billing/organizations";
 import { startTrial } from "@/lib/billing/subscription";
 import { logError } from "@/api/log";
 import {
@@ -59,6 +60,9 @@ tenantRoutes.post(
   async (c) => {
     const { name, slug } = c.req.valid("json");
     const user = c.get("user");
+
+    // `plan.limits.organizations`: 403 `PLAN_LIMIT_REACHED` (o plugin repete a conta).
+    await assertCanCreateOrganization(user.id);
 
     const tenant = await getAuth().api.createOrganization({
       headers: c.req.raw.headers,

@@ -1,7 +1,8 @@
 # Bizu SaaS
 
 **Bizu SaaS** é o ponto de partida open source para quem vai lançar um SaaS: multi-tenant,
-quatro níveis de login com verificação de e-mail, trial configurável e pagamentos em módulos.
+quatro níveis de login com verificação de e-mail opcional, trial configurável e cobrança manual
+ou em módulos de pagamento.
 Tudo sobre Drizzle em qualquer Postgres, com documentação viva e fluxo pensado para
 **AI Software Engineering**.
 
@@ -49,12 +50,13 @@ autenticação, tenants, planos, e-mail, LGPD e deploy toda vez.
 **O que vem pronto:**
 
 - Landing, página de preços e blog com SSR e SEO.
-- Autenticação (Better Auth + Drizzle) com verificação de e-mail de uso único, recuperação de
+- Autenticação (Better Auth + Drizzle) com verificação de e-mail de uso único (opcional), recuperação de
   senha, 2FA, sessões em banco, e uma segunda instância só para clientes do portal.
 - Multi-tenant com `tenant_id` e Row Level Security no Postgres, provado por testes. Papéis
   `owner`, `admin`, `member` e personalizados.
-- Planos, trial configurável (inclusive gratuito), limites por plano, assinaturas, inadimplência e
-  webhooks verificados, com o módulo Stripe pronto (veja [Pagamentos](#7-pagamentos)).
+- Planos, trial configurável (inclusive gratuito), limites por plano (inclusive quantas organizações
+  o dono pode ter), vencimento e inadimplência com cobrança manual no `/admin` como padrão, e
+  webhooks verificados com o módulo Stripe pronto (veja [Pagamentos](#7-pagamentos)).
 - E-mail transacional com provedor substituível e fila de jobs no próprio Postgres (pg-boss).
 - Auditoria, personificação com consentimento, LGPD (consentimento, exportação, exclusão com
   carência, retenção), módulo de arquivos, logs JSON e Sentry opcional.
@@ -197,9 +199,14 @@ Entre em `http://localhost:5173/login` com as contas do seed. A senha é a de `S
 | `acme.admin@bizu.local`, `acme.membro@bizu.local` | `/app` | admin e membro do `acme` |
 | `julia@cliente.local` | `/portal/login?org=acme` | cliente ativa nos tenants `acme` e `beta` |
 | `lead@cliente.local` | não entra | lead do `acme`, sem senha, à espera do envio de acesso |
+| `em-dia.owner@bizu.local` | `/app` | owner do `cliente-em-dia`: cobrança manual paga |
+| `atrasado.owner@bizu.local` | `/app` | owner do `cliente-atrasado`: venceu, na carência |
+| `vencido.owner@bizu.local` | `/app` | owner do `cliente-vencido`: carência acabou, somente leitura |
 
-O seed também cria os planos `free`, `basic` e `pro` (sem `provider_price_ref`: ficam vazios até
-você ligar um provedor) e o tenant `beta`, em trial.
+O seed também cria os planos `free` (1 organização), `basic` (2) e `pro` (5), com preços manuais e
+do Stripe (sem `provider_price_ref`: ficam vazios até você ligar o provedor), e o tenant `beta`, em
+trial. Em `/admin/tenants`, abra um dos tenants `cliente-*` para registrar um pagamento ou marcar
+a falta dele.
 
 - **`/admin`:** organizações, usuários, planos, assinaturas, webhooks e as configurações do
   período de teste (dias, plano padrão, carência) e do encarregado de dados.
@@ -221,16 +228,23 @@ Detalhes em [`docs/context/tech/08-auth.md`](docs/context/tech/08-auth.md),
 
 ## 6. Testar o cadastro e a verificação de e-mail
 
-1. Com `npm run dev` no ar, cadastre-se em `http://localhost:5173/cadastro` (e aceite os termos).
+**Por padrão a verificação fica desligada** (`EMAIL_VERIFICATION_REQUIRED=false`): cadastre-se em
+`http://localhost:5173/cadastro` (e aceite os termos) e você já entra, direto em `/app/onboarding`.
+Crie sua organização (nome e identificador): você vira owner e entra em `/app`, em teste no plano
+padrão.
+
+Para exigir a confirmação, ponha `EMAIL_VERIFICATION_REQUIRED=true` no `.env.local` e reinicie:
+
+1. Cadastre-se em `/cadastro`.
 2. Abra o Mailpit em `http://localhost:8025` e clique no link recebido.
 3. Na página aberta, clique em **Confirmar meu e-mail**. O link vale 1 hora e só pode ser usado
    uma vez; abrir a página não o consome.
-4. Em `/app/onboarding`, crie sua organização (nome e identificador). Você vira owner e entra em
-   `/app`, já em teste no plano padrão.
 
-Sem confirmar, o login responde como senha incorreta e a tela oferece o reenvio. Para testar a
-recuperação de senha, use `/esqueci-senha`; a troca de e-mail fica em `/app/configuracoes`. As
-respostas de cadastro, reenvio e reset nunca revelam se um e-mail existe.
+Com ela ligada, o login sem confirmar responde como senha incorreta e a tela oferece o reenvio.
+Desligada, o login logo após o cadastro revela se o e-mail já tinha conta: é o custo de entrar
+direto (detalhes em [`08-auth.md`](docs/context/tech/08-auth.md)). Para testar a recuperação de
+senha, use `/esqueci-senha`; a troca de e-mail fica em `/app/configuracoes`. As respostas de
+cadastro, reenvio e reset nunca revelam se um e-mail existe.
 
 Sem o seed, promova sua conta a proprietário da plataforma:
 
@@ -242,9 +256,12 @@ update "user" set role = 'platform_owner' where email = 'voce@empresa.com';
 
 ## 7. Pagamentos
 
-**Ficam desligados por padrão.** Com `PAYMENT_PROVIDERS` vazio, o sistema funciona só com planos
-gratuitos e trial: nada pede chave de provedor agora. Cada provedor é um módulo em
-`src/lib/payments/providers/<id>/` e entra pela variável.
+**Ficam desligados por padrão.** Com `PAYMENT_PROVIDERS` vazio, a cobrança é **manual**: cadastre um
+preço `Manual` em `/admin/planos/:id` e, em `/admin/tenants/:id`, registre o pagamento ou marque a
+falta dele. Vencimento, carência, somente leitura e troca de plano funcionam sem provedor, e tudo
+entra na auditoria (`docs/context/tech/24-billing-cobranca.md`). Nada pede chave de provedor agora.
+Cada provedor é um módulo em `src/lib/payments/providers/<id>/` e entra pela variável; com ele
+ligado, as assinaturas pagas por ele seguem o fluxo do provedor.
 
 Quando for ligar o **Stripe** em modo de teste:
 
@@ -426,7 +443,8 @@ Variáveis, topologia e riscos: [`docs/context/infra-deploy.md`](docs/context/in
 | `TRUSTED_PROXY_HOPS` | Proxies na frente do app; `1` atrás do Caddy |
 | `RATE_LIMIT_STORE` | `memory` em dev; `postgres` é obrigatório em produção |
 | `CSP_REPORT_ONLY` | `true` só relata violações; `false` bloqueia |
-| `PAYMENT_PROVIDERS` | Módulos de pagamento ativos; vazio = só planos gratuitos |
+| `EMAIL_VERIFICATION_REQUIRED` | `false` (padrão): o cadastro entra direto; `true`: exige o link de confirmação |
+| `PAYMENT_PROVIDERS` | Módulos de pagamento ativos; vazio = cobrança manual pelo `/admin` |
 | `STORAGE_PROVIDER`, `STORAGE_LOCAL_DIR`, `S3_*`, `MAX_UPLOAD_MB` | Módulo de arquivos |
 | `LOG_LEVEL`, `SENTRY_DSN` | Logs JSON com `request_id`; Sentry opcional |
 

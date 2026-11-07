@@ -22,6 +22,7 @@ import { runInBackground } from "@/lib/auth/background";
 import { CLIENT_IP_HEADER } from "@/lib/auth/constants";
 import { purgeExpiredPendingSignup } from "@/lib/auth/pending-signup";
 import { getAuth } from "@/lib/auth/server";
+import { getEnv } from "@/lib/env";
 import { readVerificationClaims } from "@/lib/auth/verification-issue";
 import {
   emailOnlySchema,
@@ -94,8 +95,8 @@ const rateLimitByEmail = createRateLimitByEmail("resend-by-email");
 /**
  * Rotas de autenticação com regra própria, antes do handler do Better Auth.
  *
- * - Cadastro: exige o aceite de termos e devolve sempre o mesmo corpo. O do Better
- *   Auth traz id e datas, que diferem entre e-mail novo e existente.
+ * - Cadastro: exige o aceite de termos e devolve sempre o mesmo corpo, sem sessão. O do
+ *   Better Auth traz id e datas, que diferem entre e-mail novo e existente.
  * - Login: conta não verificada responde como senha errada (`hideUnverified`).
  * - `verify-email`: o endpoint do Better Auth é GET e consumiria o token em qualquer
  *   visita. Aqui só existe POST, atrás do `verificationGuard`.
@@ -153,8 +154,10 @@ authRoutes.post(
   zValidator("json", signupSchema, validationError),
   async (c) => {
     const { name, email, password, termsVersion, marketing } = c.req.valid("json");
+    const verifyEmail = getEnv().EMAIL_VERIFICATION_REQUIRED;
 
-    await purgeExpiredPendingSignup(email);
+    // Sem verificação, a conta não verificada já é usável: apagá-la seria tomar a de alguém.
+    if (verifyEmail) await purgeExpiredPendingSignup(email);
 
     // O aceite é gravado pelo hook que cria o usuário, só se ele de fato nascer.
     const response = await withSignupConsent(
@@ -175,7 +178,9 @@ authRoutes.post(
         ),
     );
 
-    return response.ok ? c.json({ ok: true }) : response;
+    // Sem cookie em nenhum caso (`autoSignIn: false`). `verifyEmail` é da plataforma, não da
+    // conta: diz ao cliente se mostra "confirme seu e-mail" ou entra com a mesma senha.
+    return response.ok ? c.json({ ok: true, verifyEmail }) : response;
   },
 );
 

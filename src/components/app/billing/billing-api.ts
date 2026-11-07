@@ -29,6 +29,8 @@ export type BillingPlan = {
   limits: Record<string, number | null | undefined>;
   features: string[];
   prices: BillingPrice[];
+  /** Preços da cobrança manual: só para exibir; a troca é feita pela plataforma. */
+  manualPrices: Array<Pick<BillingPrice, "interval" | "amountCents" | "currency">>;
 };
 
 export type BillingProvider = {
@@ -39,6 +41,8 @@ export type BillingProvider = {
 };
 
 export type PlansResponse = {
+  /** `manual`: nenhum módulo de pagamento ativo; a plataforma marca os pagamentos. */
+  billingMode: "manual" | "provider";
   plans: BillingPlan[];
   providers: BillingProvider[];
 };
@@ -59,6 +63,8 @@ export type Invoice = {
   paymentMethod: PaymentMethod | null;
   dueAt: string | null;
   paidAt: string | null;
+  periodStart: string | null;
+  periodEnd: string | null;
   hostedUrl: string | null;
   createdAt: string;
   pixPayload?: string | null;
@@ -70,6 +76,8 @@ export type SubscriptionView = {
   plan: { id: string; name: string; isFree: boolean };
   planPriceId: string | null;
   provider: PaymentProviderId | null;
+  /** `manual`: a plataforma marca o pagamento; `currentPeriodEnd` é o vencimento. */
+  billingMode: "manual" | "provider";
   /** Há assinatura no provedor: troca de plano em vez de checkout. */
   paid: boolean;
   trialEndsAt: string | null;

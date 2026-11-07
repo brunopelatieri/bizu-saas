@@ -100,8 +100,11 @@ type ApplyContext = {
   /** Com ator, a mudança entra na auditoria. */
   actor?: AuditEntry["actor"];
   ip?: string | null;
-  /** Campos além da decisão, como o plano ativado pelo primeiro pagamento. */
-  extra?: Partial<Pick<SubscriptionRow, "planId" | "planPriceId">>;
+  /**
+   * Campos além da decisão, como o plano ativado pelo primeiro pagamento ou o preço manual
+   * (com `provider: null`, a assinatura deixa de apontar para o provedor antigo).
+   */
+  extra?: Partial<Pick<SubscriptionRow, "planId" | "planPriceId" | "provider">>;
 };
 
 function nextMetadata(

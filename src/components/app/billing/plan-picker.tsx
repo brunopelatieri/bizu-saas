@@ -106,18 +106,51 @@ function PriceRow({
   );
 }
 
+/**
+ * Cobrança manual: sem módulo de pagamento, os planos só informam o valor. Quem troca o plano e
+ * marca o pagamento é a plataforma, em `/admin`.
+ */
+function ManualPlanList({ plans }: { plans: BillingPlan[] }) {
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-muted-foreground">
+        A cobrança é feita diretamente pela equipe da plataforma. Para mudar de plano ou
+        combinar o pagamento, fale com o suporte.
+      </p>
+      <div className="grid gap-4 md:grid-cols-2">
+        {plans.map((plan) => (
+          <Card key={plan.id}>
+            <CardHeader>
+              <CardTitle>{plan.name}</CardTitle>
+              {plan.description ? (
+                <p className="text-sm text-muted-foreground">{plan.description}</p>
+              ) : null}
+            </CardHeader>
+            <CardContent className="space-y-1 text-sm">
+              {plan.manualPrices.length === 0 ? (
+                <p className="text-muted-foreground">Valor sob consulta.</p>
+              ) : (
+                plan.manualPrices.map((price) => (
+                  <p key={price.interval}>
+                    {formatMoney(price.amountCents, price.currency)} /{" "}
+                    {INTERVAL_LABELS[price.interval]}
+                  </p>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /** Planos ativos e, em cada um, o que o provedor permite fazer. */
 export function PlanPicker({ plans, providers, ...rest }: PlanPickerProps) {
   const paidPlans = plans.filter(({ isFree }) => !isFree);
   const showProvider = providers.length > 1;
 
-  if (providers.length === 0) {
-    return (
-      <p className="text-sm text-muted-foreground">
-        O pagamento on-line ainda não está disponível nesta plataforma.
-      </p>
-    );
-  }
+  if (providers.length === 0) return <ManualPlanList plans={paidPlans} />;
 
   return (
     <div className="grid gap-4 md:grid-cols-2">

@@ -2,20 +2,20 @@
 
 - **Escopo:** Planos e preços, configurações da plataforma, assinatura e trial, estado de cobrança do tenant, limites e features, job `billing.trial`, seed. A cobrança em si (checkout, webhooks, provedores) está em `tech/24-billing-cobranca.md`.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-billing.md`, `spec-dados.md`, `spec-tenant-rbac.md` (limites), `spec-email-jobs.md`
-- **Paths do código:** `src/lib/billing/` (`constants.ts`, `trial.ts`, `state.ts`, `settings.ts`, `subscription.ts`, `limits.ts`, `summary.ts`, `notify.ts`, `public-plans.server.ts`), `src/db/schema/billing.ts`, `src/jobs/billing.ts`, `src/db/seed.ts`, `src/lib/schemas/admin.ts`, `tests/db/{billing,admin}.test.ts`, `drizzle/0008_billing_planos.sql`, `drizzle/0009_rls_billing.sql`
+- **Paths do código:** `src/lib/billing/` (`constants.ts`, `trial.ts`, `state.ts`, `settings.ts`, `subscription.ts`, `limits.ts`, `organizations.ts`, `summary.ts`, `notify.ts`, `public-plans.server.ts`), `src/db/schema/billing.ts`, `src/jobs/billing.ts`, `src/db/seed.ts`, `src/lib/schemas/admin.ts`, `tests/db/{billing,admin,billing-manual}.test.ts`, `drizzle/0008_billing_planos.sql`, `drizzle/0009_rls_billing.sql`
 
 ## Tabelas
 
 | Tabela | Escopo | Observações |
 |---|---|---|
 | `plan` | plataforma, sem RLS | `slug` único e imutável, `limits` jsonb, `features` text[], `is_free`, `active`, `sort_order`. Nunca se apaga: `active = false` tira de `/precos` e da oferta, e quem já usa segue nele |
-| `plan_price` | plataforma, sem RLS | um por (plano, provedor, intervalo); `amount_cents` em centavos, `currency` `BRL`, `provider_price_ref` só como campo (preenchido em `/admin/planos`) |
+| `plan_price` | plataforma, sem RLS | um por (plano, provedor, intervalo); `amount_cents` em centavos, `currency` `BRL`, `provider_price_ref` só como campo (preenchido em `/admin/planos`). `provider = manual`: preço da cobrança manual, sem referência (`tech/24-billing-cobranca.md`) |
 | `platform_setting` | plataforma, sem RLS | uma chave por linha; ver abaixo |
 | `subscription` | tenant, RLS forçado | uma por tenant. Estados e colunas do provedor em `tech/24-billing-cobranca.md` |
 | `subscription_event` | tenant, RLS forçado | toda transição grava uma linha (`system`, `admin`, `job`, `owner`, `webhook`) |
 
-`plan.limits`: `{ members, customers, storage_mb, custom_roles }`. Chave ausente ou `null` =
-ilimitado; `0` não deixa criar nada.
+`plan.limits`: `{ members, customers, storage_mb, custom_roles, organizations }`. Chave ausente ou
+`null` = ilimitado; `0` não deixa criar nada.
 
 ## Configurações da plataforma
 
@@ -78,6 +78,12 @@ O banner de `/app` (`BillingBanner`) só informa; quem barra é a API.
   aplicado em `POST /api/customers`; `storage_mb` conta 0 até a fase 10.
 - Features: `GET /api/me` entrega a lista; `hasFeature` no servidor e `tenant_feature_override`
   ficam para quando a primeira feature for cobrada.
+- `organizations` é da **pessoa**, não do tenant (`organizations.ts`): conta as organizações não
+  excluídas em que ela é owner e vale o maior limite entre elas. Só assinatura em dia (`active`
+  ou `past_due`, tenant ativo) libera o limite do plano; trial, vencida, cancelada, suspensa ou
+  sem assinatura valem 1. A primeira organização sempre passa. `POST /api/tenant` chama
+  `assertCanCreateOrganization` (403 `PLAN_LIMIT_REACHED`) e o `organizationLimit` do plugin
+  repete a conta.
 
 ## Job `billing.trial`
 
@@ -104,11 +110,14 @@ filtro, usados pelos testes. Destinatários: proprietários do tenant (`listTena
 ## Seed
 
 `npm run db:seed` (`src/db/seed.ts`): idempotente, recusa `NODE_ENV=production` sem
-`SEED_ALLOW_PRODUCTION=1`, exige `SEED_PASSWORD` (mín. 10). Cria planos `free`, `basic` e `pro`
-(preços no provedor `stripe`, `provider_price_ref` nulo), as três configurações (`trial_plan_id`
-= `pro`, 14 e 7 dias), `owner@bizu.local` (`platform_owner`), `suporte@bizu.local`
-(`platform_support`) e o tenant `acme` (`acme.owner`, `acme.admin`, `acme.membro`, trial no
-`pro`). Só cria o que falta: planos e configurações editados em `/admin` não são sobrescritos.
+`SEED_ALLOW_PRODUCTION=1`, exige `SEED_PASSWORD` (mín. 10). Cria planos `free` (1 organização),
+`basic` (2) e `pro` (5), com preços `manual` e `stripe` (`provider_price_ref` nulo), as três
+configurações (`trial_plan_id` = `pro`, 14 e 7 dias), `owner@bizu.local` (`platform_owner`),
+`suporte@bizu.local` (`platform_support`), o tenant `acme` (`acme.owner`, `acme.admin`,
+`acme.membro`, trial no `pro`) e três tenants na cobrança manual, cada um com owner próprio:
+`cliente-em-dia` (pago), `cliente-atrasado` (`past_due`, fatura aberta) e `cliente-vencido`
+(`unpaid` + `read_only`, fatura `failed`). Só cria o que falta: planos e configurações editados em
+`/admin` não são sobrescritos; plano existente sem `organizations` ganha só essa chave.
 Conta já existente com o e-mail de um usuário do seed só tem o papel conferido se o e-mail estiver
 confirmado; sem isso o seed para, porque a senha é de quem cadastrou. Em produção, recusa o
 `SEED_PASSWORD` de `.env.example`.
@@ -117,5 +126,4 @@ próprio Better Auth.
 
 ## Fora desta fase
 
-`billing.usage` e `usage_counter`; `tenant_feature_override`; `max_tenants_per_user` em
-`platform_setting` (o plugin lê um número fixo na criação); perfil de cobrança no onboarding.
+`billing.usage` e `usage_counter`; `tenant_feature_override`; perfil de cobrança no onboarding.

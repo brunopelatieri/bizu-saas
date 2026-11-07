@@ -126,23 +126,31 @@ describe("tenant", () => {
     expect((await json(response)).code).toBe("SLUG_TAKEN");
   });
 
-  it("recusa o quarto tenant do mesmo usuário", async () => {
+  it("sem assinatura paga, recusa a segunda organização do mesmo dono", async () => {
+    // Trial ou sem assinatura valem 1 (`limits.organizations`, tech/23-billing-planos.md).
     const user = await createUser(owner);
-
-    for (const name of ["Um", "Dois", "Três"]) await createTenant(user, name);
+    await createTenant(user, "Um");
 
     const response = await call("POST", "/api/tenant", {
       cookie: user.cookie,
-      body: { name: "Quatro" },
+      body: { name: "Dois" },
     });
 
     expect(response.status).toBe(403);
+    expect((await json(response)).code).toBe("PLAN_LIMIT_REACHED");
   });
 
   it("troca de tenant e sessão nova abre no último usado", async () => {
     const user = await createUser(owner);
     const first = await createTenant(user, "Primeiro");
-    await createTenant(user, "Segundo");
+    // Membro (não dono) de outra organização: não conta no limite de organizações.
+    const other = await createUser(owner);
+    const second = await createTenant(other, "Segundo");
+    await addMember(owner, second.id, user, "member");
+    await call("POST", "/api/tenant/active", {
+      cookie: user.cookie,
+      body: { tenantId: second.id },
+    });
 
     const switched = await call("POST", "/api/tenant/active", {
       cookie: user.cookie,

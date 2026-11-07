@@ -12,6 +12,7 @@ import {
 import { dueDunningNotice, type DunningNotice } from "@/lib/billing/dunning";
 import { requeueStuckEvents } from "@/lib/billing/inbox";
 import { latestUnpaidInvoice } from "@/lib/billing/invoices";
+import { applyManualDue, dueManualSubscriptions } from "@/lib/billing/manual";
 import { claimNotice, releaseNotice, reserveNotice } from "@/lib/billing/notices";
 import { listTenantOwners, notifyOwners } from "@/lib/billing/notify";
 import { type ReconcileTarget, syncSubscription } from "@/lib/billing/reconcile";
@@ -319,12 +320,18 @@ export async function handleBillingDunning() {
   await runBillingDunning();
 }
 
-export type PeriodEndJobResult = { canceled: number; downgraded: number };
+export type PeriodEndJobResult = {
+  canceled: number;
+  downgraded: number;
+  /** Assinaturas manuais que venceram sem pagamento e foram a `past_due`. */
+  manualDue: number;
+};
 
 /**
  * `billing.period_end` (cron horário). Encerra cancelamentos e aplica downgrades cujo
  * `current_period_end` já passou. O provedor costuma avisar antes, por webhook: a
- * transição repetida é ignorada, e este job cobre o aviso que não chegou.
+ * transição repetida é ignorada, e este job cobre o aviso que não chegou. Depois, vence as
+ * assinaturas manuais (`runManualDue`).
  */
 export async function runBillingPeriodEnd(
   now = new Date(),
@@ -350,7 +357,7 @@ export async function runBillingPeriodEnd(
       ),
   );
 
-  const result: PeriodEndJobResult = { canceled: 0, downgraded: 0 };
+  const result: PeriodEndJobResult = { canceled: 0, downgraded: 0, manualDue: 0 };
   const failures: unknown[] = [];
 
   for (const { id, tenantId } of rows) {
@@ -381,11 +388,56 @@ export async function runBillingPeriodEnd(
     }
   }
 
+  // Depois do downgrade: a fatura do período novo sai com o preço do plano novo.
+  result.manualDue = await runManualDue(now, options, failures);
+
   if (failures.length > 0) {
     throw new Error(`billing.period_end: ${failures.length} tenant(s) com falha`);
   }
 
   return result;
+}
+
+/**
+ * Cobrança manual: período vencido sem pagamento abre a fatura do período seguinte e passa a
+ * `past_due`, com a carência contada do vencimento. Daí em diante é o `billing.dunning` (avisos
+ * T-3/T0 e `unpaid` + `read_only`). O admin registra o pagamento em `/admin/tenants/:id`.
+ */
+async function runManualDue(
+  now: Date,
+  options: BillingJobOptions,
+  failures: unknown[],
+) {
+  const { graceDays } = await loadSettings();
+  const rows = await withPlatformScope("billing.period_end: vencimentos manuais", (tx) =>
+    dueManualSubscriptions(tx, now, options.tenantIds),
+  );
+  let due = 0;
+
+  for (const { id, tenantId } of rows) {
+    try {
+      await withTenant(tenantId, async (tx) => {
+        const row = await lockSubscription(tx, id);
+        if (!row) return;
+
+        const outcome = await applyManualDue(tx, row, { graceDays, now });
+        if (!outcome.applied) return;
+
+        due += 1;
+        if (outcome.missingPrice) {
+          logError(
+            "Assinatura manual venceu sem preço manual no plano",
+            new Error(`subscription ${id}`),
+          );
+        }
+      });
+    } catch (error) {
+      logError("Falha ao vencer assinatura manual", error);
+      failures.push(error);
+    }
+  }
+
+  return due;
 }
 
 export async function handleBillingPeriodEnd() {

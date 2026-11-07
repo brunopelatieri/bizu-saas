@@ -55,6 +55,10 @@ export type BillingEvent =
   | { type: "resume.requested" }
   | { type: "pause.requested"; supported: boolean }
   | { type: "admin.canceled" }
+  // Cobrança manual: o admin marca (`src/lib/billing/manual.ts`) e o job vence o período.
+  | { type: "manual.paid"; periodStart: Date; periodEnd: Date }
+  | { type: "manual.unpaid"; graceDays: number; immediate: boolean }
+  | { type: "manual.due"; graceDays: number; planIsFree: boolean }
   // Reconciliação: o provedor é a referência do que aconteceu com a cobrança.
   | ({
       type: "provider.synced";
@@ -93,6 +97,20 @@ export type AppliedDecision = {
 export type Decision = { outcome: "ignored"; reason: string } | AppliedDecision;
 
 const ignored = (reason: string): Decision => ({ outcome: "ignored", reason });
+
+/**
+ * A assinatura é do provedor? `unpaid` conta: lá ela ainda existe e pode voltar a cobrar. O
+ * controle manual só mexe no que não é (`spec cobranca-manual`).
+ */
+export function isProviderManaged(input: {
+  status: SubscriptionStatus;
+  providerSubscriptionRef: string | null;
+}) {
+  return (
+    input.providerSubscriptionRef !== null &&
+    ["active", "past_due", "unpaid", "trialing", "paused"].includes(input.status)
+  );
+}
 
 /** Há cobrança viva no provedor? `canceled`, `unpaid` e `expired` só voltam por checkout. */
 export function isLiveStatus(status: SubscriptionStatus) {
@@ -580,5 +598,83 @@ export function transition(
 
     case "provider.synced":
       return providerSynced(current, event, now);
+
+    case "manual.paid":
+    case "manual.unpaid":
+    case "manual.due":
+      return manualEvent(current, event, now);
+  }
+}
+
+/** Pagamento marcado pelo admin, falta de pagamento e vencimento do período manual. */
+function manualEvent(
+  current: SubscriptionSnapshot,
+  event: Extract<BillingEvent, { type: `manual.${string}` }>,
+  now: Date,
+): Decision {
+  if (isProviderManaged(current)) return ignored("provider_managed");
+
+  const unpaid = (reason: string): Decision => ({
+    outcome: "applied",
+    status: "unpaid",
+    reason,
+    patch: {},
+    accessMode: "read_only",
+  });
+
+  switch (event.type) {
+    case "manual.paid": {
+      const reactivation = ["unpaid", "expired", "canceled"].includes(current.status);
+      const base = toActive(
+        current.status === "active"
+          ? "manual_renewed"
+          : current.status === "past_due"
+            ? "manual_payment_recovered"
+            : reactivation
+              ? "manual_reactivated"
+              : "manual_activated",
+      );
+
+      return {
+        ...base,
+        patch: {
+          ...base.patch,
+          currentPeriodStart: event.periodStart,
+          currentPeriodEnd: event.periodEnd,
+          // Referência antiga (assinatura encerrada no provedor) não volta a valer.
+          providerSubscriptionRef: null,
+          pendingPlanId: null,
+          ...(reactivation ? { cancelAtPeriodEnd: false } : {}),
+        },
+      };
+    }
+
+    case "manual.unpaid":
+      if (current.status === "active" || current.status === "trialing") {
+        if (event.immediate) return unpaid("manual_unpaid");
+        return { ...toPastDue(event.graceDays, now), reason: "manual_unpaid" };
+      }
+      if (current.status === "past_due") {
+        return event.immediate ? unpaid("manual_unpaid") : ignored("already_past_due");
+      }
+      return ignored("not_applicable");
+
+    case "manual.due": {
+      const end = current.currentPeriodEnd;
+
+      if (event.planIsFree) return ignored("free_plan");
+      if (current.status !== "active") return ignored("not_active");
+      if (current.cancelAtPeriodEnd) return ignored("cancel_scheduled");
+      if (!end) return ignored("no_period");
+      if (end.getTime() > now.getTime()) return ignored("period_running");
+
+      // A carência conta do vencimento, não de quando o job rodou.
+      return {
+        outcome: "applied",
+        status: "past_due",
+        reason: "manual_due",
+        patch: { graceUntil: new Date(end.getTime() + event.graceDays * DAY_MS) },
+      };
+    }
   }
 }

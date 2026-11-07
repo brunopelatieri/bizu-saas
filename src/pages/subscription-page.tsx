@@ -34,6 +34,7 @@ const formatDate = (iso: string | null) =>
 function periodLine(subscription: SubscriptionView) {
   const { status, cancelAtPeriodEnd, currentPeriodEnd, trialEndsAt, graceUntil } =
     subscription;
+  const manual = subscription.billingMode === "manual" && !subscription.plan.isFree;
 
   if (status === "past_due" && graceUntil) {
     return `Regularize o pagamento até ${formatDate(graceUntil)}.`;
@@ -45,7 +46,12 @@ function periodLine(subscription: SubscriptionView) {
     return `Período de teste até ${formatDate(trialEndsAt)}.`;
   }
   if (status === "active" && currentPeriodEnd) {
-    return `Próxima cobrança em ${formatDate(currentPeriodEnd)}.`;
+    return manual
+      ? `Pago até ${formatDate(currentPeriodEnd)}; o próximo pagamento vence nessa data.`
+      : `Próxima cobrança em ${formatDate(currentPeriodEnd)}.`;
+  }
+  if (manual && (status === "unpaid" || status === "expired")) {
+    return "O acesso está em modo somente leitura. Fale com o suporte para regularizar.";
   }
 
   return null;
@@ -260,7 +266,7 @@ export function SubscriptionPage() {
 
             <section className="space-y-3">
               <h2 className="text-lg font-semibold text-foreground">Planos</h2>
-              {canManage && !view.profile ? (
+              {canManage && !view.profile && plans.data?.billingMode !== "manual" ? (
                 <p className="text-sm text-muted-foreground">
                   Preencha os dados de faturamento para assinar.
                 </p>
