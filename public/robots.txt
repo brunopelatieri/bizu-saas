@@ -9,4 +9,4 @@ Disallow: /verificar-email
 Disallow: /esqueci-senha
 Disallow: /redefinir-senha
 
-Sitemap: https://bizu.bru.ia.br/sitemap.xml
+Sitemap: https://example.com/sitemap.xml

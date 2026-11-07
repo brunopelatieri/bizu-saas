@@ -1,42 +1,42 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://bizu.bru.ia.br/</loc>
+    <loc>https://example.com/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://bizu.bru.ia.br/sobre</loc>
+    <loc>https://example.com/sobre</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://bizu.bru.ia.br/projetos</loc>
+    <loc>https://example.com/projetos</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://bizu.bru.ia.br/precos</loc>
+    <loc>https://example.com/precos</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://bizu.bru.ia.br/blog</loc>
+    <loc>https://example.com/blog</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://bizu.bru.ia.br/contato</loc>
+    <loc>https://example.com/contato</loc>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://bizu.bru.ia.br/legal/termos</loc>
+    <loc>https://example.com/legal/termos</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://bizu.bru.ia.br/legal/privacidade</loc>
+    <loc>https://example.com/legal/privacidade</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>

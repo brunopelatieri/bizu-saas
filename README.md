@@ -288,8 +288,10 @@ real cadastrando uma conta e abrindo o link. Detalhes e templates em
 ## 9. Personalizar e remover módulos
 
 - **Marca e textos:** `src/lib/constants/` (nome, links e navegação do site), `src/components/landing/`,
-  `src/pages/`, blog em `src/lib/content/posts.ts`, `public/` (ícone, `sitemap.xml` e `robots.txt`, que
-  trazem o domínio do autor: troque pelo seu), e-mails em `src/lib/email/`.
+  `src/pages/`, blog em `src/lib/content/posts.ts`, `public/` (ícone, `sitemap.xml` e `robots.txt`), e-mails em `src/lib/email/`.
+- **Domínio do site:** `siteConfig.url` (`src/lib/constants/navigation.ts`), `public/sitemap.xml` e
+  `public/robots.txt` trazem o placeholder `https://example.com`. Troque os três pelo seu domínio antes
+  de publicar (`grep -rn example.com public src/lib/constants`). São arquivos estáticos: não leem `APP_URL`.
 - **Textos legais:** `src/lib/legal/termos.md` e `privacidade.md` são modelos. Preencha o controlador
   e revise com um advogado (`docs/context/lgpd.md`).
 - **Planos:** edite em `/admin/planos`; para mudar os do seed, `src/db/seed.ts`.

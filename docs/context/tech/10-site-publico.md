@@ -41,3 +41,7 @@ preço anual, limites e features; o CTA leva a `/cadastro`. `meta` via `buildMet
 - `site-nav-links.tsx`: links de `navItems` com `NavLink` ativo.
 - Anti-overflow: `min-w-0`, `overflow-hidden`, `shrink-0`, padding responsivo.
 - `public/robots.txt` bloqueia `/app`, `/admin`, `/portal`, `/login` e `/auth`.
+- Domínio: `siteConfig.url` (canonical e Open Graph), `public/sitemap.xml` e `public/robots.txt` usam o
+  placeholder `https://example.com`; são estáticos e não leem `APP_URL`. Derivados trocam os três.
+- Links externos de `siteConfig.links` só apontam para este repositório e para o perfil do autor; o link
+  "Repo Vercel" (outro repositório) foi removido do rodapé, dos contatos e de `/projetos`.

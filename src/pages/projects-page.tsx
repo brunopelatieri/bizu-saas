@@ -46,15 +46,8 @@ const docs = [
     platform: "repo" as const,
   },
   {
-    label: "Repositório Vercel",
-    description:
-      "Arquitetura otimizada para deploy na Vercel — base da demo em bizu.bru.ia.br.",
-    href: siteConfig.links.repoVercel,
-    platform: "repo-vercel" as const,
-  },
-  {
     label: "Demo ao vivo",
-    description: "Referência visual em https://bizu.bru.ia.br (Vercel).",
+    description: "Referência visual: demo publicada pelo autor.",
     href: siteConfig.links.demo,
     platform: "site" as const,
   },
@@ -176,19 +169,6 @@ export function ProjectsPage() {
           <p className="mb-8 max-w-2xl text-muted-foreground">
             Este repositório roda em <strong className="text-foreground">VPS + Docker + Node único</strong>{" "}
             (react-router-hono-server + Hono + SSR), sem fornecedor obrigatório.
-            A demo pública roda na{" "}
-            <strong className="text-foreground">Vercel</strong> — a arquitetura
-            otimizada para esse deploy está no repositório{" "}
-            <a
-              href={siteConfig.links.repoVercel}
-              target="_blank"
-              rel="noreferrer noopener"
-              className="inline-flex items-center gap-1.5 text-primary underline-offset-4 transition-colors duration-200 hover:text-primary/80 hover:underline"
-            >
-              <SocialIcon platform="repo-vercel" className="size-3.5" />
-              bizu-saas-vercel
-            </a>
-            .
           </p>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {docs.map((doc) => (

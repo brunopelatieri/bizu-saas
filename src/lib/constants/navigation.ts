@@ -3,7 +3,8 @@ export const siteConfig = {
   description:
     "Ponto de partida open source para SaaS: multi-tenant, quatro níveis de login, trial e cobrança por Pix, boleto e cartão sobre Postgres.",
   locale: "pt-BR",
-  url: "https://bizu.bru.ia.br",
+  // Placeholder: troque pelo domínio do seu projeto (também em public/sitemap.xml e robots.txt).
+  url: "https://example.com",
   logo: "/bizu_bru_ia.png",
   favicon: "/favicon.ico",
   screenshot: "/bizu_bru_ia_screenshot.webp",
@@ -17,7 +18,6 @@ export const siteConfig = {
   links: {
     demo: "https://bizu.bru.ia.br",
     repo: "https://github.com/brunopelatieri/bizu-saas",
-    repoVercel: "https://github.com/brunopelatieri/bizu-saas-vercel",
     github: "https://github.com/brunopelatieri",
     site: "https://brunogoulart.com.br",
     linkedin: "https://www.linkedin.com/in/bruno-pelatieri-goulart/",
@@ -43,7 +43,6 @@ export type NavItem = (typeof navItems)[number];
 export type SocialPlatform =
   | "github"
   | "repo"
-  | "repo-vercel"
   | "linkedin"
   | "site"
   | "youtube"
@@ -62,7 +61,6 @@ export type SocialLinkItem = {
 export const socialLinks: readonly SocialLinkItem[] = [
   { label: "GitHub", href: siteConfig.links.github, platform: "github" },
   { label: "Repositório", href: siteConfig.links.repo, platform: "repo" },
-  { label: "Repo Vercel", href: siteConfig.links.repoVercel, platform: "repo-vercel" },
   { label: "LinkedIn", href: siteConfig.links.linkedin, platform: "linkedin" },
   { label: "Site", href: siteConfig.links.site, platform: "site" },
   { label: "YouTube", href: siteConfig.links.youtube, platform: "youtube" },
@@ -79,7 +77,6 @@ export const contactChannels: readonly SocialLinkItem[] = [
   { label: "LinkedIn", href: siteConfig.links.linkedin, platform: "linkedin" },
   { label: "GitHub", href: siteConfig.links.github, platform: "github" },
   { label: "Repositório", href: siteConfig.links.repo, platform: "repo" },
-  { label: "Repo Vercel", href: siteConfig.links.repoVercel, platform: "repo-vercel" },
   { label: "YouTube", href: siteConfig.links.youtube, platform: "youtube" },
   { label: "X", href: siteConfig.links.x, platform: "x" },
   { label: "Instagram", href: siteConfig.links.instagram, platform: "instagram" },
@@ -93,7 +90,6 @@ export const contactChannelValues: Record<string, string> = {
   LinkedIn: "in/bruno-pelatieri-goulart",
   GitHub: "@brunopelatieri",
   Repositório: "brunopelatieri/bizu-saas",
-  "Repo Vercel": "brunopelatieri/bizu-saas-vercel",
   YouTube: "@devgalactico",
   X: "@brunopelatieri",
   Instagram: "@brunopelatieri",

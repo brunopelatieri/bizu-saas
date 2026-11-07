@@ -7,7 +7,6 @@ export type SocialPlatform =
   | "tiktok"
   | "github"
   | "repo"
-  | "repo-vercel"
   | "gitlab"
   | "docker"
   | "linkedin"
@@ -133,7 +132,6 @@ export function SocialIcon({ platform, className }: SocialIconProps) {
       return <IconTiktok className={className} />;
     case "github":
     case "repo":
-    case "repo-vercel":
       return <IconGithub className={className} />;
     case "gitlab":
       return <IconGitlab className={className} />;
@@ -201,9 +199,6 @@ export function resolveSocialPlatform(label: string, href: string): SocialPlatfo
   }
   if (normalizedLabel.includes("local") || normalizedLabel.includes("map")) {
     return "location";
-  }
-  if (normalizedLabel.includes("repo vercel") || normalizedHref.includes("bizu-saas-vercel")) {
-    return "repo-vercel";
   }
   if (normalizedLabel.includes("repositório") || normalizedHref.includes("bizu-saas")) {
     return "repo";
