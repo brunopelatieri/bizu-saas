@@ -10,9 +10,13 @@
 |   |-- rules/                regras por domínio (carregadas por paths)
 |   `-- skills/               skills de contexto e de fluxo
 |-- .cursor/rules/            regras por domínio para o Cursor
-|-- .github/workflows/        CI: lint, tipos, testes (com Postgres) e build
+|-- .github/                  CI (workflows/), Dependabot, modelos de issue e de PR, CODEOWNERS
 |-- docker/
-|   `-- postgres/init.sql     papéis bizu_owner e bizu_app no primeiro start
+|   |-- compose.prod.yml      stack de produção (app, worker, migrate, postgres, caddy, backup)
+|   |-- .env.prod.example     variáveis da stack de produção
+|   |-- caddy/Caddyfile       reverse proxy com TLS e HSTS
+|   |-- backup/               serviço de backup cifrado
+|   `-- postgres/             init.sql (papéis) e init-prod.sh (senhas do ambiente)
 |-- docs/
 |   |-- context/              contexto para LLMs, a partir do INDEX.md
 |   `-- specs/                templates de PRD/SPEC e specs de features
@@ -47,6 +51,7 @@
 |-- tests/db/                 testes que exigem o Postgres do Docker
 |-- Dockerfile
 |-- docker-compose.yml        Postgres e Mailpit de desenvolvimento
+|-- CHANGELOG.md, CONTRIBUTING.md, SECURITY.md, LICENSE
 |-- react-router.config.ts
 |-- vite.config.ts
 |-- vitest.config.ts          npm test (sem banco)
@@ -59,4 +64,4 @@ Autenticação: `src/lib/auth/` (servidor, cliente, e-mails, papéis), `src/rout
 LGPD e arquivos: `src/lib/lgpd/`, `src/lib/legal/` (textos), `src/lib/files/`, `src/lib/storage/providers/<id>/` (módulos `local` e `s3`); logs em `src/lib/logger.ts` e `src/lib/observability.ts`, Sentry em `src/lib/monitoring/sentry/`; backup em `docker/backup/` (`tech/27-lgpd-arquivos.md`).
 
 Cobrança: `src/lib/billing/` (núcleo) e `src/lib/payments/providers/<id>/` (módulos).
-Pasta prevista pelas fases seguintes: `docker/compose.prod.yml`.
+Deploy: `docker/compose.prod.yml` com `docker/caddy/`, `docker/postgres/` e `docker/.env.prod.example` (`tech/14-deploy.md`).

@@ -1,87 +1,112 @@
 # Deploy em VPS
 
-- **Escopo:** Demo, modelo de deploy, container, compose e variáveis de ambiente.
-- **Specs relacionadas:** nenhuma citada
-- **Paths do código:** não declarado
+- **Escopo:** Modelo de deploy, container, stack de produção, variáveis de ambiente, backup e restauração.
+- **Specs relacionadas:** `docs/specs/saas-foundation/spec-testes-operacao.md` (seção "Deploy e operação")
+- **Paths do código:** `Dockerfile`, `.dockerignore`, `docker/compose.prod.yml`, `docker/.env.prod.example`, `docker/caddy/`, `docker/postgres/`, `docker/backup/`
 
 
-## 14. Deploy em VPS Ubuntu + Docker + Portainer
+## 14. Deploy em VPS Ubuntu + Docker + Caddy (ou Portainer)
 
-### Demo em Producao
+### Demo
 
-- URL: `https://bizu.bru.ia.br`
-- Hospedagem: **Vercel** (demo publica).
-- Repositório Vercel (arquitetura otimizada para serverless): `https://github.com/brunopelatieri/bizu-saas-vercel`
-- Repositório principal (este repo): **VPS + Docker + Node unico** via `react-router-hono-server` + Hono + SSR.
-- Objetivo: demo como referencia visual; codigo de producao self-hosted permanece neste template.
+Não há demo pública deste repositório. O README diz "em breve"; quando existir, aponte-a lá.
 
-### Modelo de Deploy
+### Modelo de deploy
 
-Destino planejado:
+- VPS própria com Ubuntu e Docker Engine (Compose v2.20+); Portainer é opcional e usa o mesmo arquivo.
+- Um único arquivo de stack: `docker/compose.prod.yml`. Nome de projeto próprio (`bizu-saas-prod`): não
+  divide containers nem volumes com o `docker-compose.yml` de desenvolvimento.
+- Reverse proxy: **Caddy** (TLS automático por Let's Encrypt, HSTS, `reverse_proxy app:3000`), com o
+  `docker/caddy/Caddyfile`. Traefik ou Nginx também servem, desde que `TRUSTED_PROXY_HOPS` bata.
+- Processo Node único (assets, `/api/*` e SSR); a fila roda dentro dele (`JOBS_MODE=inline`) ou num
+  `worker`.
 
-- VPS propria.
-- Ubuntu Linux.
-- Docker Engine.
-- Portainer para gerenciar containers/stacks.
-- Reverse proxy recomendado: Traefik, Caddy ou Nginx Proxy Manager.
-
-### Container da Aplicacao
+### Container da aplicação
 
 `Dockerfile` multi-stage:
 
-1. Stage `build`
-   - Node 22 Alpine.
-   - `npm ci`.
-   - `npm run build`.
-2. Stage `runtime`
-   - Node 22 Alpine.
-   - `npm ci --omit=dev`.
-   - Copia `build/`.
-   - Expõe `3000`.
-   - Healthcheck em `/api/health`.
-   - `CMD ["node", "build/server/index.js"]`.
+1. Estágio `build`: Node 22 Alpine, `npm ci`, `npm run build`. Tem devDeps (`drizzle-kit`, `tsx`),
+   `drizzle/` e as fontes. É o alvo (`target: build`) do serviço `migrate`.
+2. Estágio `runtime`: Node 22 Alpine, `npm ci --omit=dev`, só `build/`. Expõe `3000`, healthcheck em
+   `/api/health`, `CMD ["node", "build/server/index.js"]`. Sem `drizzle-kit` nem `drizzle/`.
 
-### Compose Atual
+O `.dockerignore` **não** exclui `drizzle/` (o estágio `build` precisa dele); exclui `docs`, `.env*` e
+`node_modules`.
 
-`docker-compose.yml` e so de desenvolvimento:
+### Stack de produção (`docker/compose.prod.yml`)
 
-- `postgres:16-alpine`, porta local `15432`, superusuario `postgres`, volume `postgres_data`.
-  `docker/postgres/init.sql` roda no primeiro start do volume e cria o banco `bizu` e os
-  papeis `bizu_owner` (migrations) e `bizu_app` (runtime, sem `BYPASSRLS`).
+| Serviço | Perfil | O que faz |
+|---|---|---|
+| `postgres` | sempre | `postgres:16-alpine`, volume `postgres_data`, sem porta publicada. No primeiro start do volume, `docker/postgres/init-prod.sh` roda `docker/postgres/init.sql` com as senhas do ambiente (papéis `bizu_owner`, `bizu_app` e, com `BIZU_BACKUP_PASSWORD`, `bizu_backup`) |
+| `app` | sempre | imagem `runtime`, `JOBS_MODE=${APP_JOBS_MODE:-inline}`, volume `storage` em `/data/storage`, healthcheck do Dockerfile |
+| `caddy` | sempre | portas `HTTP_PORT`/`HTTPS_PORT` (80/443), TLS para `SITE_ADDRESS`, volumes `caddy_data` e `caddy_config` |
+| `worker` | `worker` | mesma imagem, `--worker`, sem porta e sem healthcheck; use com `APP_JOBS_MODE=off` |
+| `migrate` | `tools` | estágio `build`; `npm run db:migrate && npm run jobs:install` com `DIRECT_URL` |
+| `backup` | `backup` | `docker/backup/`; `pg_dump` cifrado com `age` e `/data/storage`, como `bizu_backup` |
+
+Variáveis: `docker/.env.prod.example` (copie para `docker/.env.prod`, não versionado). O compose
+interpola tudo com `${VAR}`: obrigatórias com `:?` (falha dizendo qual falta), opcionais com `:-`
+(vazio vira ausente em `src/lib/env.ts`). Como o Compose interpola até serviços de perfis inativos, as
+do `backup` usam `:-`; o `backup.sh` recusa subir sem elas. Senhas de Postgres só com letras e
+números (entram em URLs).
+
+Rotina:
+
+```bash
+alias bizu='docker compose --env-file docker/.env.prod -f docker/compose.prod.yml'
+bizu config > /dev/null && bizu build
+bizu up -d postgres
+bizu --profile tools run --rm migrate      # migrations e fila, sempre fora do app
+bizu up -d app caddy
+```
+
+Atualizar: `git pull`, `bizu build`, `bizu --profile tools run --rm migrate`, `bizu up -d app caddy`.
+Migrations nunca rodam no start do app. Um primeiro proprietário nasce por cadastro e
+`update "user" set role = 'platform_owner'` (o seed é recusado em produção); o 2FA dele é obrigatório,
+senão `/admin` responde 403.
+
+**Portainer:** Stacks > Add stack > **Repository** (o build precisa do repositório; o Web editor não
+serve), "Compose path" `docker/compose.prod.yml`, variáveis em "Environment variables" (perfis por
+`COMPOSE_PROFILES`). O `migrate` roda no terminal do host.
+
+**Postgres gerenciado:** apague o serviço `postgres`, rode `docker/postgres/init.sql` com o `psql` como
+superusuário (`-v bizu_owner_password=... -v bizu_app_password=...`) e ajuste `DATABASE_URL` e
+`DIRECT_URL` no compose. `bizu_backup` precisa de `BYPASSRLS` e `pg_read_all_data` (abaixo).
+
+**Teste local sem TLS:** `SITE_ADDRESS=http://localhost`, `APP_URL=http://localhost:4181`,
+`HTTP_PORT=4181`, `HTTPS_PORT=4443`. Validado com `/api/health` e `/api/ready` atrás do Caddy. O login
+completo sobre HTTP puro em produção (cookies `Secure`) não foi exercitado: use HTTPS de verdade.
+
+### Compose de desenvolvimento
+
+`docker-compose.yml` é só de desenvolvimento:
+
+- `postgres:16-alpine`, porta local `15432`, superusuário `postgres`, volume `postgres_data`.
+  `docker/postgres/init.sql` roda no primeiro start do volume (senhas de desenvolvimento por
+  padrão) e cria o banco `bizu` e os papéis `bizu_owner` (migrations) e `bizu_app` (runtime, sem
+  `BYPASSRLS`).
 - `axllent/mailpit`: SMTP `1025`, interface `8025`; captura todo e-mail de dev.
+- Perfil `backup` e MinIO comentado, opcionais.
 - Porta ocupada por outro projeto: crie `docker-compose.override.yml` (ignorado pelo git)
   com `ports: !override` e ajuste `.env.local`.
 
-Para producao via Portainer, recomenda-se stack com:
+### Variáveis de ambiente
 
-- Container app (`bizu-saas`).
-- Container Postgres ou Postgres externo/gerenciado.
-- Rede Docker compartilhada.
-- Reverse proxy com TLS.
-- Variaveis injetadas pelo Portainer (nunca comitar secrets).
+Runtime (a lista completa está em `.env.example`; a validação, em `src/lib/env.ts`):
 
-### Variaveis de Ambiente
-
-Runtime:
-
-- `NODE_ENV=production`
-- `PORT=3000`
-- `APP_URL`, `TRUSTED_PROXY_HOPS=1` (um por reverse proxy)
-- `DATABASE_URL` (`bizu_app`), `DIRECT_URL` (`bizu_owner`)
-- `BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY` (32 bytes em base64), `AUDIT_SALT`:
-  valores gerados; os de exemplo derrubam o processo em producao
-- `RATE_LIMIT_STORE=postgres`: `memory` derruba o processo em producao
+- `NODE_ENV=production`, `PORT=3000`
+- `APP_URL` com `https://`, `TRUSTED_PROXY_HOPS=1` (um por reverse proxy)
+- `DATABASE_URL` (`bizu_app`), `DIRECT_URL` (`bizu_owner`; exigida em todo processo)
+- `BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY` (32 bytes em base64), `AUDIT_SALT`: valores
+  gerados; os de exemplo derrubam o processo em produção
+- `RATE_LIMIT_STORE=postgres`: `memory` derruba o processo em produção
+- `EMAIL_PROVIDER` (`memory` é recusado em produção), `EMAIL_FROM`, `SMTP_*` ou `RESEND_*`
 - `CSP_REPORT_ONLY`: `true` relata em `/api/csp-report`; `false` bloqueia
-- `EMAIL_PROVIDER`, `EMAIL_FROM`, `SMTP_*` ou `RESEND_*`
+- `LOG_LEVEL` (`info`), `SENTRY_DSN` (opcional), `STORAGE_PROVIDER` (`local` ou `s3`),
+  `STORAGE_LOCAL_DIR`, `S3_*`, `MAX_UPLOAD_MB`, `PAYMENT_PROVIDERS` (vazio = sem cobrança)
 
-- `LOG_LEVEL` (`info` por padrao), `SENTRY_DSN` (opcional), `STORAGE_PROVIDER`
-  (`local` ou `s3`), `STORAGE_LOCAL_DIR`, `S3_*` e `MAX_UPLOAD_MB`
-
-A lista completa esta em `.env.example`; a validacao, em `src/lib/env.ts`.
-
-Migrations rodam em etapa separada (`npm run db:migrate` com `DIRECT_URL`), antes de
-subir a nova imagem. Em Postgres proprio, rode `docker/postgres/init.sql` com `psql`
-como superusuario uma vez, antes da primeira migration.
+Em Postgres próprio, as migrations rodam em etapa separada (`npm run db:migrate` com `DIRECT_URL`),
+antes de subir a nova imagem, depois do `init.sql` com o `psql`.
 
 ---
 
@@ -105,23 +130,31 @@ como superusuario uma vez, antes da primeira migration.
   `S3_ENDPOINT`); o app baixa os arquivos por conta propria, sem URL publica.
 - O mesmo diretorio recebe as exportacoes LGPD (`exports/`), apagadas apos 7 dias.
 
-### Backup e restauracao (fase 10)
+### Backup e restauracao
 
-Servico opcional do `docker-compose.yml`, perfil `backup` (`docker/backup/`):
+Servico opcional, perfil `backup`, no `docker/compose.prod.yml` (e no `docker-compose.yml` de dev); o
+codigo esta em `docker/backup/`:
 
 1. `age-keygen -o chave.txt` **fora do servidor**; guarde a chave privada (gerenciador de senhas ou
    cofre). So a linha `public key` vai para o servidor.
-2. Defina `BACKUP_AGE_RECIPIENT=age1...` (e, em producao, um usuario com `BYPASSRLS` e
-   `pg_read_all_data`: `CREATE ROLE bizu_backup LOGIN PASSWORD '...' BYPASSRLS;`
-   `GRANT pg_read_all_data TO bizu_backup;` e `BACKUP_PGUSER`/`BACKUP_PGPASSWORD`). Sem atravessar o
-   RLS o `pg_dump` falha, em vez de gerar um backup vazio.
-3. `docker compose --profile backup up -d backup` faz um dump por `BACKUP_INTERVAL_HOURS` (24),
-   `bizu-AAAAMMDD-HHMMSS.dump.age` (`pg_dump -Fc`) e `.storage.tar.age` (de `STORAGE_LOCAL_DIR`) no
-   volume `backups`, e apaga o que passar de `BACKUP_KEEP_DAYS` (14). Um backup agora:
-   `docker compose --profile backup run --rm backup once`.
+2. Defina `BACKUP_AGE_RECIPIENT=age1...`. O usuario do dump precisa atravessar o RLS (`BYPASSRLS` e
+   `pg_read_all_data`); sem isso o `pg_dump` falha, em vez de gerar um backup vazio. No compose de
+   producao esse usuario e o `bizu_backup`, criado pelo `init.sql` **no primeiro start do volume**, se
+   `BIZU_BACKUP_PASSWORD` existir. Volume ja criado: `CREATE ROLE bizu_backup LOGIN PASSWORD '...'
+   CREATEDB BYPASSRLS;` e `GRANT pg_read_all_data TO bizu_backup;` como superusuario. No compose de dev,
+   `BACKUP_PGUSER`/`BACKUP_PGPASSWORD` (padrao `postgres`).
+3. Producao: `COMPOSE_PROFILES=backup` (ou `bizu --profile backup up -d backup`); dev:
+   `docker compose --profile backup up -d backup`. Faz um dump por `BACKUP_INTERVAL_HOURS` (24),
+   `bizu-AAAAMMDD-HHMMSS.dump.age` (`pg_dump -Fc`) e `.storage.tar.age` (do volume `storage` ou de
+   `STORAGE_LOCAL_DIR`) no volume `backups`, e apaga o que passar de `BACKUP_KEEP_DAYS` (14). Um backup
+   agora: `bizu --profile backup run --rm backup once`.
 4. Copie o volume para fora da VPS (rsync, rclone, S3); backup so no mesmo disco nao e backup.
 
-Restaurar (banco):
+Validado em Docker com o compose de producao: backup `once` como `bizu_backup`, dump cifrado e
+`restore-test.sh` (37 tabelas, 19 migrations). A restauracao sobre o banco de producao (abaixo) nao foi
+ensaiada ponta a ponta: faca-o numa copia antes de precisar.
+
+Restaurar (banco; em producao, rode o `createdb` e o `pg_restore` com `bizu exec -T postgres ...` e o dump no stdin):
 
 ```bash
 age --decrypt --identity chave.txt --output bizu.dump bizu-AAAAMMDD-HHMMSS.dump.age

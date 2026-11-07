@@ -28,7 +28,8 @@ estão nas rules e no cabeçalho de cada arquivo.
 | E-mail transacional, templates, bounces, Mailpit | `tech/19-email.md` |
 | Jobs em segundo plano, pg-boss, filas, `JOBS_MODE`, worker | `tech/20-jobs.md` |
 | Componentes base | `tech/12-shadcn-ui.md` |
-| Docker, VPS, variáveis de ambiente, backup e restauração | `infra-deploy.md`, `tech/14-deploy.md` |
+| Docker, VPS, `compose.prod.yml`, Caddy, variáveis de ambiente, backup e restauração | `infra-deploy.md`, `tech/14-deploy.md` |
+| Receber atualizações do template em um projeto derivado, CHANGELOG, versão | `atualizar-template.md` |
 | Lint, testes, CI | `tech/15-qualidade.md` |
 | Bug ou risco conhecido | `tech/16-bugs-riscos.md` |
 

@@ -4,6 +4,10 @@ paths:
   - "docker-compose.yml"
   - ".dockerignore"
   - ".env.example"
+  - "docker/compose.prod.yml"
+  - "docker/.env.prod.example"
+  - "docker/caddy/**"
+  - "docker/postgres/**"
   - "docker/backup/**"
   - ".gitattributes"
 ---
@@ -12,9 +16,11 @@ paths:
 
 - Processo único: `node build/server/index.js`, porta `3000`, healthcheck em `/api/health`.
 - `docker-compose.yml` sobe Postgres (porta `15432`, papéis `bizu_owner`/`bizu_app` via `docker/postgres/init.sql`) e Mailpit (`1025`/`8025`) de desenvolvimento.
+- Produção é `docker/compose.prod.yml` (app, worker, migrate, postgres, caddy, backup; perfis `worker`, `tools`, `backup`), com variáveis de `docker/.env.prod` (modelo em `docker/.env.prod.example`, que acompanha `.env.example` e `src/lib/env.ts`). Nome de projeto `bizu-saas-prod`, para não dividir volume com o dev.
+- `init.sql` recebe as senhas por variáveis do `psql` (`init-prod.sh` as passa); o estágio `build` do `Dockerfile` é o alvo do serviço `migrate`, e o `.dockerignore` não pode excluir `drizzle/`.
 - Variável nova entra em `src/lib/env.ts` (Zod) e em `.env.example`; o servidor valida tudo na inicialização.
 - Segredos nunca são versionados; `.env.example` leva só valores de exemplo.
-- Migrations são etapa separada do container da aplicação.
+- Migrations são etapa separada do container da aplicação: `docker compose ... --profile tools run --rm migrate`.
 - Atrás de reverse proxy, defina `TRUSTED_PROXY_HOPS`; sem isso, todos dividem o mesmo rate limit.
 - HSTS é configurado no reverse proxy, não no app.
 - Produção exige `RATE_LIMIT_STORE=postgres` e `CREDENTIALS_ENCRYPTION_KEY` com 32 bytes em base64. `CSP_REPORT_ONLY=true` só relata: valide nas telas reais antes de virar para `false`.

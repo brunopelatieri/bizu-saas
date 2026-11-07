@@ -19,7 +19,7 @@
 | 8 | Portal do cliente | concluída |
 | 9 | 2FA, personificação e segurança | concluída; `CSP_REPORT_ONLY` segue em `true` até validar em produção |
 | 10 | LGPD, arquivos e observabilidade | concluída; falta preencher controlador e encarregado nos textos legais (`docs/context/lgpd.md`) |
-| 11 | Repositório público e README final | pendente |
+| 11 | Repositório público e README final | concluída; falta o teste de onboarding com pessoa externa (checklist em `CONTRIBUTING.md`) |
 
 ## Estado atual do código
 
@@ -67,11 +67,14 @@
 - Observabilidade: logs JSON com `request_id` e redação (pino), Sentry opcional, jobs mortos no `/admin`;
   backup cifrado com `age` no perfil `backup` do compose.
 - Biome, Vitest (`npm test` sem banco, `npm run test:db` com banco) e CI com Postgres.
-- Dockerfile multi-stage para VPS.
+- Dockerfile multi-stage para VPS e `docker/compose.prod.yml` (app, worker, migrate, postgres, caddy, backup), com `docker/.env.prod.example`.
+- Repositório público: `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md` (0.1.0), Dependabot, modelos de issue e de PR, `CODEOWNERS`, README em formato de tutorial e `docs/context/atualizar-template.md`.
 
 ## Pendências Técnicas Conhecidas
 
-- Fases 7 e 11 da spec.
+- Fase 7 da spec (adiada).
+- **Fase 11:** teste de onboarding com pessoa externa em até 30 minutos (checklist em `CONTRIBUTING.md`); tag `v0.1.0` e GitHub Release (notas do `CHANGELOG.md`); habilitar o relatório privado de vulnerabilidade e o Dependabot no GitHub; certificado real do Caddy e a stack no Portainer, sem teste num domínio real; `CODEOWNERS` usa o usuário do autor.
+- O site público ainda mostra links "Repo Vercel" para outro repositório (`src/lib/constants/navigation.ts`), e `public/sitemap.xml` e `robots.txt` trazem o domínio do autor: derivados trocam.
 - **Portal:** `organization.settings.portal_self_signup` liga o autocadastro, mas ainda não tem tela.
   Quem já tem conta no portal não se autocadastra em outro tenant: pede ao owner. O convite sai
   sem `Reply-To` do owner. `portal_rate_limit` e `rate_limit` (tabelas do Better Auth) seguem fora do
@@ -94,7 +97,20 @@
 - Evoluir blog estático para tabela Drizzle quando virar feature real.
 - Migrar para React Router 8 e `react-router-hono-server` 4 para zerar os alertas
   moderados restantes (`tech/16-bugs-riscos.md`), depois da entrega da spec.
-- Stack Portainer completa (`docker/compose.prod.yml`) na fase 11.
+
+## Desvios da spec na fase 11
+
+| Spec | Entregue | Motivo |
+|---|---|---|
+| `init.sql` com papéis "a partir de variáveis" | Mesmo `init.sql`, com variáveis do `psql` e padrão de desenvolvimento; `init-prod.sh` as passa | Um SQL só para dev, CI e produção, sem duplicar a lista de papéis |
+| Papéis `bizu_owner` e `bizu_app` | Mais `bizu_backup` (`BYPASSRLS`, `pg_read_all_data`, `CREATEDB`), criado só com `BIZU_BACKUP_PASSWORD` | O `pg_dump` precisa atravessar o RLS, e o `restore-test.sh` cria um banco |
+| Compose usa `.env` | `docker/.env.prod` com `--env-file` e interpolação `${VAR}` (sem `env_file`) | `DATABASE_URL` e `DIRECT_URL` são montadas das senhas; funciona igual no Portainer |
+| Projeto do compose | `name: bizu-saas-prod` | Com o nome padrão, `up` da produção trataria os containers e o volume de dev como seus |
+| `.dockerignore` | Deixa de excluir `drizzle/` | O serviço `migrate` usa o estágio `build`, que precisa das migrations |
+| Perfis `worker` e `backup` inativos | Variáveis do `backup` com `:-`, validadas pelo `backup.sh` | O Compose interpola perfis inativos, e `config` falharia sem elas |
+| `README` com demo | "Demo: em breve"; nota da Vercel removida | Nenhuma demo existe para este repositório |
+| `dependabot.yml` (npm semanal) | npm e GitHub Actions, semanal, agrupados por menor/patch e major | Actions desatualizadas são a outra fonte comum de alerta |
+| Job `module-removal` no CI | Não entregue | Não estava no escopo da fase 11; o script roda à mão (`npm run check:module-removal`) |
 
 ## Desvios da spec na fase 9
 

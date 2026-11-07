@@ -2,34 +2,35 @@
 
 - **Escopo:** Topologia, endpoints, credenciais, convenções e riscos do deploy.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-testes-operacao.md`
-- **Paths do código:** `src/server.ts`, `src/lib/env.ts`, `docker-compose.yml`, `docker/postgres/init.sql`, `docker/backup/`, `src/lib/logger.ts`, `src/lib/observability.ts`
+- **Paths do código:** `src/server.ts`, `src/lib/env.ts`, `docker-compose.yml`, `docker/compose.prod.yml`, `docker/.env.prod.example`, `docker/caddy/`, `docker/postgres/`, `docker/backup/`, `src/lib/logger.ts`, `src/lib/observability.ts`
 - **Detalhe completo:** `docs/context/tech/14-deploy.md`
 
 ## Topologia
 
-Destino planejado, ainda sem stack de produção versionada:
+Stack versionada em `docker/compose.prod.yml` (nome de projeto `bizu-saas-prod`):
 
-- VPS própria com Ubuntu, Docker Engine e Portainer.
-- Reverse proxy com TLS: Traefik, Caddy ou Nginx Proxy Manager (não escolhido).
-- Processo Node único: serve assets, `/api/*` e SSR.
-- Postgres em container na mesma rede Docker ou gerenciado, via Drizzle.
+- VPS própria com Ubuntu e Docker Engine (Compose v2.20+); Portainer opcional, em modo Repository.
+- **Caddy** na frente, com TLS automático e HSTS, único serviço com portas publicadas (80/443).
+- Processo Node único (`app`): serve assets, `/api/*` e SSR; `worker` opcional (perfil `worker`).
+- **Postgres 16** em container, sem porta publicada, com os papéis criados do ambiente no primeiro start,
+  ou gerenciado (rode `docker/postgres/init.sql` com o `psql`).
+- `migrate` (perfil `tools`) e `backup` (perfil `backup`) rodam sob demanda.
 
-A demo em `https://bizu.bru.ia.br` roda na Vercel a partir de outro repositório
-(`bizu-saas-vercel`, nome mantido). Este repositório é o alvo VPS/Docker.
+Não há demo pública deste repositório; o README diz "em breve".
 
 ## Endpoints
 
 | Ambiente | Aplicação | Banco |
 |---|---|---|
 | Dev | `http://localhost:5173` | `localhost:15432` (Mailpit em `localhost:8025`) |
-| Container | Porta `3000` (`PORT`) | `DATABASE_URL` |
+| Container | Porta `3000` (`PORT`), atrás do Caddy em 80/443 | `DATABASE_URL` |
 
 - Healthcheck: `GET /api/health`, usado pelo `HEALTHCHECK` do `Dockerfile`.
 - Sem CORS: API e frontend compartilham origem.
 
 ## Credenciais
 
-- Em produção, as variáveis de runtime são injetadas pelo Portainer/container.
+- Em produção, as variáveis vêm de `docker/.env.prod` (não versionado, modelo em `docker/.env.prod.example`) ou do Portainer, e o compose as injeta com `${VAR}`.
 - Variável `VITE_*` é fixada no build e vai para o navegador; nunca a use em segredos.
 - Em dev, ficam em `.env.local` (ignorado pelo git).
 - Só `.env.example` é versionado, sempre com valores de exemplo.
@@ -45,7 +46,9 @@ A demo em `https://bizu.bru.ia.br` roda na Vercel a partir de outro repositório
 - `DATABASE_URL` é usada em runtime (`bizu_app`, sem `BYPASSRLS`); `DIRECT_URL`, pelo
   Drizzle Kit e seed (`bizu_owner`). Os papéis vêm de `docker/postgres/init.sql`.
 - `docker-compose.yml` sobe Postgres e Mailpit de desenvolvimento; o perfil `backup` (`docker/backup/`)
-  e o MinIO comentado são opcionais.
+  e o MinIO comentado são opcionais. Produção é só `docker/compose.prod.yml`.
+- `docker/postgres/init.sql` aceita as senhas por variáveis do `psql` (`bizu_owner_password`, `bizu_app_password`, `bizu_backup_password`); sem elas, usa as de desenvolvimento.
+- O estágio `build` do `Dockerfile` é o alvo do `migrate` (tem `drizzle-kit`, `tsx` e `drizzle/`).
 - Migrations rodam fora do container da aplicação, como etapa separada.
 - Atrás de reverse proxy, defina `TRUSTED_PROXY_HOPS=1` (um valor por proxy na frente).
 - HSTS é configurado no reverse proxy, não no app. Só inclua subdomínios se todos usarem HTTPS.
@@ -59,9 +62,11 @@ Somente listados; nenhum foi resolvido aqui.
 - **CSP:** `CSP_REPORT_ONLY=true` só relata. Valide nas telas reais e mude para `false`.
 - **Dependências:** alertas moderados restantes; veja RISK-004 no mesmo arquivo.
 - **Autenticação:** Better Auth com sessão em cookie. Em produção, `APP_URL` com HTTPS, `BETTER_AUTH_SECRET` gerado e `TRUSTED_PROXY_HOPS=1`; sem isso, os limites por IP contam o proxy.
-- **Migrations:** o runtime não inclui `drizzle-kit` nem `drizzle/`; o serviço `migrate`
-  entra com `docker/compose.prod.yml` na fase 11.
-- **Stack Portainer:** ainda não existe stack com app, Postgres e reverse proxy.
+- **Migrations:** o runtime não inclui `drizzle-kit` nem `drizzle/`; o serviço `migrate` do compose usa o
+  estágio `build`. Rode-o antes de cada versão nova; o app nunca migra sozinho.
+- **TLS real e Portainer:** o compose foi validado com Caddy em HTTP local (`/api/health`, `/api/ready`),
+  worker, backup e restore-test; emissão de certificado em domínio real e a stack no Portainer ficam para
+  o primeiro deploy de quem opera.
 - **Backup:** o perfil `backup` do compose cifra o dump e os arquivos com `age`, mas copiar o volume
   para fora da VPS e testar a restauração todo mês é de quem opera (`tech/14-deploy.md`). Backup
   antigo traz de volta quem foi excluído depois: reaplicar as exclusões ao restaurar.
