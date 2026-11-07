@@ -142,6 +142,27 @@ describe("parseEnv", () => {
       expect(problemsOf({ ...production, DATABASE_URL: url })).toEqual([]);
     });
 
+    it.each(["localhost:15432", "127.0.0.1:5432", "[::1]:5432"])(
+      "aceita senha de desenvolvimento em loopback: é o smoke de npm run start (%s)",
+      (host) => {
+        const problems = problemsOf({
+          ...production,
+          DATABASE_URL: `postgresql://bizu_app:bizu_app@${host}/bizu`,
+          DIRECT_URL: `postgresql://bizu_owner:bizu_owner@${host}/bizu`,
+        });
+
+        expect(problems).toEqual([]);
+      },
+    );
+
+    it("loopback não libera o valor de exemplo", () => {
+      const url = "postgresql://bizu_app:change-me-generate@localhost:5432/bizu";
+
+      expect(problemsOf({ ...production, DATABASE_URL: url })).toEqual([
+        "DATABASE_URL: use uma senha gerada, não o exemplo do .env.prod.example",
+      ]);
+    });
+
     it("não vale fora de produção", () => {
       expect(problemsOf({ ...production, NODE_ENV: "test", DATABASE_URL: base.DATABASE_URL })).toEqual(
         [],

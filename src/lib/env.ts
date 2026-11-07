@@ -18,6 +18,8 @@ const PLACEHOLDER_KEY_PREFIX = Buffer.from(PLACEHOLDER_PREFIX).toString("base64"
  * que ele aplica em silêncio quando rodado à mão sem as variáveis do psql.
  */
 const MIN_DATABASE_PASSWORD_LENGTH = 16;
+/** Banco na própria máquina: é o smoke de `npm run start`, em produção com o `.env.local`. */
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]"]);
 
 const emptyToUndefined = (value: unknown) =>
   typeof value === "string" && value.trim() === "" ? undefined : value;
@@ -71,12 +73,13 @@ const decodeUrlPart = (value: string) => {
 function databasePasswordProblem(url: string) {
   if (!URL.canParse(url)) return undefined;
 
-  const { username, password: encoded } = new URL(url);
+  const { hostname, username, password: encoded } = new URL(url);
   const password = decodeUrlPart(encoded);
 
   if (password.startsWith(PLACEHOLDER_PREFIX)) {
     return "use uma senha gerada, não o exemplo do .env.prod.example";
   }
+  if (LOOPBACK_HOSTS.has(hostname)) return undefined;
   if (
     password.length < MIN_DATABASE_PASSWORD_LENGTH ||
     password.toLowerCase() === decodeUrlPart(username).toLowerCase()

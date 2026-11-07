@@ -44,7 +44,8 @@ Testes unitarios e de API ficam ao lado do codigo (`src/**/*.test.ts`): autentic
 protecoes da API, `env.ts` e e-mail com provedor `memory`. Testes com banco real
 ficam em `tests/db/` (`vitest.db.config.ts`, sem paralelismo entre arquivos).
 
-Para smoke test local de producao, com segredos gerados no `.env.local`:
+Para smoke test local de producao, com segredos gerados no `.env.local` (as senhas de desenvolvimento
+do banco valem aqui porque o host e `localhost`):
 
 ```bash
 npm run build && npm run start

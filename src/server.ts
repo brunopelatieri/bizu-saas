@@ -78,7 +78,10 @@ if (workerOnly) {
     // Em produção, seguir de pé deixaria a fila sem consumidor e sem retentativa, com
     // /api/ready em 200: é o que acontece se o restart cair entre `db:migrate` e `jobs:install`.
     // Encerrar faz o restart tentar de novo, como no `--worker`. Em dev, o site continua.
-    if (getEnv().NODE_ENV === "production") process.exit(1);
+    if (getEnv().NODE_ENV === "production") {
+      await flushObservability();
+      process.exit(1);
+    }
   }
 }
 

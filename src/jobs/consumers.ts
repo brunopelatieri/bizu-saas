@@ -22,26 +22,20 @@ const INSTANCE_NAMES: Record<JobConsumer, string> = {
 
 export const consumerInstanceName = (consumer: JobConsumer) => INSTANCE_NAMES[consumer];
 
-const PAGE_SIZE = 500;
+/** A lista vem da mais antiga para a nova, com as mortas: o limite padrão esconderia as novas. */
+const INSTANCES_LIMIT = 100_000;
 
-/** Instâncias vivas por tipo. A lista vem da mais antiga para a nova, com as mortas: pagina. */
+/** Instâncias vivas por tipo. */
 export async function countJobConsumers(boss: PgBoss): Promise<JobConsumers> {
   const counts: JobConsumers = { inline: 0, worker: 0 };
-  let after: string | undefined;
 
-  for (;;) {
-    const page = await boss.getInstances({ limit: PAGE_SIZE, after });
-
-    for (const { live, name } of page) {
-      if (!live) continue;
-      if (name === INSTANCE_NAMES.inline) counts.inline += 1;
-      if (name === INSTANCE_NAMES.worker) counts.worker += 1;
-    }
-
-    const last = page.at(-1);
-    if (!last || page.length < PAGE_SIZE) return counts;
-    after = last.id;
+  for (const { live, name } of await boss.getInstances({ limit: INSTANCES_LIMIT })) {
+    if (!live) continue;
+    if (name === INSTANCE_NAMES.inline) counts.inline += 1;
+    if (name === INSTANCE_NAMES.worker) counts.worker += 1;
   }
+
+  return counts;
 }
 
 export const hasMixedConsumers = ({ inline, worker }: JobConsumers) => inline > 0 && worker > 0;

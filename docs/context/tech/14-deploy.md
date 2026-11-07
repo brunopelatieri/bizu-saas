@@ -124,7 +124,7 @@ Runtime (a lista completa está em `.env.example`; a validação, em `src/lib/en
 
 - `NODE_ENV=production`, `PORT=3000`
 - `APP_URL` com `https://`, `TRUSTED_PROXY_HOPS=1` (um por reverse proxy)
-- `DATABASE_URL` (`bizu_app`), `DIRECT_URL` (`bizu_owner`; exigida em todo processo, mas só migrations e `jobs:install` a usam: no compose, `app` e `worker` recebem a do `bizu_app` e só o `migrate` leva a do dono). Em produção, as duas URLs são recusadas com senha vazia, igual ao usuário, com menos de 16 caracteres ou começada por `change-me`
+- `DATABASE_URL` (`bizu_app`), `DIRECT_URL` (`bizu_owner`; exigida em todo processo, mas só migrations e `jobs:install` a usam: no compose, `app` e `worker` recebem a do `bizu_app` e só o `migrate` leva a do dono). Em produção, as duas URLs são recusadas com senha vazia, igual ao usuário, com menos de 16 caracteres ou começada por `change-me`; em loopback (`localhost`, smoke de `npm run start`) só o `change-me` é recusado
 - `BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY` (32 bytes em base64), `AUDIT_SALT`: valores
   gerados; os de exemplo derrubam o processo em produção
 - `RATE_LIMIT_STORE=postgres`: `memory` derruba o processo em produção
@@ -148,7 +148,7 @@ antes de subir a nova imagem, depois do `init.sql` com o `psql`.
 - `LOG_LEVEL=debug` inclui `/api/health`, `/api/ready` e `/assets/*`.
 - `SENTRY_DSN` liga o envio de erros (`src/lib/monitoring/sentry/`); sem ele, nada e carregado.
   Define a variavel tambem no `worker`.
-- `GET /api/health` (liveness) e `GET /api/ready` (banco e fila, 2 s); `/admin` mostra webhooks
+- `GET /api/health` (liveness) e `GET /api/ready` (banco, fila e migrations, 2 s); `/admin` mostra webhooks
   com falha e jobs mortos.
 
 ### Arquivos

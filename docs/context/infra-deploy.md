@@ -36,7 +36,7 @@ Não há demo pública deste repositório; o README diz "em breve".
 - Só `.env.example` é versionado, sempre com valores de exemplo.
 - `src/lib/env.ts` valida tudo na inicialização e, em produção, recusa os segredos de
   exemplo (`change-me...`), senha de banco fraca (vazia, igual ao usuário ou com menos de 16
-  caracteres) e `EMAIL_PROVIDER=memory`.
+  caracteres, exceto em host loopback, para o smoke de `npm run start`) e `EMAIL_PROVIDER=memory`.
 - `NODE_ENV=production` faz o servidor ignorar `.env.local`.
 - NUNCA escreva chaves, senhas ou URLs reais de banco em arquivos versionados.
 

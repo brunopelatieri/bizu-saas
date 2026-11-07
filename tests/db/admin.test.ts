@@ -142,6 +142,10 @@ describe("visão geral e tenants", () => {
       "read_only",
       "trialing",
     ]);
+    expect(body.jobConsumers).toEqual({
+      inline: expect.any(Number),
+      worker: expect.any(Number),
+    });
   });
 
   it("lista e filtra por nome e por estado", async () => {
