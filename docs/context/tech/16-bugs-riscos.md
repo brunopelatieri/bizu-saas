@@ -155,18 +155,23 @@ Acao recomendada:
 
 Estado atual:
 
-- `npm audit --omit=dev` aponta 5 alertas moderados, sem altos ou criticos, todos na
-  cadeia do `react-router-hono-server` (`@hono/node-server`, `@hono/node-ws`,
-  `@hono/vite-dev-server` e `minimatch`).
+- A cadeia do `react-router-hono-server` foi resolvida com React Router 8, `react-router-hono-server` 4
+  e `@hono/node-server` 2. `overrides` no `package.json` mantem `@hono/node-server` na versao corrigida
+  (o hono-server fixa uma anterior, e o `@hono/vite-dev-server` ainda pede a 1.x) e `minimatch` 11 no
+  `@hono/vite-dev-server`. Revise ou remova os dois quando esses pacotes atualizarem.
+- `npm audit` aponta 4 alertas moderados, sem altos ou criticos, todos em
+  `drizzle-kit` → `@esbuild-kit/esm-loader` → `@esbuild-kit/core-utils` → `esbuild` antigo.
 
 Impacto:
 
-- O mais relevante e o `serveStatic` do `@hono/node-server`, usado em producao.
+- Nenhum em producao: o alerta e do servidor de desenvolvimento do `esbuild`, que o `drizzle-kit` nao
+  sobe. Aparece em `--omit=dev`, e o pacote vai para a imagem, porque e peer opcional do `better-auth`;
+  o app nao o executa ali (o servico `migrate` usa o estagio `build`).
 
 Acao recomendada:
 
-- A correcao exige `@hono/node-server` 2, que depende de `react-router-hono-server` 4
-  e React Router 8. Fazer como migracao propria, nao como ajuste pontual.
+- Esperar uma versao do `drizzle-kit` sem `@esbuild-kit`. O `npm audit fix --force` rebaixaria para
+  0.18 e quebraria as migrations: nao rode.
 
 ### RISK-005 — Rate limit em memoria (corrigido na fase 9)
 

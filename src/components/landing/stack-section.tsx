@@ -1,7 +1,7 @@
 const groups = [
   {
     label: "Frontend",
-    items: ["React 19", "React Router v7", "TypeScript", "Vite 7"],
+    items: ["React 19", "React Router v8", "TypeScript", "Vite 8"],
   },
   {
     label: "UI & Estilo",

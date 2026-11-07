@@ -3,10 +3,10 @@ import { createReadableStreamFromReadable } from "@react-router/node";
 import { isbot } from "isbot";
 import type { RenderToPipeableStreamOptions } from "react-dom/server";
 import { renderToPipeableStream } from "react-dom/server";
-import type { AppLoadContext, EntryContext } from "react-router";
+import type { EntryContext, RouterContextProvider } from "react-router";
 import { ServerRouter } from "react-router";
 import { logError } from "@/api/log";
-import { CspNonceContext } from "@/lib/csp-nonce";
+import { CspNonceContext, cspNonceRouterContext } from "@/lib/csp-nonce";
 
 export const streamTimeout = 5_000;
 
@@ -20,7 +20,7 @@ export default function handleRequest(
   responseStatusCode: number,
   responseHeaders: Headers,
   routerContext: EntryContext,
-  loadContext: AppLoadContext,
+  loadContext: RouterContextProvider,
 ) {
   // https://httpwg.org/specs/rfc9110.html#HEAD
   if (request.method.toUpperCase() === "HEAD") {
@@ -30,7 +30,7 @@ export default function handleRequest(
     });
   }
 
-  const { cspNonce: nonce } = loadContext;
+  const nonce = loadContext.get(cspNonceRouterContext);
 
   return new Promise((resolve, reject) => {
     let shellRendered = false;

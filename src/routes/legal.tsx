@@ -15,12 +15,12 @@ export async function loader({ params }: Route.LoaderArgs) {
   return { slug: params.slug, document: await loadLegalDocument(params.slug) };
 }
 
-export const meta: Route.MetaFunction = ({ data: loaded }) =>
-  loaded
+export const meta: Route.MetaFunction = ({ loaderData }) =>
+  loaderData
     ? buildMeta({
-        title: `${loaded.document.title} — ${siteConfig.name}`,
-        description: loaded.document.description,
-        path: `/legal/${loaded.slug}`,
+        title: `${loaderData.document.title} — ${siteConfig.name}`,
+        description: loaderData.document.description,
+        path: `/legal/${loaderData.slug}`,
       })
     : buildMeta({ title: "Não encontrado", description: "", robots: "noindex" });
 

@@ -6,7 +6,7 @@ import { defineConfig } from "vite";
 
 export default defineConfig({
   plugins: [
-    // Cria/serve o servidor Hono (dev + prod) que envolve o handler SSR do RR7.
+    // Cria/serve o servidor Hono (dev + prod) que envolve o handler SSR do React Router.
     // Deve vir ANTES do reactRouter().
     reactRouterHonoServer(),
     reactRouter(),

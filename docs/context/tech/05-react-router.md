@@ -12,6 +12,10 @@
 - `react-router.config.ts`
   - `appDirectory: "src"`
   - `ssr: true`
+- `src/server.ts`
+  - `getLoadContext` devolve um `RouterContextProvider`, nunca objeto solto (exigencia do v8).
+  - Valor do servidor para o `entry.server.tsx`: `createContext` do `react-router` (`src/lib/csp-nonce.ts`),
+    com `context.set(...)` e `loadContext.get(...)`. Em route module, `context.get(...)`.
 - `src/root.tsx`
   - Define documento HTML.
   - Registra `<Meta />`, `<Links />`, `<Scripts />`, `<ScrollRestoration />`.
@@ -22,6 +26,7 @@
   - Divide rotas publicas, auth standalone e areas autenticadas (/app, /admin, /portal).
 - `src/routes/*.tsx`
   - Route modules com `meta`, `loader` quando necessario e componente default.
+  - `meta` recebe `loaderData`; o campo `data` nao existe mais no v8.
 
 ### Rotas Publicas com SSR
 

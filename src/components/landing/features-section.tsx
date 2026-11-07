@@ -17,7 +17,7 @@ const features = [
   {
     icon: "⚡",
     title: "SSR nas páginas públicas",
-    body: "React Router v7 em Framework Mode com SSR e meta/Open Graph por rota. Landing, preços e blog indexáveis desde o primeiro deploy.",
+    body: "React Router v8 em Framework Mode com SSR e meta/Open Graph por rota. Landing, preços e blog indexáveis desde o primeiro deploy.",
   },
   {
     icon: "📬",

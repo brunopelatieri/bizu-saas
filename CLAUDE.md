@@ -37,7 +37,7 @@ fluxo em que o owner cobra seus clientes (reservado como módulo futuro).
 ## Regras inegociáveis
 
 **Arquitetura**
-- React Router v7 Framework Mode com `ssr: true`. Não reintroduzir `src/App.tsx`,
+- React Router v8 Framework Mode com `ssr: true`. Não reintroduzir `src/App.tsx`,
   `src/main.tsx`, `index.html` nem a pasta `server/`.
 - Hono em `src/api/app.ts`, montado por `src/server.ts`, em processo único. Sem
   proxy `/api` no Vite: API e frontend compartilham origem.

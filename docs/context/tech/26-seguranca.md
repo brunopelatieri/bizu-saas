@@ -22,7 +22,7 @@
 ## CSP
 
 `securityHeaders` (`src/api/security.ts`) gera um nonce por requisição. O caminho até o HTML:
-`getLoadContext` (`src/server.ts`) → `cspNonce` no load context → `src/entry.server.tsx` →
+`getLoadContext` (`src/server.ts`) → `cspNonceRouterContext` no `RouterContextProvider` → `src/entry.server.tsx` →
 `ServerRouter nonce` (aplica aos scripts do React Router) e `CspNonceContext` (script anti-flash de
 `src/root.tsx`). No navegador o contexto é `undefined`: o script já rodou, e `suppressHydrationWarning`
 cobre a diferença.

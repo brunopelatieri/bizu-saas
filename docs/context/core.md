@@ -48,7 +48,7 @@ fluxo em que o owner cobra seus clientes (reservado como módulo futuro).
 ## Arquitetura
 
 ```text
-React Router v7 Framework Mode (SSR global)
+React Router v8 Framework Mode (SSR global)
   |
   |-- Rotas públicas com SSR: /, /sobre, /projetos, /contato, /blog, /blog/:slug
   |-- Rotas de auth standalone: /login, /cadastro, /verificar-email, /esqueci-senha, /redefinir-senha

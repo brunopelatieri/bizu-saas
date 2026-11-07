@@ -95,8 +95,7 @@
 - Teto de tenants por usuário (3) e de papéis personalizados (20) seguem constantes do plugin; `members`, `custom_roles` e `customers` usam o limite do plano (`tech/23-billing-planos.md`).
 - Overview do admin sem MRR; mostra o contador de jobs mortos, mas não há `/admin/jobs` com a lista e o botão de reexecutar.
 - Evoluir blog estático para tabela Drizzle quando virar feature real.
-- Migrar para React Router 8 e `react-router-hono-server` 4 para zerar os alertas
-  moderados restantes (`tech/16-bugs-riscos.md`), depois da entrega da spec.
+- Sobram 4 alertas moderados do `npm audit`, todos em `drizzle-kit` (`tech/16-bugs-riscos.md`).
 
 ## Desvios da spec na fase 11
 

@@ -53,4 +53,4 @@ body:
     id: sistema
     attributes:
       label: Sistema, Node e Docker
-      placeholder: Windows 11, Node 22.12, Docker 29
+      placeholder: Windows 11, Node 24.19, Docker 29

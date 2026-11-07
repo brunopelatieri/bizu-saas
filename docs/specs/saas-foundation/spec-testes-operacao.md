@@ -80,7 +80,7 @@ derruba o processo com mensagem clara (sem imprimir valores).
 ## Tutorial do README (sumário)
 
 1. O que é o Bizu SaaS, para quem, os quatro níveis, o que vem pronto, demo.
-2. Pré-requisitos: Node 22.12+, Docker, Git.
+2. Pré-requisitos: Node 24.19+, Docker, Git.
 3. Clonar e instalar: `git clone`, `npm install`, `cp .env.example .env.local`,
    gerar `BETTER_AUTH_SECRET`, `CREDENTIALS_ENCRYPTION_KEY`, `AUDIT_SALT`.
 4. Subir serviços: `docker compose up -d` (Postgres com roles e Mailpit),

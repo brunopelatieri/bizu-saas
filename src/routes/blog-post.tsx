@@ -15,12 +15,12 @@ export function loader({ params }: Route.LoaderArgs) {
   return { post };
 }
 
-export const meta: Route.MetaFunction = ({ data }) => {
-  if (!data?.post) {
+export const meta: Route.MetaFunction = ({ loaderData }) => {
+  if (!loaderData?.post) {
     return [{ title: "Post não encontrado — Bizu SaaS" }];
   }
 
-  const { post } = data;
+  const { post } = loaderData;
 
   return [
     { title: `${post.title} — Bizu SaaS` },

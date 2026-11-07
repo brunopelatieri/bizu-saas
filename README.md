@@ -62,12 +62,12 @@ autenticação, tenants, planos, e-mail, LGPD e deploy toda vez.
 
 **Demo:** em breve. Enquanto isso, o seed deste tutorial entrega um ambiente completo em minutos.
 
-**Stack:** React 19, TypeScript, React Router v7 (SSR), Vite, Tailwind v4, shadcn/ui, Hono,
+**Stack:** React 19, TypeScript, React Router v8 (SSR), Vite, Tailwind v4, shadcn/ui, Hono,
 Drizzle, Postgres, Zod, TanStack Query, React Hook Form, Better Auth, pg-boss, Nodemailer,
 Biome, Vitest e Docker.
 
 ```text
-React Router v7 Framework Mode + SSR
+React Router v8 Framework Mode + SSR
   |-- /api/*              Hono API -> Drizzle -> Postgres (RLS por tenant)
   |-- /, /sobre, /blog    rotas públicas com SSR e SEO
   |-- /login, /cadastro   autenticação com verificação de e-mail
@@ -83,7 +83,7 @@ completa, em [`docs/specs/saas-foundation/`](docs/specs/saas-foundation/spec.md)
 
 ## 2. Pré-requisitos
 
-- **Node.js 22.12 ou superior** (`node -v`).
+- **Node.js 24.19 ou superior** (`node -v`).
 - **Docker** com Compose v2 (`docker compose version`): sobe o Postgres e o Mailpit.
 - **Git**.
 - Opcional: `openssl` para gerar segredos (o Node serve, veja abaixo).

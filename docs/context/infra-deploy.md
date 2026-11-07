@@ -43,7 +43,7 @@ Não há demo pública deste repositório; o README diz "em breve".
 
 ## Convenções
 
-- Imagem multi-stage em Node 22 Alpine; o runtime leva só deps de produção e `build/`.
+- Imagem multi-stage em Node 24 Alpine; o runtime leva só deps de produção e `build/`.
 - Comando do container: `node build/server/index.js`.
 - `DATABASE_URL` é usada em runtime (`bizu_app`, sem `BYPASSRLS`); `DIRECT_URL`, pelo
   Drizzle Kit e seed (`bizu_owner`). Os papéis vêm de `docker/postgres/init.sql`.

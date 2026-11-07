@@ -15,7 +15,7 @@
   "license": "MIT",
   "type": "module",
   "engines": {
-    "node": ">=22.12"
+    "node": ">=24.19"
   },
   "scripts": {
     "dev": "react-router dev",
@@ -39,16 +39,16 @@
     "@base-ui/react": "^1.9.0",
     "@better-auth/drizzle-adapter": "^1.7.18",
     "@better-auth/utils": "^0.5.1",
-    "@hono/node-server": "^1.19.9",
+    "@hono/node-server": "^2.1.6",
     "@hono/zod-validator": "^0.9.1",
-    "@hookform/resolvers": "^5.4.0",
-    "@react-router/node": "^7.18.5",
+    "@hookform/resolvers": "^7.0.3",
+    "@react-router/node": "^8.5.1",
     "@sentry/node": "^11.11.0",
     "@tanstack/react-query": "^5.105.3",
     "better-auth": "^1.7.18",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "dotenv": "^17.4.2",
+    "dotenv": "^18.0.9",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.13.16",
     "isbot": "^5.2.2",
@@ -56,13 +56,13 @@
     "nodemailer": "^10.3.1",
     "pg-boss": "^12.38.1",
     "pino": "^10.4.0",
-    "postgres": "^3.4.7",
+    "postgres": "^4.1.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
     "react-hook-form": "^7.91.0",
-    "react-router": "^7.18.5",
-    "react-router-hono-server": "^2.21.0",
+    "react-router": "^8.5.1",
+    "react-router-hono-server": "^4.1.7",
     "resend": "^6.37.0",
     "sonner": "^2.0.8",
     "stripe": "^23.1.0",
@@ -73,19 +73,26 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.6.5",
-    "@react-router/dev": "^7.18.5",
+    "@react-router/dev": "^8.5.1",
     "@tailwindcss/vite": "^4.3.4",
-    "@types/node": "^22.19.0",
+    "@types/node": "^24.19.2",
     "@types/nodemailer": "^8.0.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
-    "@vitejs/plugin-react": "^5.1.0",
     "drizzle-kit": "^0.31.11",
     "pino-pretty": "^13.2.0",
     "tailwindcss": "^4.1.17",
     "tsx": "^4.23.15",
-    "typescript": "^5.9.3",
-    "vite": "^7.2.2",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.6",
     "vitest": "^5.1.0"
+  },
+  "overrides": {
+    "react-router-hono-server": {
+      "@hono/node-server": "$@hono/node-server",
+      "@hono/vite-dev-server": {
+        "minimatch": "^11.0.5"
+      }
+    }
   }
 }
