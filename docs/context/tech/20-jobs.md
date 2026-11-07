@@ -77,3 +77,14 @@ enfileirar → worker → `sent`, supressão, retries esgotados → `failed` + `
 diretamente, com relógio e tenants controlados, como `billing-lifecycle.test.ts` nos outros jobs de
 cobrança; `billing-queue.test.ts` confere filas, crons e a política `exclusive` no pg-boss real. Unitários sem banco: `src/jobs/email.test.ts`,
 `src/api/ready.test.ts`.
+
+## Filas da fase 10
+
+| Fila | Gatilho | Retry | Observação |
+|---|---|---|---|
+| `lgpd.export` | `POST /api/me/export`, `/api/portal/me/export` | 3x, backoff | `exclusive`, `singletonKey` = `data_export.id`; na última tentativa o pedido vira `failed`; dead letter `lgpd.export.dead` |
+| `lgpd.delete` | cron diário 05:00 UTC | 3x | executa `deletion_request` vencidas, cada uma em transação; dead letter `lgpd.delete.dead` |
+
+`maintenance.prune` (cron diário 04:30) agora cobre `payment_event` tratado (90 dias), sessões e verificações vencidas das duas instâncias, exportações vencidas, `audit_log` além de `audit_retention_days`, `email_message` (180 dias) e buckets de rate limit. Tabela em `docs/context/lgpd.md`.
+
+Quem só **enfileira** (`JOBS_MODE=off|worker` no web) precisa que as filas já existam: o worker as cria ao subir (`registerQueues`).

@@ -29,6 +29,8 @@ export type MeResponse = {
   limits: Record<string, number>;
   /** Falta 2FA para seguir: a API responde 403 até a pessoa configurar. */
   security: { tenantRequires2fa: boolean; platformRequires2fa: boolean };
+  /** Documentos legais com versão nova a aceitar. Vazio: nada pendente (ou sessão de suporte). */
+  consentRequired: Array<"terms" | "privacy">;
 };
 
 /** Usuário independente de provedor, usado pela interface e pela API. */

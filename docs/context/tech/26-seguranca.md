@@ -178,3 +178,11 @@ vê que foi o suporte, com `support: true`, mas não quem: o nome e o id do aten
 
 `npm run dev` funciona em report-only. Com `CSP_REPORT_ONLY=false`, o HMR do Vite pode ser bloqueado:
 valide enforce no build de produção (`npm run build`, `npm run start`).
+
+## LGPD e logs (fase 10)
+
+- Dados pessoais fora dos logs: o pino mascara cookie, `authorization` e campos pessoais (`src/lib/logger.ts`), e `logError` tira a mensagem do erro do Drizzle e os e-mails dos demais; um teste (`src/lib/logger.test.ts`) loga um `DrizzleQueryError` com e-mail e confere a redação. Nada de `console.error` com dado pessoal.
+- Exclusão da conta e da organização exigem senha e, com 2FA, o código (`confirmIdentity`), com 5 tentativas por 15 minutos por usuário, e nunca rodam em sessão personificada (`blockWhileImpersonating`). Vale o RISK-009: o TOTP também é reaproveitável dentro da janela.
+- O link de download da exportação é assinado (HMAC com segredo derivado de `BETTER_AUTH_SECRET`) **e** exige a sessão do dono: o link, sozinho, não baixa nada. Trocar `BETTER_AUTH_SECRET` invalida os links já enviados (o usuário pede de novo).
+- Token de confirmação da exclusão do portal: só o hash no banco, uso único, atrelado à pessoa da sessão, consumido por POST.
+- Mecânica completa: `tech/27-lgpd-arquivos.md`; retenção: `docs/context/lgpd.md`.

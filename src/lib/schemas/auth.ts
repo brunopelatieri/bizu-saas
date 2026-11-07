@@ -32,6 +32,8 @@ export const signupSchema = z.object({
     error: "Aceite os termos de uso e a política de privacidade.",
   }),
   termsVersion: z.string().min(1).max(32),
+  /** Opcional: ausente não grava nada; `false` grava a recusa. */
+  marketing: z.boolean().optional(),
 });
 
 export const emailOnlySchema = z.object({ email });

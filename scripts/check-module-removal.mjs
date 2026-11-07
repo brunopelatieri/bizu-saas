@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-// Prova que um módulo de pagamento sai apagando a pasta: tira `providers/<id>/` do lugar,
-// roda typecheck e testes sem ele e devolve a pasta, mesmo se algo falhar.
+// Prova que um módulo opcional sai apagando a pasta: tira a pasta do lugar, roda typecheck
+// e testes sem ela e devolve a pasta, mesmo se algo falhar.
 //
-//   npm run check:module-removal -- stripe
+//   npm run check:module-removal -- stripe   (pagamento: providers/<id>/)
+//   npm run check:module-removal -- sentry   (monitoramento: src/lib/monitoring/sentry/)
+//   npm run check:module-removal -- s3       (arquivos: src/lib/storage/providers/s3/)
 
 import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, renameSync, rmSync } from "node:fs";
@@ -10,12 +12,27 @@ import path from "node:path";
 
 const id = process.argv[2] ?? "stripe";
 
-if (!/^[a-z]+$/.test(id)) {
+if (!/^[a-z][a-z0-9]*$/.test(id)) {
   console.error(`Id de módulo inválido: ${id}`);
   process.exit(1);
 }
 
-const moduleDir = path.join("src", "lib", "payments", "providers", id);
+// Módulos que não são provedor de pagamento: pasta e variável que os liga.
+const OTHER_MODULES = {
+  sentry: {
+    dir: path.join("src", "lib", "monitoring", "sentry"),
+    env: { SENTRY_DSN: "" },
+  },
+  s3: {
+    dir: path.join("src", "lib", "storage", "providers", "s3"),
+    env: { STORAGE_PROVIDER: "local" },
+  },
+};
+
+const other = OTHER_MODULES[id];
+const moduleDir =
+  other?.dir ?? path.join("src", "lib", "payments", "providers", id);
+const moduleEnv = other?.env ?? { PAYMENT_PROVIDERS: "" };
 const parkingDir = ".tmp-module-removal";
 const parked = path.join(parkingDir, id);
 
@@ -42,7 +59,7 @@ function run(script) {
   const { status } = spawnSync(`npm run ${script}`, {
     stdio: "inherit",
     shell: true,
-    env: { ...process.env, PAYMENT_PROVIDERS: "" },
+    env: { ...process.env, ...moduleEnv },
   });
 
   return status === 0;

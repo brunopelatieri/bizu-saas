@@ -17,6 +17,7 @@ export default [
     route("blog", "routes/blog.tsx"),
     route("blog/:slug", "routes/blog-post.tsx"),
     route("precos", "routes/pricing.tsx"),
+    route("legal/:slug", "routes/legal.tsx"),
   ]),
 
   // ---------------------------------------------------------------------------
@@ -50,6 +51,7 @@ export default [
       route("configuracoes", "routes/app.settings.tsx"),
       route("configuracoes/seguranca", "routes/app.settings.security.tsx"),
       route("configuracoes/sessoes", "routes/app.settings.sessions.tsx"),
+      route("configuracoes/privacidade", "routes/app.settings.privacy.tsx"),
       route("configuracoes/suporte", "routes/app.settings.support.tsx"),
     ]),
 

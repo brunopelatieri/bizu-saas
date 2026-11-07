@@ -54,3 +54,10 @@ shell com outro menu; `/portal/**` é client-only como elas, com layout e sessã
   privados: `useQuery` + `apiFetch` -> `GET /api/me` -> `requireAuth` -> Drizzle.
 - Navegação em `src/lib/constants/app-nav.ts`; tela nova entra lá e em
   `src/routes.ts`.
+
+## Privacidade e re-aceite (fase 10)
+
+- `/app/configuracoes/privacidade` (`src/routes/app.settings.privacy.tsx`, aba "Privacidade" em `SettingsNav`): marketing, exportação, excluir a conta (senha e, com 2FA, o código) e a organização (`<Can resource="organization" action="delete">`; o botão de desistir fica fora do `Can`, porque a organização em exclusão não tem permissões). Componentes em `src/components/privacy/`.
+- `/portal/conta`: exportação e exclusão; `?confirmar-exclusao=<token>` só mostra o botão (o clique faz o POST).
+- `ConsentGate` (`AppLayout` e `AdminLayout`) e `ConsentDialog` (`PortalLayout`): modal sem fechar enquanto `consentRequired` não esvazia.
+- Nada disso tem loader no servidor.

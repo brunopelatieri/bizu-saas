@@ -112,6 +112,11 @@ export const envSchema = z
     S3_ENDPOINT: optionalString,
     S3_ACCESS_KEY_ID: optionalString,
     S3_SECRET_ACCESS_KEY: optionalString,
+    // Teto de um upload em `/api/files`: também o `bodyLimit` da rota.
+    MAX_UPLOAD_MB: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().min(1).max(100).default(10),
+    ),
 
     CSP_REPORT_ONLY: booleanString(true),
     SEED_PASSWORD: optionalString,

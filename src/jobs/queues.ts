@@ -21,7 +21,14 @@ export const QUEUE = {
   billingPeriodEndDead: "billing.period_end.dead",
   billingReconcile: "billing.reconcile",
   billingReconcileDead: "billing.reconcile.dead",
+  lgpdExport: "lgpd.export",
+  lgpdExportDead: "lgpd.export.dead",
+  lgpdDelete: "lgpd.delete",
+  lgpdDeleteDead: "lgpd.delete.dead",
 } as const;
+
+/** Payload de `lgpd.export`: o pedido fica em `data_export`, a fila só leva o id. */
+export type LgpdExportJob = { exportId: string };
 
 /** Payload de `email.send`: o id da `email_message` e a mensagem já renderizada. */
 export type EmailSendJob = {
@@ -71,6 +78,8 @@ export const queueDefinitions: QueueDefinition[] = [
   { name: QUEUE.billingDunningDead, options: DEAD_LETTER_OPTIONS },
   { name: QUEUE.billingPeriodEndDead, options: DEAD_LETTER_OPTIONS },
   { name: QUEUE.billingReconcileDead, options: DEAD_LETTER_OPTIONS },
+  { name: QUEUE.lgpdExportDead, options: DEAD_LETTER_OPTIONS },
+  { name: QUEUE.lgpdDeleteDead, options: DEAD_LETTER_OPTIONS },
   {
     name: QUEUE.emailSend,
     options: {
@@ -120,6 +129,23 @@ export const queueDefinitions: QueueDefinition[] = [
     name: QUEUE.billingReconcile,
     options: billingJobOptions(QUEUE.billingReconcileDead),
   },
+  {
+    // `exclusive`: um job vivo por pedido (`singletonKey` = `data_export.id`).
+    name: QUEUE.lgpdExport,
+    options: {
+      policy: "exclusive",
+      retryLimit: 3,
+      retryDelay: 60,
+      retryBackoff: true,
+      expireInSeconds: 600,
+      deleteAfterSeconds: 7 * 24 * 3600,
+      deadLetter: QUEUE.lgpdExportDead,
+    },
+  },
+  {
+    name: QUEUE.lgpdDelete,
+    options: billingJobOptions(QUEUE.lgpdDeleteDead),
+  },
 ];
 
 export type ScheduleDefinition = { queue: string; cron: string };
@@ -131,4 +157,5 @@ export const scheduleDefinitions: ScheduleDefinition[] = [
   { queue: QUEUE.billingPeriodEnd, cron: "0 * * * *" },
   { queue: QUEUE.billingReconcile, cron: "0 4 * * *" },
   { queue: QUEUE.maintenancePrune, cron: "30 4 * * *" },
+  { queue: QUEUE.lgpdDelete, cron: "0 5 * * *" },
 ];

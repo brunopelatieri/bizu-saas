@@ -13,6 +13,7 @@ import { resolveSession } from "@/api/auth";
 import { refuseImpersonated } from "@/api/impersonation";
 import { logError } from "@/api/log";
 import { clientKey, rateLimit } from "@/api/rate-limit";
+import { withSignupConsent } from "@/lib/lgpd/consent";
 import {
   INVALID_LINK_MESSAGE,
   verificationGuard,
@@ -151,16 +152,27 @@ authRoutes.post(
   "/api/auth/sign-up/email",
   zValidator("json", signupSchema, validationError),
   async (c) => {
-    const { name, email, password } = c.req.valid("json");
+    const { name, email, password, termsVersion, marketing } = c.req.valid("json");
 
     await purgeExpiredPendingSignup(email);
 
-    const response = await getAuth().handler(
-      new Request(c.req.url, {
-        method: "POST",
-        headers: forwardedHeaders(c),
-        body: JSON.stringify({ name, email, password }),
-      }),
+    // O aceite é gravado pelo hook que cria o usuário, só se ele de fato nascer.
+    const response = await withSignupConsent(
+      {
+        subjectType: "user",
+        termsVersion,
+        marketing,
+        ip: clientKey(c),
+        userAgent: c.req.header("User-Agent"),
+      },
+      () =>
+        getAuth().handler(
+          new Request(c.req.url, {
+            method: "POST",
+            headers: forwardedHeaders(c),
+            body: JSON.stringify({ name, email, password }),
+          }),
+        ),
     );
 
     return response.ok ? c.json({ ok: true }) : response;

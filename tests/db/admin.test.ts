@@ -435,11 +435,36 @@ describe("configurações da plataforma", () => {
       graceDays: 3,
     });
     expect(updated.status).toBe(200);
-    expect((await bodyOf(updated)).settings).toEqual({
+    expect((await bodyOf(updated)).settings).toMatchObject({
       trialPlanId: paidPlan.id,
       trialDays: 21,
       graceDays: 3,
       impersonationPolicy: "consent",
+    });
+
+    // Encarregado e retenção da auditoria (fase 10).
+    const privacy = await send(platformOwner, "PATCH", "/api/admin/settings", {
+      dpoEmail: "dpo@exemplo.com",
+      auditRetentionDays: 400,
+    });
+    expect(privacy.status).toBe(200);
+    expect((await bodyOf(privacy)).settings).toMatchObject({
+      dpoEmail: "dpo@exemplo.com",
+      auditRetentionDays: 400,
+    });
+    expect(
+      (await send(platformOwner, "PATCH", "/api/admin/settings", { auditRetentionDays: 7 })).status,
+    ).toBe(400);
+    expect(
+      (await send(platformOwner, "PATCH", "/api/admin/settings", { dpoEmail: "sem-arroba" })).status,
+    ).toBe(400);
+    const cleared = await send(platformOwner, "PATCH", "/api/admin/settings", {
+      dpoEmail: null,
+      auditRetentionDays: 365,
+    });
+    expect((await bodyOf(cleared)).settings).toMatchObject({
+      dpoEmail: null,
+      auditRetentionDays: 365,
     });
 
     // Sem trial, o plano padrão precisa ser gratuito.

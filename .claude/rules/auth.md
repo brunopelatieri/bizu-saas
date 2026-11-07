@@ -20,6 +20,9 @@ paths:
   - "src/pages/verify-email-page.tsx"
   - "src/pages/forgot-password-page.tsx"
   - "src/pages/reset-password-page.tsx"
+  - "src/lib/legal/**"
+  - "src/lib/lgpd/consent.ts"
+  - "src/lib/lgpd/identity.ts"
 ---
 
 # Autenticação com Better Auth, sessão em cookie e falha fechada
@@ -41,5 +44,7 @@ paths:
 - `/api/auth/organization/*` responde 404: use `auth.api.*` com `organizationId` explícito, atrás das rotas próprias (`tech/21-tenant-rbac.md`).
 - Permissões são validadas no servidor; o cliente só esconde botões.
 - Sessões e usuários ficam no Postgres, via Drizzle.
+- Cadastro grava o aceite em `consent_log` pelo hook de criação do usuário (`withSignupConsent`); versão nova em `src/lib/legal/versions.ts` faz `/api/me` e `/api/portal/me` devolverem `consentRequired`. A sessão de suporte nunca aceita termos.
+- Token de confirmação da exclusão do portal é de uso único, só em hash, consumido por POST; nenhum link da LGPD consome token em GET.
 
-Para entender este domínio, leia: docs/context/tech/08-auth.md, docs/context/tech/25-portal-clientes.md e docs/context/tech/26-seguranca.md
+Para entender este domínio, leia: docs/context/tech/08-auth.md, docs/context/tech/25-portal-clientes.md e docs/context/tech/26-seguranca.md, docs/context/tech/27-lgpd-arquivos.md

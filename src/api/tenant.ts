@@ -19,6 +19,10 @@ import {
 import { clientKey, rateLimit } from "@/api/rate-limit";
 import { handleTenantError } from "@/api/tenant-errors";
 import { audit } from "@/lib/audit";
+import { isOwner } from "@/lib/auth/permissions";
+import { cancelDeletion, requestTenantDeletion } from "@/lib/lgpd/deletion";
+import { confirmIdentity } from "@/lib/lgpd/identity";
+import { confirmIdentitySchema } from "@/lib/schemas/lgpd";
 import { getAuth } from "@/lib/auth/server";
 import { startTrial } from "@/lib/billing/subscription";
 import { logError } from "@/api/log";
@@ -113,10 +117,64 @@ tenantRoutes.patch(
 );
 
 /**
- * A exclusão do tenant é da fase 10. O bloqueio já fica aqui: a rota nova nasce protegida, e
- * sem ela o `DELETE` segue para o 404.
+ * Exclusão da organização: só o proprietário, com senha e (se tiver) 2FA, e nunca durante a
+ * personificação. Encerra a cobrança, suspende e agenda a anonimização em 30 dias.
  */
-tenantRoutes.on("DELETE", "/api/tenant", requireAuth, blockWhileImpersonating);
+tenantRoutes.delete(
+  "/api/tenant",
+  requireAuth,
+  blockWhileImpersonating,
+  requireTenant,
+  requireOwner,
+  rateLimit({
+    name: "lgpd-tenant-delete",
+    limit: 5,
+    windowMs: 15 * MINUTE,
+    key: (c) => c.get("user").id,
+  }),
+  zValidator("json", confirmIdentitySchema, validationError),
+  async (c) => {
+    const { id, name } = c.get("tenant");
+    const user = c.get("user");
+
+    await confirmIdentity(user, c.req.valid("json"));
+
+    const { scheduledFor } = await requestTenantDeletion(
+      { id, name },
+      { userId: user.id, ip: clientKey(c) },
+    );
+
+    return c.json({ scheduledFor });
+  },
+);
+
+/**
+ * Desiste da exclusão. Fica fora do `requireTenant`, que recusa organização que não está
+ * ativa: é justamente a que está em exclusão. A prova de que é proprietário é a mesma.
+ */
+tenantRoutes.post(
+  "/api/tenant/deletion/cancel",
+  requireAuth,
+  blockWhileImpersonating,
+  zValidator("json", activeTenantSchema, validationError),
+  async (c) => {
+    const { tenantId } = c.req.valid("json");
+    const user = c.get("user");
+    const membership = await findMembership(user.id, tenantId);
+
+    if (!membership || !isOwner(membership.role)) {
+      throw notFound("Nenhuma exclusão agendada.");
+    }
+
+    await cancelDeletion(
+      { type: "tenant", id: tenantId },
+      { type: "user", id: user.id },
+      clientKey(c),
+    );
+
+    return c.json({ ok: true });
+  },
+);
 
 /** Exigir 2FA da equipe: só quem já tem, para o owner não se trancar para fora. */
 tenantRoutes.patch(

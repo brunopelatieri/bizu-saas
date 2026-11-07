@@ -97,4 +97,6 @@ export type AdminSettings = {
   trialDays: number;
   graceDays: number;
   impersonationPolicy: ImpersonationPolicy;
+  dpoEmail: string | null;
+  auditRetentionDays: number;
 };

@@ -110,6 +110,18 @@ export const platformSettingsSchema = z
       .min(0, "Use 0 ou mais.")
       .max(60, "No máximo 60 dias."),
     impersonationPolicy: z.enum(impersonationPolicies),
+    dpoEmail: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .max(254, "E-mail muito longo.")
+      .email("Informe um e-mail válido.")
+      .nullable(),
+    auditRetentionDays: z
+      .number("Informe os dias.")
+      .int("Use um número inteiro.")
+      .min(30, "Mantenha a auditoria por pelo menos 30 dias.")
+      .max(3650, "No máximo 3650 dias."),
   })
   .partial()
   .refine((value) => Object.keys(value).length > 0, "Nada para alterar.");

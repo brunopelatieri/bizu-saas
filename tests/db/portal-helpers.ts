@@ -74,5 +74,12 @@ export async function inviteAndEnter(
 
 /** Identidades do portal não têm vínculo com `user`: `cleanUp` não as alcança. */
 export async function cleanUpPortal(owner: postgres.Sql) {
-  await owner`delete from portal_user where email like ${`%@${DOMAIN}`}`;
+  const pattern = `%@${DOMAIN}`;
+
+  await owner`
+    delete from consent_log where subject_id in (
+      select id from portal_user where email like ${pattern}
+    )
+  `;
+  await owner`delete from portal_user where email like ${pattern}`;
 }

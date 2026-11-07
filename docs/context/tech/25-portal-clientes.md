@@ -135,3 +135,11 @@ de confirmação continua sendo reenviado.
 
 2FA no portal (fase 9), exportação e exclusão LGPD (fase 10), `/portal/faturas` real (fluxo b),
 subdomínio por tenant, troca de e-mail pelo cliente e `Reply-To` do owner no convite.
+
+## Exportação e exclusão do cliente (fase 10)
+
+- `POST /api/portal/me/export`, `GET /api/portal/me/export` e `GET /api/portal/me/export/:id/download?sig=` (sessão do portal **e** assinatura). O zip traz perfil, cadastros nas organizações, consentimentos e auditoria.
+- `DELETE /api/portal/me`: com senha, confirma e agenda (30 dias); sem senha, envia link de confirmação e responde 202. `POST /api/portal/me/deletion/confirm { token }` consome o token (uso único, 1 hora, só para a mesma pessoa). `POST /api/portal/me/deletion/cancel` desiste.
+- A anonimização troca o `portal_user` e **todos** os `customer` ligados a ele ou ao mesmo e-mail (nome "Cliente removido", e-mail `deleted+<id>@invalid`, `blocked`).
+- `consentRequired` em `/api/portal/me` e re-aceite em `POST /api/portal/me/consent`. O autocadastro grava o aceite (`consent_log`, `subject_type = portal_user`).
+- `portal_session` e `portal_verification` vencidos saem no `maintenance.prune`.

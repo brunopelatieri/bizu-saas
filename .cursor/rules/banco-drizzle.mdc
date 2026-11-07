@@ -26,5 +26,7 @@ alwaysApply: false
 - Permissões são validadas no servidor, com `requireAuth` + `requireTenant` + `requirePermission`.
 - Loaders acessam o banco direto, sem chamada HTTP interna.
 - Migrations rodam fora do container da aplicação.
+- `consent_log` (sem tenant), `deletion_request` e `data_export` (RLS; linha sem tenant só com `withPlatformScope`) e `file` (tenant) são da fase 10; pedido pendente é um por assunto (índice único parcial).
+- Dado pessoal novo entra na exportação (`src/lib/lgpd/export.ts`) e na anonimização (`src/lib/lgpd/deletion.ts`) no mesmo trabalho, e na tabela de retenção de `docs/context/lgpd.md`.
 
-Para entender este domínio, leia: docs/context/tech/07-banco-drizzle.md
+Para entender este domínio, leia: docs/context/tech/07-banco-drizzle.md, docs/context/tech/27-lgpd-arquivos.md

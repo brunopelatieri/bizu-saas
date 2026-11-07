@@ -13,6 +13,10 @@ export type PlatformSettings = {
   graceDays: number;
   /** `consent`: o suporte só entra no tenant com `impersonation_grant` válido. */
   impersonationPolicy: ImpersonationPolicy;
+  /** Encarregado (DPO) exibido nas páginas legais. `null`: ainda não informado. */
+  dpoEmail: string | null;
+  /** Dias de `audit_log` mantidos pelo `maintenance.prune`. */
+  auditRetentionDays: number;
 };
 
 export const SETTING_DEFAULTS: PlatformSettings = {
@@ -20,6 +24,8 @@ export const SETTING_DEFAULTS: PlatformSettings = {
   trialDays: 14,
   graceDays: 7,
   impersonationPolicy: "consent",
+  dpoEmail: null,
+  auditRetentionDays: 365,
 };
 
 /** Chave em `platform_setting` de cada campo (`spec-dados.md`). */
@@ -28,6 +34,8 @@ export const SETTING_KEYS = {
   trialDays: "trial_days",
   graceDays: "grace_days",
   impersonationPolicy: "impersonation_policy",
+  dpoEmail: "dpo_email",
+  auditRetentionDays: "audit_retention_days",
 } as const satisfies Record<keyof PlatformSettings, string>;
 
 const asCount = (value: unknown, fallback: number) =>
@@ -38,6 +46,11 @@ const asCount = (value: unknown, fallback: number) =>
 /** Só o valor exato libera: qualquer outro cai em `consent`, que é o fechado. */
 const asPolicy = (value: unknown): ImpersonationPolicy =>
   value === "allow_without_consent" ? value : SETTING_DEFAULTS.impersonationPolicy;
+
+const asEmail = (value: unknown) =>
+  typeof value === "string" && value.includes("@") && value.length <= 254
+    ? value
+    : null;
 
 /** Valor ausente ou malformado cai no padrão: a plataforma nunca fica sem configuração. */
 export function parseSettings(
@@ -51,6 +64,14 @@ export function parseSettings(
     trialDays: asCount(byKey.get(SETTING_KEYS.trialDays), SETTING_DEFAULTS.trialDays),
     graceDays: asCount(byKey.get(SETTING_KEYS.graceDays), SETTING_DEFAULTS.graceDays),
     impersonationPolicy: asPolicy(byKey.get(SETTING_KEYS.impersonationPolicy)),
+    dpoEmail: asEmail(byKey.get(SETTING_KEYS.dpoEmail)),
+    auditRetentionDays: Math.max(
+      1,
+      asCount(
+        byKey.get(SETTING_KEYS.auditRetentionDays),
+        SETTING_DEFAULTS.auditRetentionDays,
+      ),
+    ),
   };
 }
 

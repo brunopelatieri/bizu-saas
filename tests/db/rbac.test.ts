@@ -40,6 +40,10 @@ const anyId = randomUUID();
 
 const endpoints = [
   ["PATCH", "/api/tenant", "organization:update"],
+  ["DELETE", "/api/tenant", "organization:delete"],
+  ["POST", "/api/files", "file:upload"],
+  ["GET", `/api/files/${anyId}`, "file:read"],
+  ["DELETE", `/api/files/${anyId}`, "file:delete"],
   ["GET", "/api/tenant/support-grant", "support:grant"],
   ["POST", "/api/tenant/support-grant", "support:grant"],
   ["DELETE", `/api/tenant/support-grant/${anyId}`, "support:grant"],
@@ -133,6 +137,58 @@ describe("RBAC", () => {
     const response = await call(method, path);
 
     expect(response.status).toBe(401);
+  });
+
+  /**
+   * Rotas pessoais da LGPD não dependem de papel: qualquer sessão de equipe age sobre os
+   * próprios dados, e a sessão do portal (outro cookie) nunca vale nelas, nem o contrário.
+   */
+  describe("rotas pessoais da LGPD", () => {
+    const personal = [
+      ["GET", "/api/me/export"],
+      ["POST", "/api/me/export"],
+      ["GET", `/api/me/export/${anyId}/download`],
+      ["DELETE", "/api/me"],
+      ["GET", "/api/me/deletion"],
+      ["POST", "/api/me/deletion/cancel"],
+      ["POST", "/api/me/consent"],
+      ["GET", "/api/me/consent"],
+      ["POST", "/api/tenant/deletion/cancel"],
+    ] as const;
+    const portal = [
+      ["GET", "/api/portal/me/export"],
+      ["POST", "/api/portal/me/export"],
+      ["GET", `/api/portal/me/export/${anyId}/download`],
+      ["DELETE", "/api/portal/me"],
+      ["GET", "/api/portal/me/deletion"],
+      ["POST", "/api/portal/me/deletion/cancel"],
+      ["POST", "/api/portal/me/deletion/confirm"],
+      ["POST", "/api/portal/me/consent"],
+    ] as const;
+
+    it.each([...personal, ...portal])("%s %s exige sessão", async (method, path) => {
+      const response = await call(method, path, {
+        body: method === "GET" ? undefined : {},
+      });
+
+      expect(response.status).toBe(401);
+    });
+
+    it.each(portal)("%s %s não aceita a sessão da equipe", async (method, path) => {
+      const response = await call(method, path, {
+        cookie: users.owner?.cookie,
+        body: method === "GET" ? undefined : {},
+      });
+
+      expect(response.status).toBe(401);
+    });
+
+    it.each(roles)("%s lê as próprias exportações e exclusões, sem depender do papel", async (role) => {
+      for (const path of ["/api/me/export", "/api/me/deletion", "/api/me/consent"]) {
+        const response = await call("GET", path, { cookie: users[role]?.cookie });
+        expect(response.status, path).toBe(200);
+      }
+    });
   });
 
   describe("personificação", () => {

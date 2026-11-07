@@ -34,6 +34,7 @@
 | `/blog` | `src/routes/blog.tsx` | title, description, OG |
 | `/blog/:slug` | `src/routes/blog-post.tsx` | title, description, OG dinamico |
 | `/precos` | `src/routes/pricing.tsx` | title, description, OG; `loader` com os planos ativos |
+| `/legal/:slug` (`termos`, `privacidade`) | `src/routes/legal.tsx` | title, description; `loader` lê o markdown e `dpo_email`; slug desconhecido é 404 |
 
 ### Rotas de Autenticacao
 
@@ -66,3 +67,7 @@ Evolucao planejada:
 
 ---
 
+### Privacidade (fase 10)
+
+`/app/configuracoes/privacidade` (client-only, em `app.settings.privacy.tsx`) e a seção de `/portal/conta`
+(`?confirmar-exclusao=` só renderiza o botão). Nenhuma das duas tem `loader`.

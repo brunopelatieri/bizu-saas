@@ -21,6 +21,7 @@ const NO_TENANTS: TenantSummary[] = [];
 const NO_PERMISSIONS: string[] = [];
 const NO_FEATURES: string[] = [];
 const NO_LIMITS: Record<string, number> = {};
+const NO_CONSENT: MeResponse["consentRequired"] = [];
 const NO_REQUIREMENTS = { tenantRequires2fa: false, platformRequires2fa: false };
 
 type AuthContextValue = {
@@ -42,6 +43,8 @@ type AuthContextValue = {
   accountError: Error | null;
   /** Falta 2FA para seguir: a API responde 403 até a pessoa configurar. */
   security: MeResponse["security"];
+  /** Documentos legais com versão nova a aceitar (`ConsentGate`). */
+  consentRequired: MeResponse["consentRequired"];
   /**
    * Lança `AuthActionError`, com o `code` do Better Auth. Devolve
    * `twoFactor: true` quando a senha passou, mas a sessão ainda depende do desafio em `/2fa`.
@@ -150,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       features: me?.features ?? NO_FEATURES,
       limits: me?.limits ?? NO_LIMITS,
       security: me?.security ?? NO_REQUIREMENTS,
+      consentRequired: me?.consentRequired ?? NO_CONSENT,
       accountLoading: Boolean(data) && account.isPending,
       // Com dados em mãos, uma releitura que falha não derruba a tela.
       accountError: me ? null : account.error,

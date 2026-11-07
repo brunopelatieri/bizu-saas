@@ -157,8 +157,37 @@ describe("rotas de equipe sobre o servidor Node", () => {
       expect((await request("POST", "/api/admin/stop-impersonating")).status).toBe(400);
     });
 
-    it("DELETE /api/tenant sem personificação segue para o 404", async () => {
-      expect((await request("DELETE", "/api/tenant")).status).toBe(404);
+    it("DELETE /api/tenant e /api/me exigem o corpo JSON (400 sem ele) e conferem a senha", async () => {
+      // O `bodyLimit` remonta a `Request` do DELETE sem `Content-Length`: sem o ajuste do
+      // servidor isto seria 500. Aqui a validação do corpo é que responde.
+      expect((await request("DELETE", "/api/tenant")).status).toBe(400);
+      expect((await request("DELETE", "/api/me")).status).toBe(400);
+
+      for (const path of ["/api/tenant", "/api/me"]) {
+        const wrong = await request("DELETE", path, {
+          headers: json,
+          body: JSON.stringify({ password: "errada-errada-1" }),
+        });
+        expect(wrong.status, path).toBe(403);
+        expect(await wrong.json()).toMatchObject({ code: "INVALID_CREDENTIALS" });
+      }
+    });
+
+    it("DELETE /api/files/:id e /api/portal/me respondem sobre o servidor Node", async () => {
+      expect((await request("DELETE", `/api/files/${anyId}`)).status).toBe(404);
+      // Cookie da equipe no portal: sessão inexistente.
+      expect(
+        (
+          await request("DELETE", "/api/portal/me", {
+            headers: json,
+            body: JSON.stringify({}),
+          })
+        ).status,
+      ).toBe(401);
+    });
+
+    it("POST /api/me/deletion/cancel sem corpo chega à regra de negócio (404, nada agendado)", async () => {
+      expect((await request("POST", "/api/me/deletion/cancel")).status).toBe(404);
     });
 
     it("CSRF sobre HTTP de verdade: POST de outro site responde 403", async () => {

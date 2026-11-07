@@ -29,7 +29,9 @@ import {
   tenantAccessControl,
   tenantRoles,
 } from "@/lib/auth/permissions";
+import { logError } from "@/api/log";
 import { getEnv } from "@/lib/env";
+import { recordSignupConsent } from "@/lib/lgpd/consent";
 import { preferredTenantId } from "@/lib/tenant/membership";
 
 /** Só o plugin grava `two_factor_enabled`, então a rota diz o que mudou. */
@@ -137,6 +139,10 @@ function createAuth() {
       user: {
         create: {
           after: async (user, context) => {
+            // Só grava se a rota de cadastro abriu o contexto de aceite (`withSignupConsent`).
+            await recordSignupConsent({ type: "user", id: user.id }).catch((error) =>
+              logError("Falha ao registrar o consentimento", error),
+            );
             runInBackground(
               audit("auth.signed_up", {
                 actor: { id: user.id },

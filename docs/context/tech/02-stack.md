@@ -68,6 +68,15 @@
 
 Tabelas, graficos, datas e e-mail sao opcionais: veja `docs/context/receitas.md`.
 
+### Operação e LGPD
+
+| Ferramenta | Uso |
+|------------|-----|
+| pino (`pino-pretty` em dev) | Logs JSON com `request_id` e `redact` |
+| `@sentry/node` | Erros em produção, módulo opcional (`SENTRY_DSN`) |
+| `@aws-sdk/client-s3` | Provedor `s3` do módulo de arquivos (MinIO, R2...) |
+| `age` | Cifra do backup (serviço `backup` do compose) |
+
 ### Qualidade
 
 | Ferramenta | Uso |

@@ -12,6 +12,9 @@ paths:
   - "src/pages/about-page.tsx"
   - "src/pages/contact-page.tsx"
   - "src/pages/projects-page.tsx"
+  - "src/routes/legal.tsx"
+  - "src/pages/legal-page.tsx"
+  - "src/lib/legal/**"
 ---
 
 # Landing, páginas públicas e layout compartilhado
@@ -22,5 +25,6 @@ paths:
 - A `BlogSection` da landing é vitrine estática; o blog real está em `/blog`.
 - `/precos` tem `loader` server-side com os planos ativos e só os preços compráveis (`listPublicPlans`, Drizzle direto, `isPriceUsable`: provedor em `PAYMENT_PROVIDERS`) e não expõe `provider_price_ref`.
 - Marca, descrição e links ficam em `siteConfig` (`src/lib/constants/navigation.ts`).
+- `/legal/termos` e `/legal/privacidade` são SSR de markdown (`src/lib/legal/*.md`, `src/routes/legal.tsx`); o markdown vira dados e nunca HTML. Controlador e encarregado são placeholders: troque antes de ir ao ar.
 
-Para entender este domínio, leia: docs/context/tech/10-site-publico.md
+Para entender este domínio, leia: docs/context/tech/10-site-publico.md, docs/context/tech/27-lgpd-arquivos.md

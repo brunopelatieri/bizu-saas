@@ -2,6 +2,7 @@ import { LogOut, Repeat } from "lucide-react";
 import { Link, Navigate, NavLink, Outlet } from "react-router";
 import { AuthSpinner } from "@/components/auth/auth-shell";
 import { SiteLogo } from "@/components/layout/site-logo";
+import { ConsentDialog } from "@/components/legal/consent-dialog";
 import { PortalNoAccess } from "@/components/portal/portal-no-access";
 import { Button } from "@/components/ui/button";
 import { portalNav } from "@/lib/constants/portal-nav";
@@ -13,8 +14,16 @@ import { usePortalAuth } from "@/providers/portal-auth-provider";
  * os dados é `requirePortalAuth`, em toda rota de `/api/portal/*`.
  */
 export function PortalLayout() {
-  const { user, tenants, active, loading, accountError, refresh, signOut } =
-    usePortalAuth();
+  const {
+    user,
+    tenants,
+    active,
+    consentRequired,
+    loading,
+    accountError,
+    refresh,
+    signOut,
+  } = usePortalAuth();
 
   if (loading) return <AuthSpinner />;
 
@@ -45,6 +54,12 @@ export function PortalLayout() {
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
+      <ConsentDialog
+        open={consentRequired.length > 0}
+        endpoint="/api/portal/me/consent"
+        onAccepted={refresh}
+        onSignOut={signOut}
+      />
       <header className="border-b border-border bg-card/50 backdrop-blur-sm">
         <div className="mx-auto flex h-16 max-w-4xl items-center justify-between gap-3 px-4">
           <div className="flex min-w-0 items-center gap-3">

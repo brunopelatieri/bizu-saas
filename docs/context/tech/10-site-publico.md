@@ -17,7 +17,7 @@
   `CtaSection`.
 
 Objetivo: posicionar o Bizu SaaS como ponto de partida para SaaS e servir de base para
-a landing de projetos derivados. `/legal/termos` e `/legal/privacidade` entram na fase 10.
+a landing de projetos derivados. `/legal/termos` e `/legal/privacidade` (fase 10) são páginas SSR de texto: `src/routes/legal.tsx`, markdown em `src/lib/legal/` e `{{DPO_EMAIL}}` de `platform_setting.dpo_email` (`tech/27-lgpd-arquivos.md`). Links no rodapé e nos cadastros.
 
 `siteConfig` em `src/lib/constants/navigation.ts` concentra nome, descrição, links e
 autor; personalize ali primeiro (`docs/context/receitas.md`).

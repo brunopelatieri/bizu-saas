@@ -179,6 +179,18 @@ variavel no deploy.
 
 ---
 
+### RISK-011 — Backup antigo restaura quem foi excluído (risco aceito)
+
+A anonimização é um `UPDATE` e a remoção de linhas: um backup anterior ainda guarda a pessoa. O prazo é
+curto (`BACKUP_KEEP_DAYS`, 14), o arquivo é cifrado com `age`, e quem restaura precisa reaplicar as exclusões
+executadas desde o backup (`tech/14-deploy.md`, `docs/context/lgpd.md`). Não há automação disso.
+
+### RISK-012 — Exclusão de organização depende do provedor responder (risco aceito)
+
+`DELETE /api/tenant` encerra a assinatura no provedor antes de agendar. Se o provedor estiver fora do ar, a
+rota responde 502 e nada é agendado (é o desenho: não agendar com cobrança no ar). O proprietário tenta de novo
+depois, ou o suporte cancela a assinatura em `/admin/assinaturas`.
+
 ### RISK-009 — Código TOTP reutilizável dentro da janela (risco aceito)
 
 O plugin aceita o mesmo código enquanto ele estiver na janela de 30 s (mais uma para trás e uma para

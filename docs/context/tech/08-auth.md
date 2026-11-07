@@ -151,3 +151,10 @@ update "user" set role = 'platform_owner' where email = 'voce@empresa.com';
 - O log de requisições passa por `redactTokens` (`src/api/request-logger.ts`).
 - Schema do Better Auth é escrito à mão a partir de `getAuthTables`. `@better-auth/cli`
   1.4 não acompanha a 1.7 e traz Prisma e `better-sqlite3` como dependências.
+
+## Consentimento e exclusão (fase 10)
+
+- O cadastro das duas instâncias grava `consent_log` no hook `databaseHooks.user.create.after`, lendo o contexto aberto pela rota (`withSignupConsent`); `/api/auth/sign-up/email` e o autocadastro do portal repassam `termsVersion` e `marketing`. Cadastro de e-mail existente não grava aceite.
+- `/api/me` e `/api/portal/me` devolvem `consentRequired`; o re-aceite é `POST /api/me/consent` (equipe) e `POST /api/portal/me/consent` (portal), nunca durante a personificação.
+- Excluir a conta confirma a identidade com `confirmIdentity` (`src/lib/lgpd/identity.ts`): senha pelo `internalAdapter`/`password.verify` do Better Auth e TOTP decifrado com `symmetricDecrypt` e conferido por `@better-auth/utils/otp`. Chamadas diretas a `auth.api` não passam pelo rate limit do plugin: o freio é o `rateLimit` por usuário das rotas.
+- A anonimização remove `account` (senha), `two_factor` e `session`. Detalhes em `tech/27-lgpd-arquivos.md`.

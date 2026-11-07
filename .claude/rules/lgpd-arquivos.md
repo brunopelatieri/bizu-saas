@@ -1,0 +1,30 @@
+---
+paths:
+  - "src/lib/lgpd/**"
+  - "src/lib/legal/**"
+  - "src/lib/files/**"
+  - "src/lib/storage/**"
+  - "src/lib/logger.ts"
+  - "src/lib/observability.ts"
+  - "src/lib/monitoring/**"
+  - "src/api/lgpd.ts"
+  - "src/api/files.ts"
+  - "src/jobs/lgpd.ts"
+  - "src/jobs/maintenance.ts"
+  - "src/db/schema/lgpd.ts"
+  - "src/db/schema/files.ts"
+  - "docker/backup/**"
+---
+
+# LGPD, arquivos e observabilidade
+
+- Consentimento é `consent_log`; versão nova dos textos (`LEGAL_VERSIONS`) pede re-aceite. Nunca grave aceite em nome de quem não está na sessão ou não foi criado agora.
+- Exportação (`lgpd.export`) e exclusão (`lgpd.delete`) são jobs idempotentes que recarregam o estado do banco; o link de download é assinado **e** exige a sessão do dono.
+- Exclusão anonimiza, não apaga a linha: `invoice`, `audit_log` e `consent_log` ficam sem apontar para ninguém. Tudo em transação com `withPlatformScope("lgpd")`.
+- Último owner de organização ativa ou suspensa não exclui a conta; a organização tem carência de 30 dias e `DELETE /api/tenant` encerra a cobrança no provedor antes de agendar.
+- Arquivos passam pelo `StorageProvider` (`getStorage()`), com chave aleatória e confinada; upload só com MIME da lista, `bodyLimit` e `assertStorageAvailable`; download sempre como anexo.
+- Retenção vive em `src/jobs/maintenance.ts` e em `docs/context/lgpd.md`: mude os dois juntos.
+- Nenhum dado pessoal em log: pino com `redact`, `logError` sem mensagem de erro do Drizzle. Sentry (`src/lib/monitoring/sentry/`) é módulo removível.
+- Teste que lê `deletion_request` ou `data_export` com `bizu_owner` usa o bypass do RLS; teste que enfileira registra as filas antes.
+
+Para entender este domínio, leia: docs/context/tech/27-lgpd-arquivos.md e docs/context/lgpd.md

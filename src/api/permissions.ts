@@ -30,11 +30,25 @@ const MUTATIONS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
  */
 const OPEN_WHEN_READ_ONLY = ["/api/billing/", "/api/tenant/support-grant"];
 
+/**
+ * Excluir a organização é direito do titular dos dados e não pode depender de o plano estar
+ * em dia: vale em `read_only` e `locked` por cobrança. Suspensa pela plataforma, não.
+ */
+function isTenantDeletion(c: Context, tenant: Pick<Membership, "status">) {
+  return (
+    tenant.status === "active" &&
+    c.req.method === "DELETE" &&
+    c.req.path === "/api/tenant"
+  );
+}
+
 /** Recusa quem não pode usar agora o tenant ativo da sessão. */
 export function refusal(
   c: Context,
   tenant: Pick<Membership, "status" | "accessMode">,
 ) {
+  if (isTenantDeletion(c, tenant)) return null;
+
   if (tenant.status !== "active" || tenant.accessMode === "locked") {
     return c.json(
       { error: "Esta organização está suspensa.", code: "TENANT_SUSPENDED" },
