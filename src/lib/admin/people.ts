@@ -3,6 +3,7 @@ import { logError } from "@/api/log";
 import { getDb } from "@/db";
 import { type Tx, withPlatformScope } from "@/db/rls";
 import {
+  account,
   customer,
   member,
   organization,
@@ -13,6 +14,7 @@ import {
   session,
   subscription,
   user,
+  verification,
 } from "@/db/schema";
 import { auditInTransaction } from "@/lib/audit";
 import { appLink } from "@/lib/auth/links";
@@ -184,7 +186,17 @@ export async function updateUserByAdmin(
       .where(eq(user.id, target.id))
       .returning({ id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified });
 
-    if (emailChanged) await tx.delete(session).where(sessionsOf(target.id));
+    if (emailChanged) {
+      await tx.delete(session).where(sessionsOf(target.id));
+      // Como no portal: o endereço novo só entra pelo link de definir senha, que chega a ele.
+      // Sem a senha antiga, a conta não vira "cadastro pendente" que qualquer um expurga
+      // (`purgeExpiredPendingSignup` só apaga quem tem credencial), e um link de reset pedido
+      // antes para o endereço antigo deixa de valer (`verification` só guarda o reset).
+      await tx
+        .delete(account)
+        .where(and(eq(account.userId, target.id), eq(account.providerId, "credential")));
+      await tx.delete(verification).where(eq(verification.value, target.id));
+    }
 
     await auditInTransaction(tx, "admin.user_updated", {
       actor: { type: "platform", id: actor.id },

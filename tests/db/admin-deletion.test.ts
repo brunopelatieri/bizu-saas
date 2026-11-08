@@ -534,6 +534,55 @@ describe("usuários de equipe e suporte", () => {
     expect(await signInStatus(newAddress, "senha-nova-do-admin-1")).toBe(200);
   });
 
+  it("conta com e-mail trocado não vira cadastro pendente: cadastro anônimo não a apaga", async () => {
+    const person = await newUser();
+    const tenant = await newTenant(person, "Não Some Ltda");
+
+    // Link de reset pedido antes, para o endereço antigo.
+    await call("POST", "/api/auth-ext/forgot-password", { body: { email: person.email } });
+    await waitForBackgroundTasks();
+    const oldToken = mail.sent
+      .filter((m) => m.to === person.email && m.tags?.template === "reset-password")
+      .at(-1)
+      ?.text.match(/redefinir-senha\?token=([^\s&"]+)/)?.[1];
+    expect(oldToken).toBeDefined();
+
+    const newAddress = `trocado-${randomUUID()}@tenant-test.bizu.local`;
+    expect(
+      (await send(platformOwner, "PATCH", `/api/admin/users/${person.id}`, { email: newAddress })).status,
+    ).toBe(200);
+
+    // A senha antiga saiu, e o link antigo não vale mais.
+    const [credential] = await owner<{ total: number }[]>`
+      select count(*)::int as total from account where user_id = ${person.id}
+    `;
+    expect(credential?.total).toBe(0);
+    const stale = await call("POST", "/api/auth/reset-password", {
+      body: { newPassword: "senha-do-antigo-1", token: decodeURIComponent(oldToken ?? "") },
+    });
+    expect(stale.status).toBe(400);
+    expect((await userRow(person.id))?.email_verified).toBe(false);
+
+    // Mais de 24 h depois, alguém cadastra o endereço novo: a conta continua lá.
+    await owner`update "user" set created_at = now() - interval '3 days' where id = ${person.id}`;
+    const signup = await call("POST", "/api/auth/sign-up/email", {
+      body: {
+        name: "Intruso",
+        email: newAddress,
+        password: "senha-do-intruso-1",
+        acceptTerms: true,
+        termsVersion: "2026-11",
+      },
+    });
+    expect(signup.status).toBe(200);
+    expect(await userRow(person.id)).toMatchObject({ email: newAddress, name: "Pessoa Teste" });
+    expect((await orgOf(tenant.id))?.status).toBe("active");
+    const [members] = await owner<{ total: number }[]>`
+      select count(*)::int as total from member where user_id = ${person.id}
+    `;
+    expect(members?.total).toBe(1);
+  });
+
   it("PATCH sem mudança real responde 400, sem tocar na conta", async () => {
     const person = await newUser();
 
