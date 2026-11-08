@@ -109,6 +109,28 @@ function NewPlanForm() {
   );
 }
 
+/** Arquivar tira o plano de /precos e da oferta; reativar o devolve. admin-crud A. */
+function ArchiveButton({ plan }: { plan: AdminPlan }) {
+  const toggle = useAdminMutation(plan.active ? "Plano arquivado." : "Plano reativado.");
+
+  return (
+    <Button
+      variant="outline"
+      size="sm"
+      disabled={toggle.isPending}
+      onClick={() =>
+        toggle.mutate({
+          path: `/api/admin/plans/${plan.id}`,
+          method: "PATCH",
+          body: { active: !plan.active },
+        })
+      }
+    >
+      {plan.active ? "Arquivar" : "Reativar"}
+    </Button>
+  );
+}
+
 export function AdminPlansPage() {
   const owner = useIsPlatformOwner();
   const query = useAdminQuery<{ plans: AdminPlan[] }>("/api/admin/plans");
@@ -117,7 +139,7 @@ export function AdminPlansPage() {
     <div className="max-w-5xl space-y-6">
       <PageTitle
         title="Planos"
-        description="Limites, features e preços. Plano inativo deixa de aparecer em /precos e de ser oferecido, mas segue valendo para quem já o usa."
+        description="Limites, features e preços. Plano arquivado deixa de aparecer em /precos e de ser oferecido, mas segue valendo para quem já o usa. Só plano sem uso se exclui."
       />
 
       {owner ? <NewPlanForm /> : null}
@@ -133,6 +155,7 @@ export function AdminPlansPage() {
                     <TableHead>Preço</TableHead>
                     <TableHead>Situação</TableHead>
                     <TableHead>Organizações</TableHead>
+                    {owner ? <TableHead className="text-right">Ações</TableHead> : null}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -150,7 +173,7 @@ export function AdminPlansPage() {
                       <TableCell>{priceSummary(plan)}</TableCell>
                       <TableCell>
                         <Badge variant={plan.active ? "default" : "outline"}>
-                          {plan.active ? "Ativo" : "Inativo"}
+                          {plan.active ? "Ativo" : "Arquivado"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -160,6 +183,11 @@ export function AdminPlansPage() {
                           moreHref={`/admin/tenants?plan=${plan.id}`}
                         />
                       </TableCell>
+                      {owner ? (
+                        <TableCell className="text-right">
+                          <ArchiveButton plan={plan} />
+                        </TableCell>
+                      ) : null}
                     </TableRow>
                   ))}
                 </TableBody>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 import { toast } from "sonner";
 import {
   type AdminPlan,
@@ -8,6 +8,7 @@ import {
   useAdminQuery,
   useIsPlatformOwner,
 } from "@/components/admin/admin-api";
+import { ConfirmDialog } from "@/components/admin/confirm-dialog";
 import { Field } from "@/components/admin/field";
 import { OrgList } from "@/components/admin/org-list";
 import { PageTitle, QueryState } from "@/components/admin/query-state";
@@ -55,6 +56,89 @@ function toCents(text: string) {
   return Number.isFinite(value) && value > 0 ? Math.round(value * 100) : null;
 }
 
+type ProviderRef = { provider: string; ref: string };
+
+/** O preço some só aqui: o que existe no provedor precisa ser removido lá, à mão. */
+function warnProviderRefs(refs: ProviderRef[]) {
+  if (refs.length === 0) return;
+
+  toast.warning(
+    `Remova também no provedor: ${refs.map(({ provider, ref }) => `${provider} ${ref}`).join(", ")}.`,
+    { duration: 12_000 },
+  );
+}
+
+/** Arquivar e reativar (botão), excluir só sem uso. admin-crud A. */
+function PlanActions({ plan }: { plan: AdminPlan }) {
+  const navigate = useNavigate();
+  const toggle = useAdminMutation(plan.active ? "Plano arquivado." : "Plano reativado.");
+  const remove = useAdminMutation<{ providerRefs: ProviderRef[] }>("Plano excluído.");
+  const [confirming, setConfirming] = useState(false);
+  const inUse = plan.tenants > 0;
+
+  return (
+    <Card>
+      <CardContent className="flex flex-wrap items-center gap-3 pt-6 text-sm">
+        <span>
+          {plan.active
+            ? "Ativo: aparece em /precos e pode ser escolhido."
+            : "Arquivado: fora de /precos e da oferta; segue valendo para quem já o usa."}
+        </span>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={toggle.isPending}
+            onClick={() =>
+              toggle.mutate({
+                path: `/api/admin/plans/${plan.id}`,
+                method: "PATCH",
+                body: { active: !plan.active },
+              })
+            }
+          >
+            {plan.active ? "Arquivar" : "Reativar"}
+          </Button>
+          <Button
+            variant="destructive"
+            size="sm"
+            disabled={inUse || remove.isPending}
+            onClick={() => setConfirming(true)}
+          >
+            Excluir plano
+          </Button>
+        </div>
+        {inUse ? (
+          <p className="basis-full text-xs text-muted-foreground">
+            Em uso por {plan.tenants} {plan.tenants === 1 ? "organização" : "organizações"}: não
+            dá para excluir. Arquive para tirá-lo da oferta.
+          </p>
+        ) : null}
+        <ConfirmDialog
+          open={confirming}
+          title="Excluir plano"
+          description="O plano e os preços somem de vez. Não dá para desfazer. Se ele for o padrão do período de teste ou o único gratuito ativo, a exclusão é recusada."
+          confirmLabel="Excluir plano"
+          pending={remove.isPending}
+          onCancel={() => setConfirming(false)}
+          onConfirm={() =>
+            remove.mutate(
+              { path: `/api/admin/plans/${plan.id}`, method: "DELETE" },
+              {
+                onSuccess: (result) => {
+                  warnProviderRefs(result.providerRefs);
+                  navigate("/admin/planos");
+                },
+                onSettled: () => setConfirming(false),
+              },
+            )
+          }
+        />
+      </CardContent>
+    </Card>
+  );
+}
+
 function PlanForm({ plan, readOnly }: { plan: AdminPlan; readOnly: boolean }) {
   const [name, setName] = useState(plan.name);
   const [description, setDescription] = useState(plan.description ?? "");
@@ -65,7 +149,6 @@ function PlanForm({ plan, readOnly }: { plan: AdminPlan; readOnly: boolean }) {
     ),
   );
   const [sortOrder, setSortOrder] = useState(String(plan.sortOrder));
-  const [active, setActive] = useState(plan.active);
   const [isFree, setIsFree] = useState(plan.isFree);
   const save = useAdminMutation("Plano salvo.");
 
@@ -87,7 +170,6 @@ function PlanForm({ plan, readOnly }: { plan: AdminPlan; readOnly: boolean }) {
         ]),
       ),
       sortOrder: Number(sortOrder),
-      active,
       isFree,
     });
 
@@ -182,15 +264,6 @@ function PlanForm({ plan, readOnly }: { plan: AdminPlan; readOnly: boolean }) {
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={active}
-                disabled={readOnly}
-                onChange={(e) => setActive(e.target.checked)}
-              />
-              Ativo
-            </label>
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
                 checked={isFree}
                 disabled={readOnly}
                 onChange={(e) => setIsFree(e.target.checked)}
@@ -222,6 +295,8 @@ function PriceRow({
   const [ref, setRef] = useState(price.providerPriceRef ?? "");
   const [amount, setAmount] = useState((price.amountCents / 100).toFixed(2).replace(".", ","));
   const save = useAdminMutation("Preço salvo.");
+  const remove = useAdminMutation<{ providerRefs: ProviderRef[] }>("Preço excluído.");
+  const [confirming, setConfirming] = useState(false);
   const path = `/api/admin/plans/${planId}/prices/${price.id}`;
 
   function submit() {
@@ -283,6 +358,31 @@ function PriceRow({
             >
               {price.active ? "Desativar" : "Ativar"}
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={remove.isPending}
+              onClick={() => setConfirming(true)}
+            >
+              Excluir
+            </Button>
+            <ConfirmDialog
+              open={confirming}
+              title="Excluir preço"
+              description="O preço some do plano. Se alguma assinatura o usa, a exclusão é recusada: desative-o."
+              confirmLabel="Excluir preço"
+              pending={remove.isPending}
+              onCancel={() => setConfirming(false)}
+              onConfirm={() =>
+                remove.mutate(
+                  { path, method: "DELETE" },
+                  {
+                    onSuccess: (result) => warnProviderRefs(result.providerRefs),
+                    onSettled: () => setConfirming(false),
+                  },
+                )
+              }
+            />
           </>
         )}
       </TableCell>
@@ -380,6 +480,7 @@ export function AdminPlanDetailPage() {
                 />
               </p>
             ) : null}
+            {owner ? <PlanActions plan={plan} /> : null}
             <PlanForm key={plan.id + plan.name} plan={plan} readOnly={!owner} />
 
             {plan.isFree ? null : (

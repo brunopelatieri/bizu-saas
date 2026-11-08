@@ -9,6 +9,7 @@ import {
   useIsPlatformOwner,
 } from "@/components/admin/admin-api";
 import { BillingStateBadge } from "@/components/admin/billing-state-badge";
+import { EditTenantDialog } from "@/components/admin/edit-tenant-dialog";
 import {
   ManualBillingCard,
   type ManualInvoice,
@@ -171,6 +172,7 @@ export function AdminTenantDetailPage() {
   const query = useAdminQuery<TenantDetail>(`/api/admin/tenants/${id}`);
   const plans = useAdminQuery<{ plans: AdminPlan[] }>("/api/admin/plans");
   const [suspending, setSuspending] = useState(false);
+  const [editing, setEditing] = useState(false); // admin-crud A
   const suspend = useAdminMutation("Organização suspensa.");
   const unsuspend = useAdminMutation("Organização reativada.");
   const detail = query.data;
@@ -195,7 +197,14 @@ export function AdminTenantDetailPage() {
                 </div>
               </div>
               {owner ? (
-                detail.tenant.status === "suspended" ? (
+                <div className="flex flex-wrap gap-2">
+                  {/* admin-crud A: edição de nome e slug (não em exclusão) */}
+                  {detail.tenant.status === "deleting" || detail.tenant.status === "deleted" ? null : (
+                    <Button variant="outline" onClick={() => setEditing(true)}>
+                      Editar
+                    </Button>
+                  )}
+                {detail.tenant.status === "suspended" ? (
                   <Button
                     variant="outline"
                     disabled={unsuspend.isPending}
@@ -212,7 +221,8 @@ export function AdminTenantDetailPage() {
                   <Button variant="destructive" onClick={() => setSuspending(true)}>
                     Suspender
                   </Button>
-                )
+                )}
+                </div>
               ) : null}
             </div>
 
@@ -330,6 +340,14 @@ export function AdminTenantDetailPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {editing ? (
+              <EditTenantDialog
+                open
+                tenant={detail.tenant}
+                onClose={() => setEditing(false)}
+              />
+            ) : null}
 
             <ReasonDialog
               open={suspending}
