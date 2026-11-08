@@ -29,8 +29,8 @@ passa `organizationId` explícito.
 | Rota | Autorização | Observação |
 |---|---|---|
 | `GET /api/me` | `requireAuth` | `user`, `tenants[]`, `permissions[]`, `features[]`, `limits{}` |
-| `GET /api/me/invitations` | `requireAuth` | convites abertos para o e-mail verificado |
-| `POST /api/tenant` | `requireAuth` | cria e ativa; slug gerado se não vier; 409 `SLUG_TAKEN` |
+| `GET /api/me/invitations` | `requireAuth` | convites abertos para o e-mail, só se verificado (senão `[]`) |
+| `POST /api/tenant` | `requireAuth` | cria e ativa; slug gerado se não vier; 409 `SLUG_TAKEN`; 403 `PLAN_LIMIT_REACHED` acima de `limits.organizations` |
 | `GET /api/tenant` | `requireTenant` | |
 | `PATCH /api/tenant` | `organization:update` | |
 | `POST /api/tenant/active` | `requireAuth` | troca o tenant; não membro recebe 404 |
@@ -109,10 +109,11 @@ Evento sem tenant só aparece com `withPlatformScope`. Ainda não há tela de le
 
 ## Limites
 
-`src/lib/auth/constants.ts`: 3 tenants por usuário, 20 papéis por tenant e convite de 48 h, tetos
-fixos do plugin. O limite de **assentos** vem do plano: convidar e aceitar passam por
-`assertWithinLimit(tenantId, "members")` e respondem 403 `PLAN_LIMIT_REACHED`
-(`tech/23-billing-planos.md`).
+`src/lib/auth/constants.ts`: 20 papéis por tenant e convite de 48 h, tetos fixos do plugin. O limite
+de **assentos** vem do plano: convidar e aceitar passam por `assertWithinLimit(tenantId, "members")`
+e respondem 403 `PLAN_LIMIT_REACHED` (`tech/23-billing-planos.md`). Quantas organizações o dono
+pode ter também vem do plano (`limits.organizations`, `src/lib/billing/organizations.ts`), conferido
+com lock por pessoa em `POST /api/tenant`, o único caminho de criação.
 
 ## Fora desta fase
 

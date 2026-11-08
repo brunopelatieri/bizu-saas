@@ -83,14 +83,25 @@ describe("requireAuth", () => {
     spy.mockRestore();
   });
 
-  it("bloqueia e-mail não verificado mesmo com sessão", async () => {
-    const guard = createRequireAuth(async () =>
-      resolved({ emailVerified: false }),
+  it("com verificação exigida, bloqueia e-mail não verificado mesmo com sessão", async () => {
+    const guard = createRequireAuth(
+      async () => resolved({ emailVerified: false }),
+      () => true,
     );
     const response = await get(buildApp(guard), SESSION_COOKIE);
 
     expect(response.status).toBe(403);
     expect(await response.json()).toMatchObject({ code: "EMAIL_NOT_VERIFIED" });
+  });
+
+  it("sem verificação exigida (padrão do template), aceita e-mail não verificado", async () => {
+    const guard = createRequireAuth(
+      async () => resolved({ emailVerified: false }),
+      () => false,
+    );
+    const response = await get(buildApp(guard), SESSION_COOKIE);
+
+    expect(response.status).toBe(200);
   });
 
   it("libera a rota e expõe o usuário quando a sessão é válida", async () => {

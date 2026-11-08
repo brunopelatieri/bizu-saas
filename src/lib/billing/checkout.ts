@@ -18,7 +18,7 @@ import {
   snapshotOf,
   type SubscriptionRow,
 } from "@/lib/billing/apply";
-import type { PaymentMethod } from "@/lib/billing/constants";
+import { MANUAL_PROVIDER, type PaymentMethod } from "@/lib/billing/constants";
 import { safeUrl } from "@/lib/billing/invoices";
 import { notifyCanceled } from "@/lib/billing/notify";
 import { prorationCents } from "@/lib/billing/proration";
@@ -26,6 +26,7 @@ import {
   type BillingEvent,
   canStartCheckout,
   isLiveStatus,
+  isProviderManaged,
   transition,
 } from "@/lib/billing/state-machine";
 import { loadTenantPlan } from "@/lib/billing/subscription";
@@ -87,7 +88,10 @@ export function recurringMethods(capabilities: Capabilities): PaymentMethod[] {
   ];
 }
 
-/** Planos ativos e o que cada provedor ativo oferece. Sem provedor, só os planos. */
+/**
+ * Planos ativos e o que cada provedor ativo oferece. Sem provedor (`billingMode: manual`), os
+ * planos trazem os preços manuais, só para exibir: a troca é feita pela plataforma.
+ */
 export async function listBillingPlans() {
   const providers = getProviders();
   const plans = await getDb()
@@ -101,6 +105,7 @@ export async function listBillingPlans() {
     .where(eq(planPrice.active, true));
 
   return {
+    billingMode: providers.length === 0 ? ("manual" as const) : ("provider" as const),
     plans: plans.map((row) => ({
       id: row.id,
       slug: row.slug,
@@ -109,6 +114,17 @@ export async function listBillingPlans() {
       isFree: row.isFree,
       limits: row.limits,
       features: row.features,
+      manualPrices: row.isFree
+        ? []
+        : prices
+            .filter(
+              (price) => price.planId === row.id && price.provider === MANUAL_PROVIDER,
+            )
+            .map((price) => ({
+              interval: price.interval,
+              amountCents: price.amountCents,
+              currency: price.currency,
+            })),
       prices: row.isFree
         ? []
         : prices
@@ -188,6 +204,8 @@ export async function getSubscriptionView(tenantId: string) {
       },
       planPriceId: row.planPriceId,
       provider: row.provider,
+      // `manual`: a plataforma marca o pagamento em /admin; vence em `currentPeriodEnd`.
+      billingMode: isProviderManaged(row) ? ("provider" as const) : ("manual" as const),
       // Encerrada guarda a referência antiga, mas só volta por checkout novo.
       paid:
         row.providerSubscriptionRef !== null &&
@@ -238,15 +256,20 @@ function usableProvider({ price }: PriceRow) {
   return provider;
 }
 
-const toPlanPrice = (price: PriceRow["price"]): PlanPrice => ({
-  id: price.id,
-  planId: price.planId,
-  provider: price.provider,
-  interval: price.interval,
-  amountCents: price.amountCents,
-  currency: price.currency,
-  providerPriceRef: price.providerPriceRef,
-});
+/** Preço manual não vai ao provedor: o checkout e a troca de plano o recusam. */
+function toPlanPrice(price: PriceRow["price"]): PlanPrice {
+  if (price.provider === MANUAL_PROVIDER) throw REFUSED.noProvider;
+
+  return {
+    id: price.id,
+    planId: price.planId,
+    provider: price.provider,
+    interval: price.interval,
+    amountCents: price.amountCents,
+    currency: price.currency,
+    providerPriceRef: price.providerPriceRef,
+  };
+}
 
 /**
  * Sem assinatura (tenant sem plano utilizável no onboarding) o checkout ainda precisa de

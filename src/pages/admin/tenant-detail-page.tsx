@@ -9,6 +9,12 @@ import {
   useIsPlatformOwner,
 } from "@/components/admin/admin-api";
 import { BillingStateBadge } from "@/components/admin/billing-state-badge";
+import {
+  ManualBillingCard,
+  type ManualInvoice,
+  type ManualPrice,
+  type ManualSubscription,
+} from "@/components/admin/manual-billing-card";
 import { PageTitle, QueryState } from "@/components/admin/query-state";
 import { ReasonDialog } from "@/components/admin/reason-dialog";
 import { Button } from "@/components/ui/button";
@@ -42,8 +48,10 @@ type TenantDetail = {
     state: BillingState;
     createdAt: string;
   };
-  subscription: { status: string; trialEndsAt: string | null; planId: string } | null;
+  subscription: ManualSubscription | null;
   plan: { id: string; name: string; isFree: boolean } | null;
+  invoices: ManualInvoice[];
+  manualPrices: ManualPrice[];
   impersonation: {
     allowed: boolean;
     policy: string;
@@ -214,14 +222,19 @@ export function AdminTenantDetailPage() {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 {detail.subscription ? (
-                  <p>
-                    Plano <strong>{detail.plan?.name}</strong>, situação{" "}
-                    <strong>{detail.subscription.status}</strong>
-                    {detail.subscription.trialEndsAt
-                      ? `, teste até ${formatDateTime(detail.subscription.trialEndsAt)}`
-                      : ""}
-                    .
-                  </p>
+                  <>
+                    <p>
+                      Plano <strong>{detail.plan?.name}</strong>
+                    </p>
+                    <ManualBillingCard
+                      key={`${detail.subscription.id}:${detail.subscription.planId}`}
+                      subscription={detail.subscription}
+                      planIsFree={detail.plan?.isFree ?? false}
+                      invoices={detail.invoices}
+                      prices={detail.manualPrices}
+                      canWrite={owner}
+                    />
+                  </>
                 ) : (
                   <p className="text-muted-foreground">
                     Sem assinatura: o tenant não tem limites.

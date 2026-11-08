@@ -670,13 +670,25 @@ describe("canStartCheckout", () => {
     ).toBe(false);
   });
 
-  it("plano gratuito pode; plano pago ativo troca de plano", () => {
-    expect(canStartCheckout({ ...base, status: "active", planIsFree: true })).toBe(true);
-    expect(canStartCheckout({ ...base, status: "active" })).toBe(false);
+  it("plano gratuito pode; plano pago ativo no provedor troca de plano", () => {
+    const linked = { ...base, providerSubscriptionRef: "sub_1" };
+
+    expect(canStartCheckout({ ...linked, status: "active", planIsFree: true })).toBe(true);
+    expect(canStartCheckout({ ...linked, status: "active" })).toBe(false);
   });
 
-  it.each(["past_due", "paused"] as const)("%s não pode", (status) => {
-    expect(canStartCheckout({ ...base, status })).toBe(false);
+  it.each(["active", "past_due"] as const)(
+    "%s na cobrança manual pode migrar para o provedor",
+    (status) => {
+      expect(canStartCheckout({ ...base, status })).toBe(true);
+    },
+  );
+
+  it("past_due no provedor e paused não podem", () => {
+    expect(
+      canStartCheckout({ ...base, status: "past_due", providerSubscriptionRef: "sub_1" }),
+    ).toBe(false);
+    expect(canStartCheckout({ ...base, status: "paused" })).toBe(false);
   });
 });
 

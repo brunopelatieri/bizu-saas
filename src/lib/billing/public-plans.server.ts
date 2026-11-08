@@ -1,8 +1,8 @@
 import { asc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { plan, planPrice } from "@/db/schema";
-import type { PriceInterval } from "@/lib/billing/constants";
-import { isPriceUsable } from "@/lib/payments/registry";
+import { MANUAL_PROVIDER, type PriceInterval } from "@/lib/billing/constants";
+import { getProviders, isPriceUsable } from "@/lib/payments/registry";
 
 /** O que `/precos` mostra de um plano. Nada de ids de provedor nem de uso interno. */
 export type PublicPlan = {
@@ -18,8 +18,9 @@ export type PublicPlan = {
 
 /**
  * Planos ativos para a página pública. `plan` e `plan_price` são tabelas da plataforma
- * (sem RLS e sem dado pessoal): o loader lê direto, sem volta HTTP. Só entram preços
- * compráveis, como no checkout: fora de `PAYMENT_PROVIDERS`, o plano fica "Preço em breve".
+ * (sem RLS e sem dado pessoal): o loader lê direto, sem volta HTTP. Entram os preços
+ * compráveis, como no checkout; sem nenhum provedor ativo (cobrança manual), os preços
+ * manuais. Plano sem nenhum dos dois fica "Preço em breve".
  */
 export async function listPublicPlans(): Promise<PublicPlan[]> {
   const db = getDb();
@@ -33,9 +34,13 @@ export async function listPublicPlans(): Promise<PublicPlan[]> {
     .from(planPrice)
     .where(eq(planPrice.active, true));
 
+  const manualOnly = getProviders().length === 0;
+
   return plans.map((row) => {
     const own = prices.filter(
-      (price) => price.planId === row.id && isPriceUsable(price),
+      (price) =>
+        price.planId === row.id &&
+        (manualOnly ? price.provider === MANUAL_PROVIDER : isPriceUsable(price)),
     );
     const cheapest: PublicPlan["prices"] = {};
 

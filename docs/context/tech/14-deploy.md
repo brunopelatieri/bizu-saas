@@ -132,6 +132,7 @@ Runtime (a lista completa está em `.env.example`; a validação, em `src/lib/en
 - `RATE_LIMIT_STORE=postgres`: `memory` derruba o processo em produção
 - `EMAIL_PROVIDER` (`memory` é recusado em produção), `EMAIL_FROM`, `SMTP_*` ou `RESEND_*`
 - `CSP_REPORT_ONLY`: `true` relata em `/api/csp-report`; `false` bloqueia
+- `EMAIL_VERIFICATION_REQUIRED`: `false` (padrão) o cadastro entra direto; `true` exige o link
 - `LOG_LEVEL` (`info`), `SENTRY_DSN` (opcional), `STORAGE_PROVIDER` (`local` ou `s3`),
   `STORAGE_LOCAL_DIR`, `S3_*`, `MAX_UPLOAD_MB`, `PAYMENT_PROVIDERS` (vazio = sem cobrança)
 - Pagamentos: só `STRIPE_*` (`STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`), obrigatórias com `stripe` em `PAYMENT_PROVIDERS`. Variáveis de outros provedores entram junto com o módulo em `src/lib/payments/providers/<id>/`

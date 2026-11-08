@@ -13,14 +13,27 @@ import { acceptCurrentVersions, pendingConsents } from "@/lib/lgpd/consent";
  * tabelas, e o RLS de `subscription` é atendido por `withTenant`. A senha vem de
  * `SEED_PASSWORD` e o hash é o do próprio Better Auth. As contas nascem verificadas por
  * `INSERT` direto, a exceção registrada no README: o cadastro real exige o e-mail.
+ *
+ * Cobrança manual (`docs/specs/cobranca-manual/spec.md`): os planos têm preço manual e
+ * `limits.organizations`, e três tenants mostram uma assinatura em dia, uma em atraso e uma
+ * vencida, como o proprietário as vê em `/admin/tenants/:id`.
  */
+
+const DAY = 24 * 60 * 60 * 1000;
+
+/** Mesmos valores na cobrança manual e no Stripe (quando o módulo for ligado). */
+const seedPrices = (month: number, year: number) =>
+  (["manual", "stripe"] as const).flatMap((provider) => [
+    { provider, interval: "month" as const, amountCents: month },
+    { provider, interval: "year" as const, amountCents: year },
+  ]);
 
 export const SEED_PLANS = [
   {
     slug: "free",
     name: "Gratuito",
     description: "Para conhecer o produto, sem prazo.",
-    limits: { members: 2, customers: 20 },
+    limits: { members: 2, customers: 20, organizations: 1 },
     features: [],
     isFree: true,
     sortOrder: 0,
@@ -30,29 +43,23 @@ export const SEED_PLANS = [
     slug: "basic",
     name: "Básico",
     description: "Para equipes pequenas.",
-    limits: { members: 5, customers: 200 },
+    limits: { members: 5, customers: 200, organizations: 2 },
     features: [],
     isFree: false,
     sortOrder: 1,
-    prices: [
-      { interval: "month", amountCents: 4900 },
-      { interval: "year", amountCents: 49000 },
-    ],
+    prices: seedPrices(4900, 49000),
   },
   {
     slug: "pro",
     name: "Pro",
     description: "Para quem precisa de mais pessoas, clientes e recursos.",
-    limits: { members: 15, customers: 5000 },
+    limits: { members: 15, customers: 5000, organizations: 5 },
     features: ["audit_export", "custom_roles"],
     isFree: false,
     sortOrder: 2,
-    prices: [
-      { interval: "month", amountCents: 9900 },
-      { interval: "year", amountCents: 99000 },
-    ],
+    prices: seedPrices(9900, 99000),
   },
-] as const;
+];
 
 export const SEED_USERS = {
   platformOwner: { email: "owner@bizu.local", name: "Proprietário Bizu", role: "platform_owner" },
@@ -60,7 +67,23 @@ export const SEED_USERS = {
   acmeOwner: { email: "acme.owner@bizu.local", name: "Ana Acme", role: "user" },
   acmeAdmin: { email: "acme.admin@bizu.local", name: "Beto Admin", role: "user" },
   acmeMember: { email: "acme.membro@bizu.local", name: "Carla Membro", role: "user" },
+  manualPaid: { email: "em-dia.owner@bizu.local", name: "Dora Em Dia", role: "user" },
+  manualLate: { email: "atrasado.owner@bizu.local", name: "Edu Atrasado", role: "user" },
+  manualExpired: { email: "vencido.owner@bizu.local", name: "Fábio Vencido", role: "user" },
 } as const;
+
+/** Tenants da cobrança manual: em dia, em atraso (na carência) e vencido (`read_only`). */
+export const SEED_MANUAL_TENANTS: ReadonlyArray<{
+  slug: string;
+  name: string;
+  owner: keyof typeof SEED_USERS;
+  plan: string;
+  state: "paid" | "late" | "expired";
+}> = [
+  { slug: "cliente-em-dia", name: "Loja Em Dia", owner: "manualPaid", plan: "basic", state: "paid" },
+  { slug: "cliente-atrasado", name: "Oficina Atrasada", owner: "manualLate", plan: "pro", state: "late" },
+  { slug: "cliente-vencido", name: "Café Vencido", owner: "manualExpired", plan: "basic", state: "expired" },
+];
 
 /** Clientes do portal. Júlia é ativa em dois tenants: prova a escolha em `/portal/escolher`. */
 export const SEED_CUSTOMERS = {
@@ -105,6 +128,7 @@ export async function runSeed(password: string): Promise<SeedSummary> {
   const {
     account,
     customer,
+    invoice,
     member,
     organization,
     plan,
@@ -112,8 +136,12 @@ export async function runSeed(password: string): Promise<SeedSummary> {
     platformSetting,
     portalAccount,
     portalUser,
+    subscription,
     user,
   } = await import("@/db/schema");
+  const { and, sql } = await import("drizzle-orm");
+  const { addInterval } = await import("@/lib/billing/manual");
+  const { recordSubscriptionEvent } = await import("@/lib/billing/subscription");
   const { withTenant } = await import("@/db/rls");
   const { getAuth } = await import("@/lib/auth/server");
   const { SETTING_DEFAULTS, SETTING_KEYS } = await import("@/lib/billing/settings");
@@ -123,12 +151,20 @@ export async function runSeed(password: string): Promise<SeedSummary> {
   const { password: hashPassword } = await getAuth().$context;
   const passwordHash = await hashPassword.hash(password);
 
-  // Planos: só os que faltam.
+  // Planos: só os que faltam. Plano já existente ganha só a chave `organizations`, se não a
+  // tiver: o resto do que foi editado em /admin fica como está.
   for (const { prices, ...values } of SEED_PLANS) {
     await db
       .insert(plan)
       .values({ ...values, features: [...values.features] })
       .onConflictDoNothing({ target: plan.slug });
+
+    await db
+      .update(plan)
+      .set({
+        limits: sql`${plan.limits} || jsonb_build_object('organizations', ${values.limits.organizations}::int)`,
+      })
+      .where(and(eq(plan.slug, values.slug), sql`not (${plan.limits} ? 'organizations')`));
 
     const [row] = await db.select({ id: plan.id }).from(plan).where(eq(plan.slug, values.slug));
     if (!row) throw new Error(`plano ${values.slug} não foi criado`);
@@ -136,7 +172,7 @@ export async function runSeed(password: string): Promise<SeedSummary> {
     for (const price of prices) {
       await db
         .insert(planPrice)
-        .values({ planId: row.id, provider: "stripe", ...price })
+        .values({ planId: row.id, ...price })
         .onConflictDoNothing();
     }
   }
@@ -252,6 +288,115 @@ export async function runSeed(password: string): Promise<SeedSummary> {
 
   await startTrial(beta.id);
 
+  // Cobrança manual: um tenant por situação, com owner próprio. A assinatura só é criada se
+  // faltar, com datas relativas ao dia da primeira execução.
+  const { graceDays } = SETTING_DEFAULTS;
+  const now = new Date();
+  const manualSlugs: string[] = [];
+  const statusOf = { paid: "active", late: "past_due", expired: "unpaid" } as const;
+  // Em dia: pagou há 10 dias. Em atraso: venceu há uns 5, na carência. Vencido: venceu há
+  // uns 20 e a carência acabou.
+  const startedDaysAgo = { paid: 10, late: 35, expired: 50 } as const;
+
+  for (const item of SEED_MANUAL_TENANTS) {
+    const ownerId = ids.get(SEED_USERS[item.owner].email);
+    if (!ownerId) continue;
+
+    let [tenant] = await db
+      .select({ id: organization.id })
+      .from(organization)
+      .where(eq(organization.slug, item.slug));
+    if (!tenant) {
+      [tenant] = await db
+        .insert(organization)
+        .values({ name: item.name, slug: item.slug })
+        .returning({ id: organization.id });
+    }
+    if (!tenant) throw new Error(`tenant ${item.slug} não foi criado`);
+    manualSlugs.push(item.slug);
+
+    await db
+      .insert(member)
+      .values({ organizationId: tenant.id, userId: ownerId, role: "owner" })
+      .onConflictDoNothing();
+    await db.update(user).set({ lastTenantId: tenant.id }).where(eq(user.id, ownerId));
+
+    const [target] = await db
+      .select({ planId: plan.id, priceId: planPrice.id, amountCents: planPrice.amountCents })
+      .from(plan)
+      .innerJoin(planPrice, eq(planPrice.planId, plan.id))
+      .where(
+        and(
+          eq(plan.slug, item.plan),
+          eq(planPrice.provider, "manual"),
+          eq(planPrice.interval, "month"),
+        ),
+      );
+    if (!target) throw new Error(`preço manual de ${item.plan} não encontrado`);
+
+    const periodStart = new Date(now.getTime() - startedDaysAgo[item.state] * DAY);
+    const periodEnd = addInterval(periodStart, "month");
+    const tenantId = tenant.id;
+
+    await withTenant(tenantId, async (tx) => {
+      const [created] = await tx
+        .insert(subscription)
+        .values({
+          tenantId,
+          planId: target.planId,
+          planPriceId: target.priceId,
+          status: statusOf[item.state],
+          currentPeriodStart: periodStart,
+          currentPeriodEnd: periodEnd,
+          graceUntil:
+            item.state === "paid" ? null : new Date(periodEnd.getTime() + graceDays * DAY),
+        })
+        .onConflictDoNothing({ target: subscription.tenantId })
+        .returning();
+      if (!created) return;
+
+      const base = {
+        tenantId,
+        subscriptionId: created.id,
+        provider: "manual" as const,
+        amountCents: target.amountCents,
+      };
+      await tx.insert(invoice).values({
+        ...base,
+        status: "paid",
+        paymentMethod: "pix",
+        dueAt: periodStart,
+        paidAt: periodStart,
+        periodStart,
+        periodEnd,
+      });
+      if (item.state !== "paid") {
+        await tx.insert(invoice).values({
+          ...base,
+          status: item.state === "late" ? "open" : "failed",
+          dueAt: periodEnd,
+          periodStart: periodEnd,
+          periodEnd: addInterval(periodEnd, "month"),
+        });
+      }
+
+      await recordSubscriptionEvent(tx, {
+        tenantId,
+        subscriptionId: created.id,
+        from: null,
+        to: created.status,
+        reason: "seed_manual",
+        source: "system",
+      });
+      if (item.state === "expired") {
+        await tx
+          .update(organization)
+          .set({ accessMode: "read_only" })
+          .where(eq(organization.id, tenantId));
+      }
+    });
+  }
+
   // Portal: Júlia com senha e e-mail verificado; a lead, sem identidade, à espera do convite.
   // Como na equipe, identidade sem e-mail confirmado veio do autocadastro, com a senha de
   // quem cadastrou: ligá-la a um cliente ativo daria o acesso a essa pessoa.
@@ -313,7 +458,7 @@ export async function runSeed(password: string): Promise<SeedSummary> {
   return {
     users: ids.size,
     plans: SEED_PLANS.length,
-    tenants: ["acme", "beta"],
+    tenants: ["acme", "beta", ...manualSlugs],
     customers: Object.keys(SEED_CUSTOMERS).length,
   };
 }
@@ -327,7 +472,10 @@ async function main() {
     const summary = await runSeed(password);
 
     console.log(
-      `Seed concluído: ${summary.users} usuários, ${summary.plans} planos, ${summary.customers} clientes e os tenants ${summary.tenants.join(" e ")}.`,
+      `Seed concluído: ${summary.users} usuários, ${summary.plans} planos, ${summary.customers} clientes e os tenants ${summary.tenants.join(", ")}.`,
+    );
+    console.log(
+      `Cobrança manual: ${SEED_USERS.manualPaid.email} (em dia), ${SEED_USERS.manualLate.email} (em atraso) e ${SEED_USERS.manualExpired.email} (vencido, somente leitura). O proprietário marca os pagamentos em /admin/tenants.`,
     );
     console.log(
       `Entre em /login com ${SEED_USERS.platformOwner.email} (vai a /admin) ou ${SEED_USERS.acmeOwner.email} (vai a /app, tenant acme em teste no plano Pro), senha em SEED_PASSWORD.`,

@@ -21,6 +21,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { safeNextPath } from "@/lib/auth/next-path";
 import { TERMS_VERSION } from "@/lib/legal/versions";
 import {
   type LoginInput,
@@ -59,6 +60,36 @@ function CheckEmailNotice({
       </p>
     </div>
   );
+}
+
+/**
+ * Sem verificação de e-mail, o cliente entra logo após o cadastro. Se não entrar, o e-mail já
+ * tinha conta com outra senha: a mensagem é a mesma de qualquer login recusado.
+ */
+function SignupLoginFailedNotice({ loginPath }: { loginPath: string }) {
+  return (
+    <div className="grid gap-4 text-sm">
+      <p className="text-muted-foreground">
+        Não foi possível entrar com esses dados. Se você já tem conta com este e-mail,
+        entre com a sua senha ou redefina-a.
+      </p>
+      <p className="text-center text-muted-foreground">
+        <Link to={loginPath} className={authLinkClassName}>
+          Entrar
+        </Link>
+        {" · "}
+        <Link to="/esqueci-senha" className={authLinkClassName}>
+          Esqueci a senha
+        </Link>
+      </p>
+    </div>
+  );
+}
+
+/** Destino depois do cadastro que entra direto: o `?next=` do link de login, se houver. */
+function nextFromLoginPath(loginPath: string) {
+  const query = loginPath.split("?")[1] ?? "";
+  return safeNextPath(new URLSearchParams(query).get("next"));
 }
 
 export function LoginForm({ nextPath }: { nextPath: string }) {
@@ -187,8 +218,10 @@ export function SignupForm({
   lockedEmail,
   loginPath = "/login",
 }: SignupFormProps) {
-  const { signUp } = useAuth();
+  const navigate = useNavigate();
+  const { signUp, signIn } = useAuth();
   const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
+  const [loginFailed, setLoginFailed] = useState(false);
   const form = useForm<SignupInput>({
     resolver: zodResolver(signupSchema),
     defaultValues: {
@@ -203,8 +236,20 @@ export function SignupForm({
 
   async function onSubmit(values: SignupInput) {
     try {
-      await signUp(values);
-      setSubmittedEmail(values.email);
+      const { verifyEmail } = await signUp(values);
+
+      if (verifyEmail) {
+        setSubmittedEmail(values.email);
+        return;
+      }
+
+      try {
+        await signIn({ email: values.email, password: values.password });
+      } catch {
+        setLoginFailed(true);
+        return;
+      }
+      navigate(nextFromLoginPath(loginPath));
     } catch (error) {
       toast.error(
         error instanceof Error
@@ -217,6 +262,7 @@ export function SignupForm({
   if (submittedEmail) {
     return <CheckEmailNotice email={submittedEmail} loginPath={loginPath} />;
   }
+  if (loginFailed) return <SignupLoginFailedNotice loginPath={loginPath} />;
 
   return (
     <div className="grid w-full gap-4">

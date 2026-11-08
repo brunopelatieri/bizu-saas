@@ -24,6 +24,7 @@ import { cancelDeletion, requestTenantDeletion } from "@/lib/lgpd/deletion";
 import { confirmIdentity } from "@/lib/lgpd/identity";
 import { confirmIdentitySchema } from "@/lib/schemas/lgpd";
 import { getAuth } from "@/lib/auth/server";
+import { createOrganizationWithinLimit } from "@/lib/billing/organizations";
 import { startTrial } from "@/lib/billing/subscription";
 import { logError } from "@/api/log";
 import {
@@ -60,10 +61,14 @@ tenantRoutes.post(
     const { name, slug } = c.req.valid("json");
     const user = c.get("user");
 
-    const tenant = await getAuth().api.createOrganization({
-      headers: c.req.raw.headers,
-      body: { name, slug: slug ?? (await generateSlug(name)) },
-    });
+    const finalSlug = slug ?? (await generateSlug(name));
+    // `plan.limits.organizations`: 403 `PLAN_LIMIT_REACHED`, com lock por pessoa.
+    const tenant = await createOrganizationWithinLimit(user.id, () =>
+      getAuth().api.createOrganization({
+        headers: c.req.raw.headers,
+        body: { name, slug: finalSlug },
+      }),
+    );
 
     await activateTenant(c.get("session").id, user.id, tenant.id);
     // O tenant já existe: sem plano utilizável ou com falha aqui, ele segue sem limites

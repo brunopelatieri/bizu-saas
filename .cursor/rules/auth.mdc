@@ -8,7 +8,8 @@ alwaysApply: false
 
 - Instância `getAuth()` em `src/lib/auth/server.ts`; rotas em `src/api/auth-ext.ts`.
 - Clientes e leads usam `getPortalAuth()` (`src/lib/auth/portal.ts`), com segredo derivado, cookies `bizu_portal` e tabelas `portal_*`: um cookie nunca vale pelo outro. Por HTTP, só o que está em `PORTAL_AUTH_PATHS` (`src/api/portal.ts`); `/api/portal/auth/magic-link/verify` só aceita POST.
-- Rota privada usa `requireAuth` (sessão no banco, e-mail verificado); de plataforma, também `requirePlatform`.
+- Rota privada usa `requireAuth` (sessão no banco; e-mail verificado só com `EMAIL_VERIFICATION_REQUIRED=true`); de plataforma, também `requirePlatform`.
+- Verificação de e-mail é opcional (padrão desligada). O cadastro nunca abre sessão (`autoSignIn: false`); desligada, o cliente entra com a mesma senha. O que depende de provar o e-mail (listar os convites do próprio e-mail) exige `emailVerified` nas duas posições.
 - Nenhum token é consumido em GET: a página renderiza e um botão faz a chamada. `/api/auth/verify-email` só aceita POST, atrás do `verificationGuard`.
 - Respostas de cadastro, reenvio, reset e troca de e-mail nunca revelam se um e-mail existe: mesmo status, corpo e cabeçalhos. Trabalho que depende da existência roda em `runInBackground`.
 - Login de conta não verificada responde o 401 de senha errada, byte a byte (`hideUnverified`, em todo o proxy): a tela não pode depender de `EMAIL_NOT_VERIFIED`.

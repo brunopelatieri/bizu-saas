@@ -38,7 +38,9 @@ Entrega planejada (ver `docs/specs/saas-foundation/prd.md`):
 - Multi-tenant com `tenant_id` na aplicação e Row Level Security no Postgres.
 - Trial configurável pelo proprietário, planos, assinaturas e pagamentos em módulos
   (Stripe e Asaas primeiro; Mercado Pago, Pagar.me e PagBank sobre a mesma interface).
-- Verificação de e-mail por link em todo cadastro, e-mail transacional com provedor
+- Cobrança manual como padrão: sem módulo ativo, o proprietário marca em `/admin` quem pagou
+  (`docs/specs/cobranca-manual/spec.md`).
+- Verificação de e-mail por link, opcional (`EMAIL_VERIFICATION_REQUIRED`), e-mail transacional com provedor
   substituível e jobs no próprio Postgres.
 - Portável: qualquer VPS com Docker e um Postgres, sem fornecedor obrigatório.
 

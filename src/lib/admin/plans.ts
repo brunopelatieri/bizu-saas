@@ -2,6 +2,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { withPlatformScope } from "@/db/rls";
 import { plan, planPrice, subscription } from "@/db/schema";
+import { MANUAL_PROVIDER } from "@/lib/billing/constants";
 import { loadSettings, saveSettings } from "@/lib/billing/settings";
 import type {
   PlanInput,
@@ -134,14 +135,14 @@ export async function updatePrice(
 ) {
   if (patch.active && (await getPlan(planId)).isFree) throw FREE_PLAN_NO_PRICE;
 
+  const ref =
+    patch.providerPriceRef !== undefined
+      ? // Preço manual não tem par no provedor: a referência nunca é gravada.
+        sql`case when ${planPrice.provider} = ${MANUAL_PROVIDER} then null else ${patch.providerPriceRef || null} end`
+      : undefined;
   const [updated] = await getDb()
     .update(planPrice)
-    .set({
-      ...patch,
-      ...(patch.providerPriceRef !== undefined
-        ? { providerPriceRef: patch.providerPriceRef || null }
-        : {}),
-    })
+    .set({ ...patch, ...(ref ? { providerPriceRef: ref } : {}) })
     .where(sql`${planPrice.id} = ${priceId} and ${planPrice.planId} = ${planId}`)
     .returning();
 

@@ -42,11 +42,17 @@
   assinaturas, webhooks e configurações, com `requirePlatform` na API (`tech/22-admin.md`).
 - Planos, preços, trial no onboarding, limites por plano (assentos), estado `read_only`/`locked` e job
   `billing.trial` (`tech/23-billing-planos.md`). `/precos` público com loader.
+- Cobrança manual como padrão (`docs/specs/cobranca-manual/`): sem provedor, o proprietário marca em
+  `/admin/tenants/:id` quem pagou e quem não pagou; vencimento, carência, `past_due`/`unpaid` +
+  `read_only` e auditoria funcionam com `PAYMENT_PROVIDERS` vazio. Limite de organizações por dono
+  no plano (`limits.organizations`). Verificação de e-mail opcional (`EMAIL_VERIFICATION_REQUIRED`,
+  padrão desligada).
 - Cobrança (`tech/24-billing-cobranca.md`): máquina de estados pura, `PaymentProvider` com registro por
   `PAYMENT_PROVIDERS`, módulo Stripe, checkout, `/api/billing/*`, faturas, caixa de entrada de
   webhooks, jobs `webhook.process`, `billing.dunning`, `billing.period_end` e `billing.reconcile`.
-- `npm run db:seed`: proprietário, suporte, planos, os tenants `acme` e `beta` e os clientes
-  `julia@cliente.local` (ativa nos dois) e `lead@cliente.local`.
+- `npm run db:seed`: proprietário, suporte, planos (com preço manual e limite de organizações), os
+  tenants `acme` e `beta`, três tenants na cobrança manual (em dia, em atraso e vencido) e os
+  clientes `julia@cliente.local` (ativa nos dois) e `lead@cliente.local`.
 - `/api/health`, `/api/me`, `/api/tenant`, `/api/team`, `/api/roles`, `/api/invitations`,
   `/api/customers`, `/api/portal/*`, `/api/auth/*`, `/api/auth-ext/*` e `/api/contact` com rate
   limit, limite de corpo e headers de segurança.

@@ -1,8 +1,10 @@
 import { z } from "zod";
 import {
+  billingProviderIds,
   impersonationPolicies,
+  MANUAL_PROVIDER,
   paymentEventStatuses,
-  paymentProviderIds,
+  paymentMethods,
   priceIntervals,
   subscriptionStatusList,
 } from "@/lib/billing/constants";
@@ -27,6 +29,7 @@ export const planLimitsSchema = z.strictObject({
   customers: optionalLimit,
   storage_mb: optionalLimit,
   custom_roles: optionalLimit,
+  organizations: optionalLimit,
 });
 
 const featureSchema = z
@@ -82,13 +85,19 @@ const priceFields = {
   active: z.boolean(),
 };
 
-export const planPriceSchema = z.object({
-  provider: z.enum(paymentProviderIds),
-  interval: z.enum(priceIntervals),
-  amountCents: priceFields.amountCents,
-  providerPriceRef: priceFields.providerPriceRef.optional(),
-  active: priceFields.active.default(true),
-});
+/** `manual`: preço da cobrança manual, sem referência no provedor. */
+export const planPriceSchema = z
+  .object({
+    provider: z.enum(billingProviderIds),
+    interval: z.enum(priceIntervals),
+    amountCents: priceFields.amountCents,
+    providerPriceRef: priceFields.providerPriceRef.optional(),
+    active: priceFields.active.default(true),
+  })
+  .refine(
+    (value) => value.provider !== MANUAL_PROVIDER || !value.providerPriceRef,
+    { message: "Preço manual não tem referência no provedor.", path: ["providerPriceRef"] },
+  );
 export type PlanPriceInput = z.infer<typeof planPriceSchema>;
 
 export const updatePlanPriceSchema = z
@@ -138,6 +147,24 @@ export const impersonateSchema = z.object({
 });
 
 export const changeTenantPlanSchema = z.object({ planId: z.uuid("Plano inválido.") });
+
+/**
+ * Cobrança manual (`src/lib/billing/manual.ts`). Sem `invoiceId`, vale a fatura em aberto (ou
+ * uma nova); sem `planPriceId`, o preço manual do plano.
+ */
+export const manualPaymentSchema = z.object({
+  invoiceId: z.uuid("Fatura inválida.").optional(),
+  planPriceId: z.uuid("Preço inválido.").optional(),
+  method: z.enum(paymentMethods).optional(),
+});
+export type ManualPaymentInput = z.infer<typeof manualPaymentSchema>;
+
+/** `immediate`: sem carência, direto a `unpaid` + `read_only`. */
+export const manualUnpaidSchema = z.object({
+  invoiceId: z.uuid("Fatura inválida.").optional(),
+  immediate: z.boolean().default(false),
+});
+export type ManualUnpaidInput = z.infer<typeof manualUnpaidSchema>;
 
 const page = z.coerce.number().int().min(1).max(10_000).default(1);
 const search = z.string().trim().max(100).optional();

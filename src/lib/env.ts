@@ -114,6 +114,9 @@ export const envSchema = z
     ),
     AUDIT_SALT: secret,
 
+    // Desligada (padrão), o cadastro entra direto; ligada, exige o link de /verificar-email.
+    EMAIL_VERIFICATION_REQUIRED: booleanString(false),
+
     EMAIL_PROVIDER: z.enum(["smtp", "resend", "memory"]).default("smtp"),
     EMAIL_FROM: z.string().min(3).default("Bizu SaaS <no-reply@localhost>"),
     EMAIL_REPLY_TO: optionalString,

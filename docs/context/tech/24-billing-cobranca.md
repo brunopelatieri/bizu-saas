@@ -1,8 +1,8 @@
 # Cobrança: assinatura, provedores e webhooks
 
-- **Escopo:** Máquina de estados da assinatura, módulos de pagamento, checkout, webhooks, faturas, dunning, fim do período e reconciliação (fase 6). Planos, trial e limites estão em `tech/23-billing-planos.md`.
-- **Specs relacionadas:** `docs/specs/saas-foundation/spec-billing.md`, `spec-dados.md`, `spec-rotas-api.md`, `spec-email-jobs.md`, `spec-seguranca.md`
-- **Paths do código:** `src/lib/billing/` (`state-machine.ts`, `apply.ts`, `checkout.ts`, `inbox.ts`, `invoices.ts`, `reconcile.ts`, `dunning.ts`, `notices.ts`, `proration.ts`), `src/lib/payments/` (`types.ts`, `registry.ts`, `providers/`), `src/api/billing.ts`, `src/api/webhooks-payments.ts`, `src/jobs/webhooks.ts`, `src/jobs/billing.ts`, `src/lib/schemas/billing.ts`, `src/lib/admin/subscriptions.ts`, `src/components/app/billing/`, `src/pages/{subscription,invoices,checkout-return}-page.tsx`, `src/pages/admin/{subscriptions,webhooks}-page.tsx`, `drizzle/0010_billing_cobranca.sql`, `drizzle/0011_rls_cobranca.sql`, `scripts/check-module-removal.mjs`, `tests/db/billing-{webhooks,lifecycle,queue}.test.ts`
+- **Escopo:** Máquina de estados da assinatura, cobrança manual (padrão sem provedor), módulos de pagamento, checkout, webhooks, faturas, dunning, fim do período e reconciliação (fase 6). Planos, trial e limites estão em `tech/23-billing-planos.md`.
+- **Specs relacionadas:** `docs/specs/saas-foundation/spec-billing.md`, `docs/specs/cobranca-manual/spec.md`, `spec-dados.md`, `spec-rotas-api.md`, `spec-email-jobs.md`, `spec-seguranca.md`
+- **Paths do código:** `src/lib/billing/` (`state-machine.ts`, `apply.ts`, `manual.ts`, `checkout.ts`, `inbox.ts`, `invoices.ts`, `reconcile.ts`, `dunning.ts`, `notices.ts`, `proration.ts`), `src/lib/payments/` (`types.ts`, `registry.ts`, `providers/`), `src/api/billing.ts`, `src/api/webhooks-payments.ts`, `src/jobs/webhooks.ts`, `src/jobs/billing.ts`, `src/lib/schemas/billing.ts`, `src/lib/admin/subscriptions.ts`, `src/components/app/billing/`, `src/pages/{subscription,invoices,checkout-return}-page.tsx`, `src/pages/admin/{subscriptions,webhooks}-page.tsx`, `drizzle/0010_billing_cobranca.sql`, `drizzle/0011_rls_cobranca.sql`, `scripts/check-module-removal.mjs`, `tests/db/billing-{webhooks,lifecycle,queue}.test.ts`
 
 ## Como as peças se ligam
 
@@ -20,12 +20,42 @@ provedor → POST /api/webhooks/payments/:provider → payment_event → webhook
 Toda escrita em provedor vem antes da transação local: se ele recusar, nada muda aqui; se a
 gravação falhar depois, o webhook e a reconciliação trazem o estado de volta.
 
+## Cobrança manual (padrão)
+
+Com `PAYMENT_PROVIDERS` vazio, a cobrança é manual: o proprietário marca em `/admin/tenants/:id` quem
+pagou e quem não pagou (`manual.ts`, `components/admin/manual-billing-card.tsx`). Com provedor ativo,
+continua valendo para toda assinatura sem cobrança viva no provedor (`isProviderManaged`), e a do
+provedor não é tocada.
+
+- **Preço:** `plan_price` com `provider = manual` (sem referência). `getProvider("manual")` é `null`:
+  o checkout recusa, e `toPlanPrice` também. Sem provedor, `/precos` e `GET /api/billing/plans`
+  (`billingMode: manual`, `manualPrices`) mostram esse valor; `/app/assinatura` diz que a troca é com
+  a plataforma.
+- **Fatura:** `invoice` com `provider = manual`, `provider_ref` nulo e `period_start`/`period_end`.
+- **Vencimento:** `billing.period_end`, depois dos downgrades, pega `active` + plano pago + sem
+  referência + `current_period_end` no passado: abre a fatura do período seguinte (se não houver uma
+  aberta) e passa a `past_due` com `grace_until = vencimento + grace_days` (`manual.due`). Daí é o
+  `billing.dunning` de sempre. Sem preço manual, só transita e loga.
+- **Pagou** (`manual.paid`): fatura aberta (ou nova) `paid`; `active` + `full`, sem carência nem avisos,
+  `provider` e referência nulos. O período (`manualPeriod`) continua do início da fatura aberta ou do
+  vencimento em `active`/`past_due` e começa agora nos demais estados (em somente leitura o tenant não
+  usou nada); se ainda assim terminasse no passado, começa agora. O fim soma o intervalo do preço
+  (`addInterval`, mês de calendário). A fatura paga passa a dizer o período, e o valor quando o admin
+  escolhe o preço.
+- **Não pagou** (`manual.unpaid`): fatura `failed`; `active`/`trialing` → `past_due` com carência a
+  partir de agora, ou `unpaid` + `read_only` com `immediate`. Sem fatura aberta, a nova cobre o período
+  corrente se ele ainda corre, ou o devido se já venceu (`unpaidPeriod`).
+- **Para o provedor:** com um módulo ligado, a assinatura manual (`active` ou `past_due`, sem
+  referência) pode fazer checkout (`canStartCheckout`); o primeiro pagamento a liga ao provedor.
+- **Auditoria:** `admin.manual_payment_recorded`, `admin.manual_payment_missed` e
+  `billing.subscription_changed` (ator `platform`; no job, `system`).
+
 ## Tabelas
 
 | Tabela | Escopo | Observações |
 |---|---|---|
 | `billing_profile` | tenant, RLS forçado | uma por tenant, exigida antes do checkout. `document` só com dígitos, conferido por dígito verificador |
-| `invoice` | tenant, RLS forçado | espelho local. Unique `(provider, provider_ref)`; `provider_ref` nulo só entre o checkout inline e o primeiro evento |
+| `invoice` | tenant, RLS forçado | espelho local, ou fatura manual (`provider = manual`). Unique `(provider, provider_ref)`; `provider_ref` nulo entre o checkout inline e o primeiro evento, e sempre na manual. `period_start`/`period_end` (migration `0020`) |
 | `payment_event` | plataforma, RLS forçado | caixa de entrada. Unique `(provider, provider_event_id)`. Só se lê com `withPlatformScope` |
 | `subscription_event` | tenant | ganhou `occurred_at` (hora no provedor) e FK `payment_event_id` |
 
@@ -129,7 +159,7 @@ ao log e não repete o evento. Rede só antes da transação.
 |---|---|---|
 | `webhook.process` | por evento | acima; 5 tentativas com backoff, política `exclusive` por `singletonKey = payment_event.id` |
 | `billing.dunning` | 03:10 diário | `t3`, `t0`, `unpaid` + `read_only`; idempotente em `metadata.dunningNotices`, limpo quando o pagamento volta |
-| `billing.period_end` | de hora em hora | encerra cancelamentos e aplica downgrades vencidos |
+| `billing.period_end` | de hora em hora | encerra cancelamentos, aplica downgrades vencidos e vence a cobrança manual |
 | `billing.reconcile` | 04:00 diário | compara com `fetchSubscription` e devolve à fila os eventos `pending` há mais de 10 min |
 
 A reconciliação **corrige** status, período e plano (`priceRef`), e deixa alerta

@@ -1,7 +1,8 @@
 # Bizu SaaS — Roteador de Contexto
 
 Ponto de partida open source para **qualquer SaaS**: multi-tenant, quatro níveis de
-login com verificação de e-mail, trial configurável e pagamentos em módulos. Tudo
+login com verificação de e-mail opcional, trial configurável e cobrança manual ou em
+módulos. Tudo
 sobre Drizzle em qualquer Postgres, com **AI Software Engineering**: PRD/spec
 primeiro, contexto enxuto carregado sob demanda e decisões técnicas documentadas.
 

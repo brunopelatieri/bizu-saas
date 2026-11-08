@@ -461,7 +461,9 @@ describe("personificação", () => {
 
   describe("presa ao tenant do consentimento", () => {
     it("não troca de tenant, mesmo sendo membro de outro", async () => {
-      const otherTenant = (await createTenant(tenantOwner, "Filial")).id;
+      // Outra organização da mesma pessoa, como membro: o limite de organizações é de dono.
+      const otherTenant = (await createTenant(await createUser(owner), "Filial")).id;
+      await addMember(owner, otherTenant, tenantOwner, "admin");
       await call("POST", "/api/tenant/active", {
         cookie: tenantOwner.cookie,
         body: { tenantId },
