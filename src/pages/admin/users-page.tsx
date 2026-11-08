@@ -6,6 +6,7 @@ import {
   useAdminQuery,
   useIsPlatformOwner,
 } from "@/components/admin/admin-api";
+import { OrgList, type OrgRef } from "@/components/admin/org-list";
 import { Pager } from "@/components/admin/pager";
 import { PortalUsersCard } from "@/components/admin/portal-users-card";
 import { PageTitle, QueryState } from "@/components/admin/query-state";
@@ -23,6 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { roleLabel } from "@/lib/auth/permissions";
 import { useAuth } from "@/providers/auth-provider";
 
 type AdminUser = {
@@ -33,7 +35,8 @@ type AdminUser = {
   emailVerified: boolean;
   banned: boolean;
   banReason: string | null;
-  tenants: number;
+  organizations: OrgRef[];
+  more: number;
 };
 
 const ROLE_LABELS: Record<string, string> = {
@@ -112,7 +115,7 @@ export function AdminUsersPage() {
                       <TableHead>Nome</TableHead>
                       <TableHead>E-mail</TableHead>
                       <TableHead>Situação</TableHead>
-                      <TableHead className="text-right">Organizações</TableHead>
+                      <TableHead>Organizações</TableHead>
                       <TableHead className="text-right">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -134,7 +137,20 @@ export function AdminUsersPage() {
                             <Badge variant="outline">Sem verificação</Badge>
                           ) : null}
                         </TableCell>
-                        <TableCell className="text-right">{user.tenants}</TableCell>
+                        <TableCell>
+                          <OrgList
+                            organizations={user.organizations}
+                            more={user.more}
+                            label={(org) =>
+                              org.role
+                                ? org.role
+                                    .split(",")
+                                    .map((role) => roleLabel(role))
+                                    .join(", ")
+                                : null
+                            }
+                          />
+                        </TableCell>
                         <TableCell className="text-right">
                           {owner && user.platformRole === "user" && user.id !== me?.id ? (
                             user.banned ? (

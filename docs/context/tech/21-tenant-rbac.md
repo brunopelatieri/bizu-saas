@@ -32,7 +32,7 @@ passa `organizationId` explícito.
 | `GET /api/me/invitations` | `requireAuth` | convites abertos para o e-mail, só se verificado (senão `[]`) |
 | `POST /api/tenant` | `requireAuth` | cria e ativa; slug gerado se não vier; 409 `SLUG_TAKEN`; 403 `PLAN_LIMIT_REACHED` acima de `limits.organizations` |
 | `GET /api/tenant` | `requireTenant` | |
-| `PATCH /api/tenant` | `organization:update` | |
+| `PATCH /api/tenant` | `organization:update` | só o nome; nome e slug pela plataforma: `PATCH /api/admin/tenants/:id` (`tech/22-admin.md`) |
 | `POST /api/tenant/active` | `requireAuth` | troca o tenant; não membro recebe 404 |
 | `GET /api/team` | `requireTenant` | `invitations` só com `invitation:create` |
 | `POST /api/team/invitations` | `invitation:create` | |

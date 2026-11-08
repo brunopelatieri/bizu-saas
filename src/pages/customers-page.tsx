@@ -10,6 +10,7 @@ import {
   useCustomers,
 } from "@/components/app/customers/customers-api";
 import { Can } from "@/components/auth/can";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -117,6 +118,8 @@ export function CustomersPage() {
                     <TableRow>
                       <TableHead>Nome</TableHead>
                       <TableHead>E-mail</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead>Etiquetas</TableHead>
                       <TableHead>Situação</TableHead>
                       <TableHead>Último acesso</TableHead>
                     </TableRow>
@@ -133,6 +136,24 @@ export function CustomersPage() {
                           </Link>
                         </TableCell>
                         <TableCell className="break-all">{customer.email}</TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {customer.phone ?? (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {customer.tags.length > 0 ? (
+                            <span className="flex flex-wrap gap-1">
+                              {customer.tags.map((tag) => (
+                                <Badge key={tag} variant="secondary">
+                                  {tag}
+                                </Badge>
+                              ))}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <CustomerStatusBadge status={customer.status} />
                         </TableCell>

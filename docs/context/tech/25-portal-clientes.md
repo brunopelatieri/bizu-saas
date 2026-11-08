@@ -131,6 +131,15 @@ de confirmação continua sendo reenviado.
 5. Rota do Better Auth só entra em `PORTAL_AUTH_PATHS` se não consumir token em GET nem
    revelar se um e-mail existe.
 
+## `/app/clientes` (CRUD do owner)
+
+Conferido na SPEC `admin-crud`: o CRUD já é completo, com todos os campos de `customer`.
+Listar, buscar e filtrar por situação (`customer:read`), criar (`customer:create` e limite
+`customers` do plano), editar (`customer:update`), bloquear e desbloquear por botão no detalhe,
+enviar acesso (`customer:invite`, o único caminho de `lead` para `active`) e excluir
+(`customer:delete`). O status fica fora do formulário de propósito. A lista
+(`pages/customers-page.tsx`) mostra também telefone e etiquetas, que antes só apareciam no detalhe.
+
 ## Fora desta fase
 
 2FA no portal (fase 9), exportação e exclusão LGPD (fase 10), `/portal/faturas` real (fluxo b),

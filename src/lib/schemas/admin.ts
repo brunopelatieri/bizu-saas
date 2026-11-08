@@ -9,7 +9,10 @@ import {
   subscriptionStatusList,
 } from "@/lib/billing/constants";
 import { billingStates } from "@/lib/billing/state";
-import { slugSchema } from "@/lib/schemas/tenant";
+import {
+  slugSchema,
+  updateTenantSchema as ownerUpdateTenantSchema,
+} from "@/lib/schemas/tenant";
 
 /** Contratos de `/api/admin/*` e dos formulários de `/admin`. */
 
@@ -172,6 +175,8 @@ const search = z.string().trim().max(100).optional();
 export const tenantsQuerySchema = z.object({
   q: search,
   status: z.enum(billingStates).optional(),
+  // admin-crud A: organizações de um plano.
+  plan: z.uuid("Plano inválido.").optional(),
   page,
 });
 
@@ -192,3 +197,15 @@ export const subscriptionsQuerySchema = z.object({
   q: search,
   page,
 });
+
+// admin-crud A ----------------------------------------------------------------------------
+
+/** Edição da organização pela plataforma: mesmas regras de nome e de slug do owner. */
+export const updateTenantSchema = z
+  .object({
+    name: ownerUpdateTenantSchema.shape.name,
+    slug: slugSchema,
+  })
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, "Nada para alterar.");
+export type UpdateTenantInput = z.infer<typeof updateTenantSchema>;

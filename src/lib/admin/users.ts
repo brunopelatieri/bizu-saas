@@ -1,10 +1,9 @@
+import { portalOrganizations, teamOrganizations } from "@/lib/admin/org-links";
 import { escapeLike } from "@/lib/admin/tenants";
 import { count, desc, eq, ilike, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { withPlatformScope } from "@/db/rls";
 import {
-  customer,
-  member,
   portalSession,
   portalUser,
   user,
@@ -23,33 +22,43 @@ export async function listUsers(input: { q?: string; page: number }) {
     ? or(ilike(user.email, term), ilike(user.name, term))
     : undefined;
 
-  const [totalRow] = await getDb().select({ total: count() }).from(user).where(where);
-  const items = await getDb()
-    .select({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      platformRole: user.role,
-      emailVerified: user.emailVerified,
-      banned: user.banned,
-      banReason: user.banReason,
-      // Com uma tabela só no `from`, o Drizzle tira o prefixo das colunas: `${user.id}`
-      // viraria `id`, e dentro da subconsulta seria o da outra tabela.
-      tenants: sql<number>`(select count(*)::int from ${member} where ${member.userId} = "user"."id")`,
-      createdAt: user.createdAt,
-    })
-    .from(user)
-    .where(where)
-    .orderBy(desc(user.createdAt))
-    .limit(PAGE_SIZE)
-    .offset((input.page - 1) * PAGE_SIZE);
+  return withPlatformScope("admin: lista usuários", async (tx) => {
+    const [totalRow] = await tx.select({ total: count() }).from(user).where(where);
+    const rows = await tx
+      .select({
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        platformRole: user.role,
+        emailVerified: user.emailVerified,
+        banned: user.banned,
+        banReason: user.banReason,
+        createdAt: user.createdAt,
+      })
+      .from(user)
+      .where(where)
+      .orderBy(desc(user.createdAt))
+      .limit(PAGE_SIZE)
+      .offset((input.page - 1) * PAGE_SIZE);
 
-  return { items, total: totalRow?.total ?? 0, pageSize: PAGE_SIZE };
+    // admin-crud A: nome das organizações, no lugar da contagem.
+    const links = await teamOrganizations(
+      tx,
+      rows.map(({ id }) => id),
+    );
+    const items = rows.map((row) => ({
+      ...row,
+      organizations: links.get(row.id)?.organizations ?? [],
+      more: links.get(row.id)?.more ?? 0,
+    }));
+
+    return { items, total: totalRow?.total ?? 0, pageSize: PAGE_SIZE };
+  });
 }
 
 /**
- * Clientes e leads. A contagem de tenants lê `customer`, com RLS, e por isso roda em
- * `withPlatformScope`. O número atravessa tenants, e só a plataforma o vê.
+ * Clientes e leads. Os vínculos leem `customer`, com RLS, e por isso rodam em
+ * `withPlatformScope`. A lista atravessa tenants, e só a plataforma a vê.
  */
 export function listPortalUsers(input: { q?: string; page: number }) {
   const term = input.q ? `%${escapeLike(input.q)}%` : null;
@@ -62,13 +71,12 @@ export function listPortalUsers(input: { q?: string; page: number }) {
       .select({ total: count() })
       .from(portalUser)
       .where(where);
-    const items = await tx
+    const rows = await tx
       .select({
         id: portalUser.id,
         name: portalUser.name,
         email: portalUser.email,
         emailVerified: portalUser.emailVerified,
-        tenants: sql<number>`(select count(*)::int from ${customer} where ${customer.portalUserId} = "portal_user"."id")`,
         sessions: sql<number>`(select count(*)::int from ${portalSession} where ${portalSession.userId} = "portal_user"."id" and ${portalSession.expiresAt} > now())`,
         createdAt: portalUser.createdAt,
       })
@@ -77,6 +85,17 @@ export function listPortalUsers(input: { q?: string; page: number }) {
       .orderBy(desc(portalUser.createdAt))
       .limit(PAGE_SIZE)
       .offset((input.page - 1) * PAGE_SIZE);
+
+    // admin-crud A: nome das organizações, com o status do vínculo.
+    const links = await portalOrganizations(
+      tx,
+      rows.map(({ id }) => id),
+    );
+    const items = rows.map((row) => ({
+      ...row,
+      organizations: links.get(row.id)?.organizations ?? [],
+      more: links.get(row.id)?.more ?? 0,
+    }));
 
     return { items, total: totalRow?.total ?? 0, pageSize: PAGE_SIZE };
   });

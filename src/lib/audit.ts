@@ -62,6 +62,11 @@ export type AuditAction =
   | "admin.manual_payment_missed"
   | "admin.webhook_reprocessed"
   | "admin.portal_sessions_revoked"
+  // admin-crud A
+  | "admin.plan_deleted"
+  | "admin.plan_price_updated"
+  | "admin.plan_price_deleted"
+  | "admin.tenant_updated"
   | "platform.impersonation_requested"
   | "platform.impersonation_started"
   | "platform.impersonation_stopped"

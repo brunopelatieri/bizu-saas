@@ -304,6 +304,18 @@ describe("rotas de equipe sobre o servidor Node", () => {
       expect(response.status).toBe(404);
     });
 
+    // admin-crud A: excluir plano e preço (DELETE sem corpo, como o botão da tela).
+    it.each([
+      `/api/admin/plans/${anyId}`,
+      `/api/admin/plans/${anyId}/prices/${anyId}`,
+    ])("DELETE %s sem corpo chega à regra de negócio", async (path) => {
+      const response = await request("DELETE", path, {
+        headers: { Cookie: platformCookie },
+      });
+
+      expect(response.status).toBe(404);
+    });
+
     /** Sem `Content-Length`, como um cliente que manda o corpo em pedaços. */
     function streamed(size: number) {
       const chunk = "x".repeat(64 * 1024);
