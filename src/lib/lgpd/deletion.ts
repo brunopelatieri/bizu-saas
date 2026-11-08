@@ -543,11 +543,6 @@ export async function portalEmailBarred(email: string) {
   return person ? portalAccessBarred(person.id) : false;
 }
 
-/** A sessão que o magic link acabou de abrir para quem está barrado. */
-export async function revokePortalSession(sessionId: string) {
-  await getDb().delete(portalSession).where(eq(portalSession.id, sessionId));
-}
-
 const CANCELED_BY: Record<DeletionSubjectType, AuditAction> = {
   user: "admin.user_deletion_canceled",
   portal_user: "admin.portal_user_deletion_canceled",
@@ -689,6 +684,7 @@ export async function listPendingDeletions(
         subjectType: deletionRequest.subjectType,
         subjectId: deletionRequest.subjectId,
         scheduledFor: deletionRequest.scheduledFor,
+        origin: deletionRequest.origin,
       })
       .from(deletionRequest)
       .where(
@@ -710,7 +706,8 @@ export async function listPendingDeletions(
     account: rows.find(({ subjectType }) => subjectType !== "tenant")?.scheduledFor ?? null,
     tenants: rows
       .filter(({ subjectType }) => subjectType === "tenant")
-      .map(({ subjectId, scheduledFor }) => ({ tenantId: subjectId, scheduledFor })),
+      // `origin = platform`: só a administração desiste; a tela não oferece o botão.
+      .map(({ subjectId, scheduledFor, origin }) => ({ tenantId: subjectId, scheduledFor, origin })),
   };
 }
 

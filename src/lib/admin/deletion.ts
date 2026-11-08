@@ -1,10 +1,9 @@
 import { eq } from "drizzle-orm";
 import { logError } from "@/api/log";
-import { getDb } from "@/db";
 import { withPlatformScope } from "@/db/rls";
-import { organization, portalSession, portalUser, session, user } from "@/db/schema";
+import { organization, portalSession, session, user } from "@/db/schema";
 import type { DeletionSubjectType } from "@/db/schema/lgpd";
-import { assertManageableUser, sessionsOf } from "@/lib/admin/people";
+import { assertManageableUser, loadPortalPerson, sessionsOf } from "@/lib/admin/people";
 import { type AuditAction, audit, auditInTransaction } from "@/lib/audit";
 import { appLink } from "@/lib/auth/links";
 import { cancelSubscriptionForDeletion } from "@/lib/billing/checkout";
@@ -295,17 +294,6 @@ export function adminCancelUserDeletion(targetId: string, actor: AdminActor) {
   return cancelDeletion({ type: "user", id: targetId }, { type: "platform", id: actor.id }, actor.ip);
 }
 
-async function loadPortalPerson(personId: string) {
-  const [person] = await getDb()
-    .select({ id: portalUser.id, name: portalUser.name, email: portalUser.email })
-    .from(portalUser)
-    .where(eq(portalUser.id, personId));
-
-  if (!person || person.email.endsWith("@invalid")) throw notFound("Pessoa não encontrada.");
-
-  return person;
-}
-
 /**
  * `DELETE /api/admin/portal-users/:id`. Agendar encerra as sessões; na carência, o pedido da
  * plataforma barra o acesso (`portalAccessBarred`). `customer.status` não é tocado, para o
@@ -357,11 +345,4 @@ export async function adminCancelPortalUserDeletion(personId: string, actor: Adm
     { type: "platform", id: actor.id },
     actor.ip,
   );
-}
-
-/** Pedido pendente para as telas de detalhe: quando vence e quem pediu. */
-export async function pendingDeletionOf(subject: Subject) {
-  const pending = await findPendingDeletion(subject);
-
-  return pending && { scheduledFor: pending.scheduledFor, origin: pending.origin };
 }

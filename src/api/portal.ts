@@ -51,11 +51,7 @@ import {
 import { activeTenantSchema, slugSchema } from "@/lib/schemas/tenant";
 import { LEGAL_VERSIONS } from "@/lib/legal/versions";
 import { acceptCurrentVersions, pendingConsents } from "@/lib/lgpd/consent";
-import {
-  portalAccessBarred,
-  portalEmailBarred,
-  revokePortalSession,
-} from "@/lib/lgpd/deletion";
+import { portalEmailBarred } from "@/lib/lgpd/deletion";
 import { acceptConsentSchema } from "@/lib/schemas/lgpd";
 import { notFound, TenantRuleError } from "@/lib/tenant/errors";
 
@@ -139,20 +135,14 @@ portalRoutes.post(
     // Expirado, usado ou inventado: o plugin redireciona, e aqui é tudo a mesma resposta.
     if (!response.ok) return c.json({ error: INVALID_LINK_MESSAGE }, 400);
 
+    for (const cookie of response.headers.getSetCookie()) {
+      c.header("Set-Cookie", cookie, { append: true });
+    }
+
     const { user, session } = (await response.json()) as {
       user: { id: string };
       session: { id: string };
     };
-
-    // Link enviado antes da exclusão agendada pela plataforma: a sessão nova não vale.
-    if (await portalAccessBarred(user.id)) {
-      await revokePortalSession(session.id);
-      return c.json({ error: INVALID_LINK_MESSAGE }, 400);
-    }
-
-    for (const cookie of response.headers.getSetCookie()) {
-      c.header("Set-Cookie", cookie, { append: true });
-    }
 
     await enterRequestedTenant(session.id, user.id, org);
 

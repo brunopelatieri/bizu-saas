@@ -164,7 +164,7 @@ subdomínio por tenant, troca de e-mail pelo cliente e `Reply-To` do owner no co
 - **Barreira na carência:** pedido `pending` com `origin = platform` (`portalAccessBarred`,
   `src/lib/lgpd/deletion.ts`) barra a sessão em `requirePortalAuth` (401, como sessão
   inexistente; falha da checagem é 503), o pedido de magic link (`requestPortalLogin` não envia;
-  a resposta pública não muda), a verificação de um link enviado antes (400 de link inválido, e
-  a sessão criada é apagada) e o `sign-in/email`: a senha vai trocada por uma aleatória ao
+  a resposta pública não muda), a criação de qualquer sessão (`databaseHooks.session.create.before` do
+  `portalAuth` recusa: um link enviado antes responde o 400 de link inválido) e o `sign-in/email`: a senha vai trocada por uma aleatória ao
   Better Auth, que responde o mesmo 401 de senha errada (corpo, cabeçalhos e tempo). O pedido da
   própria pessoa (`origin = self`) não barra: ela entra para desistir.

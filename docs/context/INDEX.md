@@ -18,7 +18,7 @@ estão nas rules e no cabeçalho de cada arquivo.
 | 2FA, sessões, personificação, CSP, CSRF, rate limit, criptografia de credenciais, leitura da auditoria | `tech/26-seguranca.md` |
 | LGPD: consentimento, `/legal/*`, exportação, exclusão com carência, retenção, arquivos (`StorageProvider`), logs, Sentry, backup | `tech/27-lgpd-arquivos.md`, `lgpd.md` |
 | Tenant, equipe, convite, papéis, permissões, auditoria | `tech/21-tenant-rbac.md` |
-| Admin da plataforma: `/admin`, `/api/admin/*`, suspender, banir, planos na tela | `tech/22-admin.md` |
+| Admin da plataforma: `/admin`, `/api/admin/*`, suspender, banir, planos na tela, detalhe e edição de usuários, exclusão (agendada ou imediata) de organização, usuário e pessoa do portal | `tech/22-admin.md` |
 | Planos, preços, trial, limites (inclusive organizações por dono), features, estado `read_only`, `checkLimit`, seed | `tech/23-billing-planos.md` |
 | Clientes, portal, `portalAuth`, magic link, `/app/clientes`, `/portal/**`, `requirePortalAuth` | `tech/25-portal-clientes.md` |
 | Cobrança manual (padrão sem provedor), checkout, assinatura, webhooks de pagamento, faturas, dunning, reconciliação, módulo de provedor | `tech/24-billing-cobranca.md`, `src/lib/payments/providers/README.md` |

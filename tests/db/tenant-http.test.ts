@@ -304,6 +304,29 @@ describe("rotas de equipe sobre o servidor Node", () => {
       expect(response.status).toBe(404);
     });
 
+    // admin-crud C: exclusões e sessões pelo /admin, sem corpo, sobre o servidor Node.
+    it.each([
+      [`/api/admin/users/${anyId}/revoke-sessions`, 404],
+      [`/api/admin/users/${anyId}/deletion/cancel`, 409],
+      [`/api/admin/portal-users/${anyId}/deletion/cancel`, 409],
+      [`/api/admin/tenants/${anyId}/deletion/cancel`, 409],
+    ] as const)("POST %s sem corpo chega à regra de negócio", async (path, status) => {
+      const response = await request("POST", path, { headers: { Cookie: platformCookie } });
+
+      expect(response.status).toBe(status);
+    });
+
+    it.each(["tenants", "users", "portal-users"])(
+      "DELETE /api/admin/%s/:id exige o corpo JSON (400 sem ele)",
+      async (kind) => {
+        const response = await request("DELETE", `/api/admin/${kind}/${anyId}`, {
+          headers: { Cookie: platformCookie },
+        });
+
+        expect(response.status).toBe(400);
+      },
+    );
+
     /** Sem `Content-Length`, como um cliente que manda o corpo em pedaços. */
     function streamed(size: number) {
       const chunk = "x".repeat(64 * 1024);

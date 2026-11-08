@@ -1,4 +1,4 @@
-import { type ReactNode, useId, useState } from "react";
+import { type ReactNode, useEffect, useId, useState } from "react";
 import { Field } from "@/components/admin/field";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,10 +63,15 @@ export function DeleteDialog({
   const [reason, setReason] = useState("");
   const matches = confirm.trim().toLowerCase() === confirmText.toLowerCase();
 
-  function close() {
+  // Cada abertura começa do zero: nunca com "Excluir agora" e a confirmação já preenchidos.
+  useEffect(() => {
+    if (!open) return;
     setMode("scheduled");
     setConfirm("");
     setReason("");
+  }, [open]);
+
+  function close() {
     onCancel();
   }
 

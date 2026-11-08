@@ -42,7 +42,7 @@ export const sessionsOf = (userId: string) =>
   or(eq(session.userId, userId), eq(session.impersonatedBy, userId));
 
 /** Conta já anonimizada pela exclusão: para o admin, não existe mais. */
-const isGhost = (email: string) => /^deleted\+[^@]+@invalid$/.test(email);
+export const isGhost = (email: string) => /^deleted\+[^@]+@invalid$/.test(email);
 
 const EMAIL_TAKEN = (tenants?: Array<{ id: string; name: string }>) =>
   new TenantRuleError(
@@ -53,6 +53,9 @@ const EMAIL_TAKEN = (tenants?: Array<{ id: string; name: string }>) =>
       : "Este e-mail já está em uso por outra conta.",
     tenants?.length ? { tenants } : undefined,
   );
+
+/** Só o e-mail atual, sem nome: o `update` ficaria vazio. */
+const nothingToChange = () => new TenantRuleError(400, "NOTHING_TO_CHANGE", "Nada para alterar.");
 
 /** Violação de índice único (`23505`): a corrida entre a checagem e a gravação. */
 const isUniqueViolation = (error: unknown) =>
@@ -161,6 +164,7 @@ export async function updateUserByAdmin(
 ) {
   const target = await assertManageableUser(targetId, actor.id);
   const emailChanged = input.email !== undefined && input.email !== target.email;
+  if (!emailChanged && input.name === undefined) throw nothingToChange();
 
   if (emailChanged && input.email) {
     const [other] = await getDb()
@@ -240,7 +244,7 @@ function notifyEmailChanged(person: { name: string; email: string }, newEmail: s
   }).catch((error) => logError("Falha ao avisar a troca de e-mail", error));
 }
 
-async function loadPortalPerson(personId: string) {
+export async function loadPortalPerson(personId: string) {
   const [person] = await getDb()
     .select({
       id: portalUser.id,
@@ -317,6 +321,7 @@ export async function updatePortalUserByAdmin(
   const person = await loadPortalPerson(personId);
   const newEmail = input.email;
   const emailChanged = newEmail !== undefined && newEmail !== person.email;
+  if (!emailChanged && input.name === undefined) throw nothingToChange();
 
   const updated = await withPlatformScope("admin: e-mail do portal", async (tx) => {
     if (emailChanged) {
@@ -395,7 +400,10 @@ export async function updatePortalUserByAdmin(
 }
 
 /** Pedido pendente para as telas de detalhe: quando vence e quem pediu. */
-async function pendingDeletionOf(subject: { type: "user" | "portal_user"; id: string }) {
+export async function pendingDeletionOf(subject: {
+  type: "user" | "portal_user" | "tenant";
+  id: string;
+}) {
   const pending = await findPendingDeletion(subject);
 
   return pending && { scheduledFor: pending.scheduledFor, origin: pending.origin };

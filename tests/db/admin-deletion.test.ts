@@ -374,6 +374,12 @@ describe("organização", () => {
     });
     expect((await bodyOf(twice)).code).toBe("DELETION_PENDING");
 
+    // A tela de privacidade do owner sabe que o pedido não é dele.
+    const privacy = await bodyOf(await send(tenantOwner, "GET", "/api/me/deletion"));
+    expect(privacy.tenants).toEqual([
+      expect.objectContaining({ tenantId: tenant.id, origin: "platform" }),
+    ]);
+
     const byOwner = await send(tenantOwner, "POST", "/api/tenant/deletion/cancel", {
       tenantId: tenant.id,
     });
@@ -526,6 +532,17 @@ describe("usuários de equipe e suporte", () => {
     expect(reset.status).toBe(200);
     expect((await userRow(person.id))?.email_verified).toBe(true);
     expect(await signInStatus(newAddress, "senha-nova-do-admin-1")).toBe(200);
+  });
+
+  it("PATCH sem mudança real responde 400, sem tocar na conta", async () => {
+    const person = await newUser();
+
+    const response = await send(platformOwner, "PATCH", `/api/admin/users/${person.id}`, {
+      email: person.email,
+    });
+    expect(response.status).toBe(400);
+    expect((await bodyOf(response)).code).toBe("NOTHING_TO_CHANGE");
+    expect(await userRow(person.id)).toMatchObject({ email_verified: true });
   });
 
   it("revogar sessões devolve quantas caíram", async () => {

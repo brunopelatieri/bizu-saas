@@ -73,11 +73,11 @@ import {
   adminDeletePortalUser,
   adminDeleteTenant,
   adminDeleteUser,
-  pendingDeletionOf,
 } from "@/lib/admin/deletion";
 import {
   getPortalUserDetail,
   getUserDetail,
+  pendingDeletionOf,
   revokeUserSessions,
   updatePortalUserByAdmin,
   updateUserByAdmin,

@@ -9,7 +9,7 @@ import { apiFetch } from "@/lib/api/client";
 
 export type DeletionStatus = {
   account: string | null;
-  tenants: Array<{ tenantId: string; scheduledFor: string }>;
+  tenants: Array<{ tenantId: string; scheduledFor: string; origin?: "self" | "platform" }>;
 };
 
 const formatDate = (iso: string) => new Date(iso).toLocaleDateString("pt-BR");
