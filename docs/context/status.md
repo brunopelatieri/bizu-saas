@@ -79,6 +79,9 @@
 ## Pendências Técnicas Conhecidas
 
 - Fase 7 da spec (adiada).
+- **CRUD no `/admin`** (`docs/specs/admin-crud/spec.md`, rascunho aguardando aprovação): excluir
+  organização, usuário (equipe, suporte e portal) e plano; editar datas e status de assinaturas
+  (manual e com provedor); nome da organização em todas as listagens.
 - **Fase 11:** teste de onboarding com pessoa externa em até 30 minutos (checklist em `CONTRIBUTING.md`); tag `v0.1.0` e GitHub Release (notas do `CHANGELOG.md`); habilitar o relatório privado de vulnerabilidade e o Dependabot no GitHub; certificado real do Caddy e a stack no Portainer, sem teste num domínio real (a stack foi revalidada em `localhost` por HTTP, `tech/14-deploy.md`); `CODEOWNERS` usa o usuário do autor.
 - Site público: `siteConfig.url`, `public/sitemap.xml` e `public/robots.txt` usam o placeholder `https://example.com` (estáticos, não leem `APP_URL`): derivados trocam os três.
 - **Portal:** `organization.settings.portal_self_signup` liga o autocadastro, mas ainda não tem tela.
