@@ -414,16 +414,23 @@ export async function confirmPortalDeletion(
  */
 export async function scheduleTenantDeletion(
   tenant: { id: string; name: string },
-  options: ScheduleOptions & { ip?: string | null; now?: Date },
+  options: ScheduleOptions & {
+    ip?: string | null;
+    now?: Date;
+    /** Quem chama já encerrou no provedor (várias organizações de uma vez, antes de agendar). */
+    providerCanceled?: boolean;
+  },
 ) {
   const now = options.now ?? new Date();
   const allowed = options.origin === "platform" ? ["active", "suspended"] : ["active"];
 
-  await cancelSubscriptionForDeletion(
-    tenant.id,
-    { userId: options.actorId, ip: options.ip, platform: options.origin === "platform" },
-    now,
-  );
+  if (!options.providerCanceled) {
+    await cancelSubscriptionForDeletion(
+      tenant.id,
+      { userId: options.actorId, ip: options.ip, platform: options.origin === "platform" },
+      now,
+    );
+  }
 
   const result = await withPlatformScope("lgpd: pedido de exclusão da organização", async (tx) => {
     const [current] = await tx

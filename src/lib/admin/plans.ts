@@ -1,5 +1,6 @@
 import { and, asc, count, eq, ne, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
+import { isForeignKeyViolation, isUniqueViolation } from "@/db/errors";
 import { type Tx, withPlatformScope } from "@/db/rls";
 import { organization, plan, planPrice, subscription } from "@/db/schema";
 import { planOrganizations } from "@/lib/admin/org-links";
@@ -15,13 +16,6 @@ import { notFound, TenantRuleError } from "@/lib/tenant/errors";
 
 export type PlanPriceRow = typeof planPrice.$inferSelect;
 export type PlanRow = typeof plan.$inferSelect;
-
-/** `23505`: o postgres.js a põe no erro, o Drizzle a embrulha em `cause`. */
-export function isUniqueViolation(error: unknown) {
-  const code = (e: unknown) => (e as { code?: unknown } | null)?.code;
-
-  return code(error) === "23505" || code((error as { cause?: unknown }).cause) === "23505";
-}
 
 const SLUG_TAKEN = new TenantRuleError(
   409,
@@ -170,30 +164,36 @@ export async function updateSettings(
 ) {
   const merged = { ...(await loadSettings()), ...patch };
 
-  if (merged.trialPlanId) {
-    const [chosen] = await getDb()
-      .select({ active: plan.active, isFree: plan.isFree })
-      .from(plan)
-      .where(eq(plan.id, merged.trialPlanId));
+  // O plano escolhido fica travado (`FOR SHARE`) até a configuração gravar: `deletePlan` o
+  // trava com `FOR UPDATE` antes de ler `trial_plan_id`, então um espera o outro e o trial
+  // nunca aponta para um plano apagado.
+  await getDb().transaction(async (tx) => {
+    if (merged.trialPlanId) {
+      const [chosen] = await tx
+        .select({ active: plan.active, isFree: plan.isFree })
+        .from(plan)
+        .where(eq(plan.id, merged.trialPlanId))
+        .for("share");
 
-    if (!chosen?.active) {
-      throw new TenantRuleError(
-        400,
-        "PLAN_NOT_FOUND",
-        "Escolha um plano ativo para o período de teste.",
-      );
+      if (!chosen?.active) {
+        throw new TenantRuleError(
+          400,
+          "PLAN_NOT_FOUND",
+          "Escolha um plano ativo para o período de teste.",
+        );
+      }
+
+      if (merged.trialDays === 0 && !chosen.isFree) {
+        throw new TenantRuleError(
+          400,
+          "TRIAL_PLAN_NOT_FREE",
+          "Sem período de teste, o plano padrão precisa ser gratuito.",
+        );
+      }
     }
 
-    if (merged.trialDays === 0 && !chosen.isFree) {
-      throw new TenantRuleError(
-        400,
-        "TRIAL_PLAN_NOT_FREE",
-        "Sem período de teste, o plano padrão precisa ser gratuito.",
-      );
-    }
-  }
-
-  await saveSettings(patch, updatedBy);
+    await saveSettings(patch, updatedBy, tx);
+  });
 
   return loadSettings();
 }
@@ -201,13 +201,6 @@ export async function updateSettings(
 // admin-crud A: excluir plano e preço ------------------------------------------------------
 
 type TenantRef = { id: string; name: string };
-
-/** `23503`: o `restrict` de `subscription.plan_id` barrou o `DELETE`. */
-function isForeignKeyViolation(error: unknown) {
-  const code = (e: unknown) => (e as { code?: unknown } | null)?.code;
-
-  return code(error) === "23503" || code((error as { cause?: unknown }).cause) === "23503";
-}
 
 const PLAN_IN_USE_MESSAGE =
   "Este plano está em uso por organizações. Arquive-o para tirá-lo da oferta.";
@@ -242,6 +235,8 @@ export async function deletePlan(planId: string) {
         });
       }
 
+      // Lida depois do `FOR UPDATE`: quem escolhe o plano do trial o trava com `FOR SHARE`
+      // na mesma transação em que grava (`updateSettings`), então aqui já vale a escolha.
       const settings = await loadSettings();
       if (settings.trialPlanId === planId) {
         throw new TenantRuleError(

@@ -1,6 +1,7 @@
 import { and, count, eq, gt, inArray, ne, or, sql } from "drizzle-orm";
 import { logError } from "@/api/log";
 import { getDb } from "@/db";
+import { isUniqueViolation } from "@/db/errors";
 import { type Tx, withPlatformScope } from "@/db/rls";
 import {
   account,
@@ -58,11 +59,6 @@ const EMAIL_TAKEN = (tenants?: Array<{ id: string; name: string }>) =>
 
 /** Só o e-mail atual, sem nome: o `update` ficaria vazio. */
 const nothingToChange = () => new TenantRuleError(400, "NOTHING_TO_CHANGE", "Nada para alterar.");
-
-/** Violação de índice único (`23505`): a corrida entre a checagem e a gravação. */
-const isUniqueViolation = (error: unknown) =>
-  (error as { code?: string })?.code === "23505" ||
-  (error as { cause?: { code?: string } })?.cause?.code === "23505";
 
 /**
  * Alvo das ações de edição, sessões e exclusão: papel `user` ou `platform_support`. O plugin

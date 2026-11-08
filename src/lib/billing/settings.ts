@@ -1,5 +1,6 @@
 import { inArray, sql } from "drizzle-orm";
 import { getDb } from "@/db";
+import type { Tx } from "@/db/rls";
 import { platformSetting } from "@/db/schema";
 import type { ImpersonationPolicy } from "@/lib/billing/constants";
 
@@ -87,9 +88,11 @@ export async function loadSettings(): Promise<PlatformSettings> {
 /** O Drizzle manda `null` como SQL NULL; a coluna é `NOT NULL` e guarda o `null` do JSON. */
 const toJsonb = (value: unknown) => (value === null ? sql`'null'::jsonb` : value);
 
+/** `tx`: grava na transação de quem validou (o plano do trial travado, `updateSettings`). */
 export async function saveSettings(
   patch: Partial<PlatformSettings>,
   updatedBy: string | null,
+  tx?: Tx,
 ) {
   const entries = (
     Object.keys(SETTING_KEYS) as Array<keyof PlatformSettings>
@@ -101,9 +104,9 @@ export async function saveSettings(
 
   if (entries.length === 0) return;
 
-  await getDb().transaction(async (tx) => {
+  const write = async (db: Tx) => {
     for (const entry of entries) {
-      await tx
+      await db
         .insert(platformSetting)
         .values(entry)
         .onConflictDoUpdate({
@@ -111,5 +114,8 @@ export async function saveSettings(
           set: { value: entry.value, updatedBy, updatedAt: new Date() },
         });
     }
-  });
+  };
+
+  if (tx) return write(tx);
+  await getDb().transaction(write);
 }

@@ -528,7 +528,7 @@ adminRoutes.post(
 // admin-crud A ----------------------------------------------------------------------------
 
 /** Excluir só plano sem uso (409 `PLAN_IN_USE`, `PLAN_IS_TRIAL_DEFAULT`, `LAST_FREE_PLAN`). */
-adminRoutes.delete("/api/admin/plans/:id", ownerOnly, validId, async (c) => {
+adminRoutes.delete("/api/admin/plans/:id", ownerOnly, blockWhileImpersonating, validId, async (c) => {
   const { id } = c.req.valid("param");
   const { plan, prices, providerRefs } = await deletePlan(id);
 
@@ -544,6 +544,7 @@ adminRoutes.delete("/api/admin/plans/:id", ownerOnly, validId, async (c) => {
 adminRoutes.delete(
   "/api/admin/plans/:id/prices/:priceId",
   ownerOnly,
+  blockWhileImpersonating,
   priceParams,
   async (c) => {
     const { id, priceId } = c.req.valid("param");
@@ -572,6 +573,7 @@ adminRoutes.delete(
 adminRoutes.patch(
   "/api/admin/tenants/:id",
   ownerOnly,
+  blockWhileImpersonating,
   validId,
   zValidator("json", updateTenantSchema, validationError),
   async (c) => {
@@ -607,6 +609,7 @@ adminRoutes.patch(
 adminRoutes.patch(
   "/api/admin/subscriptions/:id",
   ownerOnly,
+  blockWhileImpersonating,
   validId,
   zValidator("json", updateSubscriptionSchema, validationError),
   async (c) => {

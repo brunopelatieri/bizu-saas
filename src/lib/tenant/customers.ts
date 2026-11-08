@@ -1,7 +1,7 @@
 import { and, count, desc, eq, ilike, or, type SQL } from "drizzle-orm";
 import { withTenant } from "@/db/rls";
 import { customer } from "@/db/schema";
-import { isUniqueViolation } from "@/lib/admin/plans";
+import { isUniqueViolation } from "@/db/errors";
 import { escapeLike } from "@/lib/admin/tenants";
 import { auditInTransaction } from "@/lib/audit";
 import { getPortalAuth } from "@/lib/auth/portal";

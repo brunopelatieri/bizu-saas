@@ -80,7 +80,9 @@ Protecoes:
 - `/api/auth/*`, `/api/auth-ext/*` e as rotas de tenant usam `jsonBodyLimit` (16 KB) e
   `sameOrigin` (`src/api/guards.ts`).
 - `src/server.ts` liga `overrideGlobalObjects`: sem `Content-Length`, como em todo DELETE do
-  navegador, o `bodyLimit` remonta a `Request` e responderia 500. Teste rota nova com corpo
+  navegador, o `bodyLimit` remonta a `Request` e responderia 500. O `npm run dev` não passa por
+  essa opção; por isso `jsonBodyLimit` pula a requisição sem `Content-Length` nem
+  `Transfer-Encoding` (sem corpo no HTTP/1.1). Teste rota nova com corpo
   ou DELETE em `tests/db/tenant-http.test.ts`; `api.request()` nao passa por esse caminho.
 - O log de requisicoes e `requestLogger` (`src/api/request-logger.ts`), que mascara
   `?token=`. O logger padrao do `react-router-hono-server` fica desligado.

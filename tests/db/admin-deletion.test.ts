@@ -646,6 +646,30 @@ describe("usuários de equipe e suporte", () => {
     expect((await auditCount("admin.user_deletion_canceled", person.id))?.total).toBe(1);
   });
 
+  it("com a flag, organização já agendada segue o próprio pedido e a conta é agendada", async () => {
+    const person = await newUser();
+    const tenant = await newTenant(person, "Já Agendada Ltda");
+
+    const first = await send(platformOwner, "DELETE", `/api/admin/tenants/${tenant.id}`, {
+      mode: "scheduled",
+      confirm: tenant.slug,
+    });
+    expect(first.status).toBe(200);
+    const tenantRequest = await requestOf(tenant.id);
+
+    const response = await send(platformOwner, "DELETE", `/api/admin/users/${person.id}`, {
+      mode: "scheduled",
+      confirm: person.email,
+      deleteSoleOrganizations: true,
+    });
+    expect(response.status).toBe(200);
+
+    // O pedido da organização é o mesmo (não houve um segundo), e a conta foi agendada e banida.
+    expect(await requestOf(tenant.id)).toMatchObject({ id: tenantRequest?.id, status: "pending" });
+    expect(await requestOf(person.id)).toMatchObject({ origin: "platform", status: "pending" });
+    expect(await userRow(person.id)).toMatchObject({ banned: true });
+  });
+
   it("quem já estava banido continua banido depois do cancelamento", async () => {
     const person = await newUser();
     expect((await send(platformOwner, "POST", `/api/admin/users/${person.id}/ban`, { reason: "abuso" })).status).toBe(200);
@@ -680,6 +704,10 @@ describe("usuários de equipe e suporte", () => {
     });
     expect(await templatesSentTo(staff.email)).toEqual(["deletion-executed"]);
     expect((await send(platformOwner, "GET", `/api/admin/users/${staff.id}`)).status).toBe(404);
+
+    // Anonimizada, a conta sai também da lista (o detalhe já é 404).
+    const listed = await send(platformOwner, "GET", `/api/admin/users?q=${staff.id}`);
+    expect((await bodyOf(listed)).items).toEqual([]);
   });
 
   it("agora, com a flag: executa as organizações e depois a conta", async () => {

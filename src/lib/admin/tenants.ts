@@ -21,7 +21,7 @@ import type { BillingState } from "@/lib/billing/state";
 import { appLink } from "@/lib/auth/links";
 import { sendEmail } from "@/lib/email/send";
 import { tenantSuspendedTemplate } from "@/lib/email/templates/tenant-suspended";
-import { isUniqueViolation } from "@/lib/admin/plans";
+import { isUniqueViolation } from "@/db/errors";
 import { PAGE_SIZE, type UpdateTenantInput } from "@/lib/schemas/admin";
 import { notFound, TenantRuleError } from "@/lib/tenant/errors";
 

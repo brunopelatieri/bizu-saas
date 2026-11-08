@@ -1,6 +1,6 @@
 import { portalOrganizations, teamOrganizations } from "@/lib/admin/org-links";
 import { escapeLike } from "@/lib/admin/tenants";
-import { count, desc, eq, ilike, or, sql } from "drizzle-orm";
+import { and, count, desc, eq, ilike, notLike, or, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { withPlatformScope } from "@/db/rls";
 import {
@@ -11,6 +11,11 @@ import {
 import { PAGE_SIZE } from "@/lib/schemas/admin";
 import { notFound, TenantRuleError } from "@/lib/tenant/errors";
 
+/**
+ * Conta anonimizada pela exclusão (`deleted+<id>@invalid`, `src/lib/lgpd/deletion.ts`) não é
+ * mais uma pessoa: fica fora das listas, como o detalhe já responde 404 (`isGhost`).
+ */
+const ANONYMIZED_EMAIL = "deleted+%@invalid";
 
 /**
  * Usuários de equipe e da plataforma. `user` não tem RLS: quem chega aqui já passou por
@@ -18,9 +23,10 @@ import { notFound, TenantRuleError } from "@/lib/tenant/errors";
  */
 export async function listUsers(input: { q?: string; page: number }) {
   const term = input.q ? `%${escapeLike(input.q)}%` : null;
-  const where = term
-    ? or(ilike(user.email, term), ilike(user.name, term))
-    : undefined;
+  const where = and(
+    notLike(user.email, ANONYMIZED_EMAIL),
+    term ? or(ilike(user.email, term), ilike(user.name, term)) : undefined,
+  );
 
   return withPlatformScope("admin: lista usuários", async (tx) => {
     const [totalRow] = await tx.select({ total: count() }).from(user).where(where);
@@ -62,9 +68,10 @@ export async function listUsers(input: { q?: string; page: number }) {
  */
 export function listPortalUsers(input: { q?: string; page: number }) {
   const term = input.q ? `%${escapeLike(input.q)}%` : null;
-  const where = term
-    ? or(ilike(portalUser.email, term), ilike(portalUser.name, term))
-    : undefined;
+  const where = and(
+    notLike(portalUser.email, ANONYMIZED_EMAIL),
+    term ? or(ilike(portalUser.email, term), ilike(portalUser.name, term)) : undefined,
+  );
 
   return withPlatformScope("admin: lista usuários do portal", async (tx) => {
     const [totalRow] = await tx

@@ -84,10 +84,6 @@
 ## Pendências Técnicas Conhecidas
 
 - Fase 7 da spec (adiada).
-- **Dev server e `DELETE`:** com `npm run dev`, toda rota `DELETE` responde 500 (`TypeError: Cannot
-  read private member #state`, no `bodyLimit` do Hono sobre o `Request` do servidor de dev). Em produção
-  (`npm run start`, Docker) e nos testes sobre o servidor Node funciona. Afeta excluir plano, preço,
-  sessão e as exclusões do `/admin` só em desenvolvimento.
 - **`npm run test:db` com `npm run dev` no ar:** além de `billing-queue.test.ts`, `email-queue.test.ts`
   falha porque o dev (`JOBS_MODE=inline`) consome a fila do banco `bizu`. Rode com o dev parado.
 - **Fase 11:** teste de onboarding com pessoa externa em até 30 minutos (checklist em `CONTRIBUTING.md`); tag `v0.1.0` e GitHub Release (notas do `CHANGELOG.md`); habilitar o relatório privado de vulnerabilidade e o Dependabot no GitHub; certificado real do Caddy e a stack no Portainer, sem teste num domínio real (a stack foi revalidada em `localhost` por HTTP, `tech/14-deploy.md`); `CODEOWNERS` usa o usuário do autor.

@@ -159,12 +159,16 @@ async function cancelProviderFirst(tenantId: string, actor: AdminActor) {
   }).catch(providerCancelFailed);
 }
 
-/** O núcleo da seção 2, sem a confirmação (que a rota da organização confere). */
+/**
+ * O núcleo da seção 2, sem a confirmação (que a rota da organização confere).
+ * `providerCanceled`: a exclusão de usuário já encerrou o provedor de todas as organizações.
+ */
 async function deleteTenantAs(
   tenant: { id: string; name: string },
   mode: DeletionMode,
   reason: string | undefined,
   actor: AdminActor,
+  providerCanceled = false,
 ) {
   const subject: Subject = { type: "tenant", id: tenant.id };
 
@@ -175,6 +179,7 @@ async function deleteTenantAs(
       scheduledFor: graceEnd(new Date()),
       metadata: reason ? { reason } : {},
       ip: actor.ip,
+      providerCanceled,
       onCreated: (tx) => auditInTransaction(tx, REQUESTED.tenant, auditEntry(subject, actor, mode)),
     }).catch(providerCancelFailed);
 
@@ -192,6 +197,7 @@ async function deleteTenantAs(
       ip: actor.ip,
       now,
       notify: false,
+      providerCanceled,
     }).catch(providerCancelFailed),
   );
 
@@ -246,8 +252,25 @@ export async function adminDeleteUser(targetId: string, input: DeleteUserInput, 
     );
   }
 
-  for (const tenant of sole) await cancelProviderFirst(tenant.id, actor);
-  for (const tenant of sole) await deleteTenantAs(tenant, input.mode, input.reason, actor);
+  // Organização que já tem a exclusão agendada (o owner pediu antes) segue o próprio pedido:
+  // agendar de novo daria `DELETION_PENDING` no meio do laço, com parte já agendada. Na
+  // imediata ela entra, e `executeNow` antecipa o pedido existente.
+  const toDelete =
+    input.mode === "scheduled"
+      ? (
+          await Promise.all(
+            sole.map(async (tenant) =>
+              (await findPendingDeletion({ type: "tenant", id: tenant.id })) ? null : tenant,
+            ),
+          )
+        ).filter((tenant) => tenant !== null)
+      : sole;
+
+  // O provedor de todas primeiro: a falha de um aborta antes de agendar qualquer coisa.
+  for (const tenant of toDelete) await cancelProviderFirst(tenant.id, actor);
+  for (const tenant of toDelete) {
+    await deleteTenantAs(tenant, input.mode, input.reason, actor, true);
+  }
 
   const person = { id: target.id, name: target.name, email: target.email, platformRole: target.role };
   const metadata = { wasBanned: target.banned, ...(input.reason ? { reason: input.reason } : {}) };
