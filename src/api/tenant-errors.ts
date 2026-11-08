@@ -74,7 +74,7 @@ function errorCode(error: unknown) {
 export function handleTenantError(error: Error, c: Context) {
   if (error instanceof TenantRuleError) {
     return c.json(
-      { error: error.message, code: error.code, ...error.details },
+      { ...error.details, error: error.message, code: error.code },
       error.status,
     );
   }

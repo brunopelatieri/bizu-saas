@@ -141,7 +141,14 @@ export function AdminUsersPage() {
                           <OrgList
                             organizations={user.organizations}
                             more={user.more}
-                            label={(org) => (org.role ? roleLabel(org.role) : null)}
+                            label={(org) =>
+                              org.role
+                                ? org.role
+                                    .split(",")
+                                    .map((role) => roleLabel(role))
+                                    .join(", ")
+                                : null
+                            }
                           />
                         </TableCell>
                         <TableCell className="text-right">
