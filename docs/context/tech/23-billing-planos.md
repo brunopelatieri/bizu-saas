@@ -8,7 +8,7 @@
 
 | Tabela | Escopo | Observações |
 |---|---|---|
-| `plan` | plataforma, sem RLS | `slug` único e imutável, `limits` jsonb, `features` text[], `is_free`, `active`, `sort_order`. Nunca se apaga: `active = false` tira de `/precos` e da oferta, e quem já usa segue nele |
+| `plan` | plataforma, sem RLS | `slug` único e imutável, `limits` jsonb, `features` text[], `is_free`, `active`, `sort_order`. Só se apaga sem uso (`DELETE /api/admin/plans/:id`: nenhuma assinatura, atual ou pendente, não é o padrão do trial nem o único gratuito ativo); senão arquiva: `active = false` tira de `/precos` e da oferta, e quem já usa segue nele |
 | `plan_price` | plataforma, sem RLS | um por (plano, provedor, intervalo); `amount_cents` em centavos, `currency` `BRL`, `provider_price_ref` só como campo (preenchido em `/admin/planos`). `provider = manual`: preço da cobrança manual, sem referência (`tech/24-billing-cobranca.md`) |
 | `platform_setting` | plataforma, sem RLS | uma chave por linha; ver abaixo |
 | `subscription` | tenant, RLS forçado | uma por tenant. Estados e colunas do provedor em `tech/24-billing-cobranca.md` |

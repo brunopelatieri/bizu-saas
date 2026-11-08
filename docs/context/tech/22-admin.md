@@ -2,7 +2,7 @@
 
 - **Escopo:** Área do proprietário da plataforma: rotas `/admin/**`, API `/api/admin/*`, papéis, suspensão, usuários, planos e configurações.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`, `spec-tenant-rbac.md`, `spec-billing.md`
-- **Paths do código:** `src/api/admin.ts`, `src/lib/admin/` (`tenants.ts`, `users.ts`, `plans.ts`), `src/lib/schemas/admin.ts`, `src/lib/constants/admin-nav.ts`, `src/components/admin/`, `src/pages/admin/`, `src/routes/admin/`, `tests/db/admin.test.ts`
+- **Paths do código:** `src/api/admin.ts`, `src/lib/admin/` (`tenants.ts`, `users.ts`, `plans.ts`, `org-links.ts`), `src/lib/schemas/admin.ts`, `src/lib/constants/admin-nav.ts`, `src/components/admin/`, `src/pages/admin/`, `src/routes/admin/`, `tests/db/admin.test.ts`, `tests/db/admin-catalogo.test.ts`
 
 ## Acesso
 
@@ -23,7 +23,8 @@ só o caminho da interface. Sem `loader` de servidor. Em produção, sem 2FA, to
 | Rota | Quem | Observação |
 |---|---|---|
 | `GET /api/admin/overview` | plataforma | tenants por estado, usuários, testes acabando em 7 dias, planos ativos, webhooks com falha |
-| `GET /api/admin/tenants?q&status&page` | plataforma | `status` é o estado de cobrança; 20 por página |
+| `GET /api/admin/tenants?q&status&plan&page` | plataforma | `status` é o estado de cobrança; `plan` (uuid) filtra as organizações de um plano; 20 por página |
+| `PATCH /api/admin/tenants/:id` `{ name?, slug? }` | owner | mesmas regras do owner (`slugSchema`); 409 `SLUG_TAKEN`, `TENANT_DELETING` (status `deleting`/`deleted`; suspensa edita); sem mudança real responde 200 e não audita; audita `admin.tenant_updated` no `tenant_id` com antes e depois. Gravação direta por Drizzle: o plugin `organization` só atualiza quem é membro, e a plataforma não é (ele só confere o slug, e o banco já tem `organization.slug` único). Trocar o slug quebra `/portal/login?org=` e magic links já enviados (a tela avisa); o `org` só escolhe entre os tenants da pessoa, então slug antigo reaproveitado não abre outra organização |
 | `GET /api/admin/tenants/:id` | plataforma | membros, assinatura (período, vencimento, carência, `billingMode`), 12 últimas faturas, preços manuais do plano, últimos eventos e auditoria |
 | `POST /api/admin/tenants/:id/suspend` `{ reason? }` | owner | `suspended` + `locked`; e-mail `tenant-suspended` aos proprietários (falha no aviso só vai para o log: a suspensão vale e é auditada); 409 `ALREADY_SUSPENDED` |
 | `POST /api/admin/tenants/:id/unsuspend` | owner | volta `full`, ou `read_only` se a assinatura expirou; 409 `NOT_SUSPENDED` |
@@ -36,10 +37,12 @@ só o caminho da interface. Sem `loader` de servidor. Em produção, sem 2FA, to
 | `GET /api/admin/webhooks?status&page` | plataforma | `payment_event` sem `raw`, que tem dado pessoal |
 | `POST /api/admin/webhooks/:id/reprocess` | owner | só `failed` ou `ignored` e verificado; 409 `NOT_REPROCESSABLE` |
 | `GET`, `POST /api/admin/plans` | leitura plataforma; escrita owner | 409 `SLUG_TAKEN` |
-| `PATCH /api/admin/plans/:id` | owner | parcial, o `slug` não muda; 409 `PLAN_HAS_PRICES` ao marcar gratuito com preço ativo; preço não se apaga, e reativar preço de plano gratuito é 409 `FREE_PLAN_NO_PRICE` |
-| `POST /api/admin/plans/:id/prices`, `PATCH .../prices/:priceId` | owner | 409 `PRICE_EXISTS`, 409 `FREE_PLAN_NO_PRICE`; sem exclusão, só `active` |
+| `PATCH /api/admin/plans/:id` | owner | parcial, o `slug` não muda; 409 `PLAN_HAS_PRICES` ao marcar gratuito com preço ativo; reativar preço de plano gratuito é 409 `FREE_PLAN_NO_PRICE`; audita `admin.plan_updated` com `fields`. `active: false` é "arquivar" (botão na lista e no detalhe) |
+| `DELETE /api/admin/plans/:id` | owner | só plano que nunca chegou a um tenant, em transação com o plano travado: 409 `PLAN_IN_USE` `{ tenants: [{ id, name }] }` (qualquer assinatura, `plan_id` ou `pending_plan_id`; a FK `restrict` cobre a corrida), `PLAN_IS_TRIAL_DEFAULT`, `LAST_FREE_PLAN` (sem `trialPlanId` e único gratuito ativo); os preços saem em cascata; responde `{ ok, providerRefs }` (o que existe no provedor não é apagado; a tela avisa); audita `admin.plan_deleted` |
+| `POST /api/admin/plans/:id/prices`, `PATCH .../prices/:priceId` | owner | 409 `PRICE_EXISTS`, 409 `FREE_PLAN_NO_PRICE`; o `PATCH` audita `admin.plan_price_updated` |
+| `DELETE /api/admin/plans/:id/prices/:priceId` | owner | 404 se for de outro plano; 409 `PRICE_IN_USE` se `subscription.plan_price_id` ou `metadata.pendingPlanPriceId` o citam (o caminho é desativar); responde `providerRefs`; audita `admin.plan_price_deleted` |
 | `GET`, `PATCH /api/admin/settings` | leitura plataforma; escrita owner | `trialPlanId: null` = primeiro plano gratuito ativo; 400 `PLAN_NOT_FOUND`, `TRIAL_PLAN_NOT_FREE` |
-| `GET /api/admin/users?q&page` | plataforma | |
+| `GET /api/admin/users?q&page&scope` | plataforma | equipe e portal trazem `organizations: [{ id, name, role \| status }]` (as 3 primeiras por nome) e `more` (as demais), no lugar da contagem |
 | `POST /api/admin/users/:id/ban` `{ reason? }`, `.../unban` | owner | via `auth.api.banUser`, que encerra as sessões; 409 `SELF_BAN`, 403 `PLATFORM_USER_PROTECTED` |
 
 O plugin `admin` não compara o papel do alvo; por isso `assertBannable` só deixa banir quem tem
@@ -51,18 +54,18 @@ tenant levam o `tenant_id`. Tabelas de tenant são lidas com `withPlatformScope(
 | Rota | Arquivo |
 |---|---|
 | `/admin` | `pages/admin/overview-page.tsx` |
-| `/admin/tenants`, `/admin/tenants/:id` | `tenants-page.tsx`, `tenant-detail-page.tsx`; cobrança manual em `components/admin/manual-billing-card.tsx` |
+| `/admin/tenants`, `/admin/tenants/:id` | `tenants-page.tsx` (filtro `?plan=`), `tenant-detail-page.tsx` ("Editar": `components/admin/edit-tenant-dialog.tsx`); cobrança manual em `components/admin/manual-billing-card.tsx` |
 | `/admin/usuarios` | `users-page.tsx` |
-| `/admin/planos`, `/admin/planos/:id` | `plans-page.tsx`, `plan-detail-page.tsx` |
+| `/admin/planos`, `/admin/planos/:id` | `plans-page.tsx`, `plan-detail-page.tsx`: arquivar/reativar em botão, "Excluir plano" (desabilitado com uso, pede arquivar) e excluir preço, ambos com `confirm-dialog.tsx` |
 | `/admin/assinaturas` | `subscriptions-page.tsx` |
 | `/admin/webhooks` | `webhooks-page.tsx` |
-| `/admin/auditoria` | `routes/admin/audit.tsx`: log global, por ação, organização e pessoa |
+| `/admin/auditoria` | `routes/admin/audit.tsx`: log global, por ação, nome da organização (`tenantQ`, `ilike` em `organization.name`) e pessoa |
 | `/admin/configuracoes` | `settings-page.tsx`, inclusive a política de acesso do suporte |
 | `/admin/configuracoes/seguranca` | `routes/admin/security.tsx`: 2FA de quem administra |
 
 Reaproveitam o shell de `/app`: `AppSidebar`, `AppNav` e `AppTopbar` recebem o menu
 (`admin-nav.ts`) por props. Dados por `useAdminQuery`/`useAdminMutation` (`admin-api.ts`);
-escrita só aparece para `platform_owner` (`useIsPlatformOwner`). O menu do usuário mostra
+escrita só aparece para `platform_owner` (`useIsPlatformOwner`). Listagem que cita organização usa `components/admin/org-list.tsx` (nome com link, "+N") sobre `lib/admin/org-links.ts`, que lê `member`, `customer` e `subscription` com função de janela em `withPlatformScope`: uma consulta por página, sem N+1. O menu do usuário mostra
 "Administração" para quem tem papel de plataforma. Formulários validam com os schemas de
 `src/lib/schemas/admin.ts`; `limits` vazio vira `null` (ilimitado).
 
@@ -77,7 +80,7 @@ responde 403 e avisa os owners. A política se edita em `/admin/configuracoes` e
 ## Usuários do portal
 
 `/admin/usuarios` tem duas abas. Clientes e leads são outra identidade (`portal_user`):
-`GET /api/admin/users?scope=portal` traz organizações e sessões em aberto, e
+`GET /api/admin/users?scope=portal` traz as organizações (nome e status do vínculo) e as sessões em aberto, e
 `POST /api/admin/portal-users/:id/revoke-sessions`, só do proprietário, derruba as sessões. Não
 há banimento: o acesso é de cada tenant, por `customer.status`. O overview conta os clientes
 de todos os tenants.
