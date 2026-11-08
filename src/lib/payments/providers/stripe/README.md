@@ -79,6 +79,9 @@ Rode antes de um release, com `stripe listen` aberto e o cartão de teste `4242 
 - [ ] Reembolso total pelo painel: a fatura vira `refunded`.
 - [ ] Boleto, na conta brasileira.
 - [ ] `stripe trigger invoice.paid` reenviado: `duplicate` e nada aplicado de novo.
+- [ ] `/admin/assinaturas` → editar o vencimento de uma assinatura ativa: `trial_end` muda no
+  painel, nenhuma fatura de proração sai, a cobrança acontece na data nova e a assinatura
+  segue `active` aqui (`updateSubscriptionSchedule`). Idem para o fim de um trial nativo.
 
 ## Decisões deste módulo
 

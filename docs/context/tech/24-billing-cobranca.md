@@ -1,8 +1,8 @@
 # Cobrança: assinatura, provedores e webhooks
 
 - **Escopo:** Máquina de estados da assinatura, cobrança manual (padrão sem provedor), módulos de pagamento, checkout, webhooks, faturas, dunning, fim do período e reconciliação (fase 6). Planos, trial e limites estão em `tech/23-billing-planos.md`.
-- **Specs relacionadas:** `docs/specs/saas-foundation/spec-billing.md`, `docs/specs/cobranca-manual/spec.md`, `spec-dados.md`, `spec-rotas-api.md`, `spec-email-jobs.md`, `spec-seguranca.md`
-- **Paths do código:** `src/lib/billing/` (`state-machine.ts`, `apply.ts`, `manual.ts`, `checkout.ts`, `inbox.ts`, `invoices.ts`, `reconcile.ts`, `dunning.ts`, `notices.ts`, `proration.ts`), `src/lib/payments/` (`types.ts`, `registry.ts`, `providers/`), `src/api/billing.ts`, `src/api/webhooks-payments.ts`, `src/jobs/webhooks.ts`, `src/jobs/billing.ts`, `src/lib/schemas/billing.ts`, `src/lib/admin/subscriptions.ts`, `src/components/app/billing/`, `src/pages/{subscription,invoices,checkout-return}-page.tsx`, `src/pages/admin/{subscriptions,webhooks}-page.tsx`, `drizzle/0010_billing_cobranca.sql`, `drizzle/0011_rls_cobranca.sql`, `scripts/check-module-removal.mjs`, `tests/db/billing-{webhooks,lifecycle,queue}.test.ts`
+- **Specs relacionadas:** `docs/specs/saas-foundation/spec-billing.md`, `docs/specs/cobranca-manual/spec.md`, `docs/specs/admin-crud/spec.md` (seção 5), `spec-dados.md`, `spec-rotas-api.md`, `spec-email-jobs.md`, `spec-seguranca.md`
+- **Paths do código:** `src/lib/billing/` (`state-machine.ts`, `apply.ts`, `manual.ts`, `admin-edit.ts`, `admin-edit-rules.ts`, `checkout.ts`, `inbox.ts`, `invoices.ts`, `reconcile.ts`, `dunning.ts`, `notices.ts`, `proration.ts`), `src/lib/payments/` (`types.ts`, `registry.ts`, `providers/`), `src/api/billing.ts`, `src/api/webhooks-payments.ts`, `src/jobs/webhooks.ts`, `src/jobs/billing.ts`, `src/lib/schemas/billing.ts`, `src/lib/admin/subscriptions.ts`, `src/components/app/billing/`, `src/pages/{subscription,invoices,checkout-return}-page.tsx`, `src/pages/admin/{subscriptions,webhooks}-page.tsx`, `drizzle/0010_billing_cobranca.sql`, `drizzle/0011_rls_cobranca.sql`, `scripts/check-module-removal.mjs`, `tests/db/billing-{webhooks,lifecycle,queue,manual,admin-edit}.test.ts`
 
 ## Como as peças se ligam
 
@@ -49,6 +49,46 @@ provedor não é tocada.
   referência) pode fazer checkout (`canStartCheckout`); o primeiro pagamento a liga ao provedor.
 - **Auditoria:** `admin.manual_payment_recorded`, `admin.manual_payment_missed` e
   `billing.subscription_changed` (ator `platform`; no job, `system`).
+
+## Edição pelo admin (datas e status)
+
+`PATCH /api/admin/subscriptions/:id` (`admin-edit.ts`). A regra é uma função pura,
+`adminStatusChange` (`admin-edit-rules.ts`, com teste de cada linha), que a tela também usa para
+oferecer só os destinos permitidos (`allowedTargets`, `EDITABLE_FIELD`). A gravação passa por
+`applyDecision`: `subscription_event` com `source = admin` e `reason = "admin_edit: <motivo>"`
+(o motivo é texto livre e não vai à auditoria), `access_mode` por `setAccessMode` (`locked`
+vence) e `admin.subscription_updated` com `from`, `to`, `fields` e `mode`.
+
+| Status | Data editável | Observação |
+|---|---|---|
+| `trialing` | `trialEndsAt` | copia em `organization.trial_ends_at`; avisos de `trialNotices` que voltaram a ser futuros saem (`keptTrialNotices`) e o `billing.trial` os reenvia |
+| `active` | `currentPeriodEnd` | depois do início; no passado vale (o `billing.period_end` vence na próxima rodada) |
+| `past_due` | `graceUntil` | futura; adia o `unpaid` do dunning |
+| `unpaid`, `paused` | `currentPeriodEnd` | futura; só a data |
+| `canceled`, `expired` | – | 409 `SUBSCRIPTION_CLOSED` |
+
+| Para | De | Efeitos |
+|---|---|---|
+| `trialing` | `active`, `past_due`, `unpaid`, `expired` | `trialEndsAt` futuro no mesmo pedido; `full`; `trialNotices` zerados; sem carência |
+| `active` | qualquer | vencimento futuro (o enviado ou o atual); sem carência; `full`. **Não** cria fatura paga: pagamento é "marcar pago" |
+| `past_due` | `active`, `trialing` | `grace_until` = agora + `grace_days` ou o enviado |
+| `unpaid` | `active`, `past_due`, `trialing` | `read_only` |
+| `paused` | `active` | `metadata.paidThrough`; `read_only` |
+| `expired` | `trialing`, `unpaid`, `past_due` | `read_only` |
+| `canceled` | – | 409 `STATUS_NOT_ALLOWED`: cancelar é `POST .../cancel` |
+
+Saindo de `canceled`/`expired`, a referência antiga do provedor e o `provider` são limpos, como no
+"Pagou". Plano gratuito: 409 `FREE_PLAN`. A regra roda de novo com a linha travada; se a
+assinatura virou do provedor no meio, 409 `SUBSCRIPTION_CHANGED`.
+
+**Com provedor** (`isProviderManaged`), ele vai primeiro, fora da transação; recusa = 409
+`PROVIDER_UPDATE_FAILED`, nada muda. `trialEndsAt` e `currentPeriodEnd` vão por
+`updateSubscriptionSchedule` e a resposta entra por `applyRemoteSubscription` (`reconcile.ts`,
+o mesmo caminho do `billing.reconcile`, com `expected: true`: sem alerta de divergência); o fim do
+trial nativo vem de `RemoteSubscription.trialEnd`. `graceUntil` é só local. Pausa e retomada usam
+`pauseSubscription`/`resumeSubscription` e a mesma transição do owner (retomar depois do
+`paidThrough` cobra na hora). Outro status: 409 `PROVIDER_STATUS_MANAGED`; módulo sem o método
+ou desligado: 409 `PROVIDER_UNSUPPORTED`. O webhook seguinte confirma o mesmo estado.
 
 ## Tabelas
 
@@ -211,7 +251,8 @@ Em `tsx` (seed, worker em dev) o `import.meta.glob` não existe: `registry.ts` l
 ## Limites conhecidos
 
 - As fixtures do Stripe foram escritas a partir dos tipos do SDK, não capturadas: o checklist do
-  README do módulo segue pendente.
+  README do módulo segue pendente. Vale também para `updateSubscriptionSchedule` (`trial_end` +
+  `proration_behavior: none`), validado só com fixture.
 - Sem chamada de reembolso na interface: `provider.refund` existe, mas o reembolso sai pelo painel
   do provedor e chega por webhook.
 - Dois checkouts simultâneos para planos diferentes podem ser pagos: o segundo vira alerta, e o

@@ -31,7 +31,8 @@ só o caminho da interface. Sem `loader` de servidor. Em produção, sem 2FA, to
 | `PUT /api/admin/tenants/:id/plan` `{ planId }` | owner | plano gratuito encerra o trial, destrava o `read_only`, limpa o período e larga a referência do provedor; plano pago mantém o estado, e do gratuito (sem período) vence **agora**; faturas manuais abertas viram `void`; 409 `PROVIDER_SUBSCRIPTION_ACTIVE` com assinatura viva no provedor (`unpaid` conta como viva: cancele antes) |
 | `POST /api/admin/subscriptions/:id/manual-payment` `{ invoiceId?, planPriceId?, method? }` | owner | cobrança manual: fatura aberta (ou nova) paga, assinatura `active` com período novo; 409 `PROVIDER_SUBSCRIPTION_ACTIVE`, `FREE_PLAN`, `MANUAL_PRICE_REQUIRED`, `INVOICE_NOT_OPEN` |
 | `POST /api/admin/subscriptions/:id/manual-unpaid` `{ invoiceId?, immediate? }` | owner | fatura `failed`, assinatura `past_due` com carência ou, com `immediate`, `unpaid` + `read_only`; 409 `ALREADY_PAST_DUE` |
-| `GET /api/admin/subscriptions?status&q&page` | plataforma | sem referências do provedor; traz `alert` da reconciliação |
+| `GET /api/admin/subscriptions?status&q&page` | plataforma | sem referências do provedor; traz `alert` da reconciliação, `billingMode`, `planId`, `trialEndsAt`, `currentPeriodStart` |
+| `PATCH /api/admin/subscriptions/:id` `{ status?, currentPeriodEnd?, trialEndsAt?, graceUntil?, reason }` | owner | datas e status pela tabela de `admin-edit-rules.ts` (`tech/24-billing-cobranca.md`, "Edição pelo admin"); com provedor, vai primeiro a ele. 409 `SUBSCRIPTION_CLOSED`, `FIELD_NOT_APPLICABLE`, `STATUS_NOT_ALLOWED`, `FREE_PLAN`, `PROVIDER_UNSUPPORTED`, `PROVIDER_STATUS_MANAGED`, `PROVIDER_UPDATE_FAILED`, `SUBSCRIPTION_CHANGED`; 400 `INVALID_DATE` |
 | `POST /api/admin/subscriptions/:id/cancel` | owner | imediato, no provedor e aqui; 409 `ALREADY_CANCELED` |
 | `POST /api/admin/subscriptions/:id/sync` | owner | busca do provedor, corrige e alerta; conferido e igual, o alerta sai; 409 `NO_PROVIDER_SUBSCRIPTION` |
 | `GET /api/admin/webhooks?status&page` | plataforma | `payment_event` sem `raw`, que tem dado pessoal |
@@ -57,7 +58,7 @@ tenant levam o `tenant_id`. Tabelas de tenant são lidas com `withPlatformScope(
 | `/admin/tenants`, `/admin/tenants/:id` | `tenants-page.tsx` (filtro `?plan=`), `tenant-detail-page.tsx` ("Editar": `components/admin/edit-tenant-dialog.tsx`); cobrança manual em `components/admin/manual-billing-card.tsx` |
 | `/admin/usuarios` | `users-page.tsx` |
 | `/admin/planos`, `/admin/planos/:id` | `plans-page.tsx`, `plan-detail-page.tsx`: arquivar/reativar em botão, "Excluir plano" (desabilitado com uso, pede arquivar) e excluir preço, ambos com `confirm-dialog.tsx` |
-| `/admin/assinaturas` | `subscriptions-page.tsx` |
+| `/admin/assinaturas` | `subscriptions-page.tsx`; menu por linha em `components/admin/subscription-actions.tsx`: editar datas e status (só os destinos de `allowedTargets`, motivo obrigatório), trocar plano, marcar pago/não pago (o mesmo `manual-billing-card`, com os dados de `GET /api/admin/tenants/:id`), buscar do provedor e cancelar |
 | `/admin/webhooks` | `webhooks-page.tsx` |
 | `/admin/auditoria` | `routes/admin/audit.tsx`: log global, por ação, nome da organização (`tenantQ`, `ilike` em `organization.name`) e pessoa |
 | `/admin/configuracoes` | `settings-page.tsx`, inclusive a política de acesso do suporte |

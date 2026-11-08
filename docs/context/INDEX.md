@@ -21,7 +21,7 @@ estão nas rules e no cabeçalho de cada arquivo.
 | Admin da plataforma: `/admin`, `/api/admin/*`, suspender, banir, planos na tela | `tech/22-admin.md` |
 | Planos, preços, trial, limites (inclusive organizações por dono), features, estado `read_only`, `checkLimit`, seed | `tech/23-billing-planos.md` |
 | Clientes, portal, `portalAuth`, magic link, `/app/clientes`, `/portal/**`, `requirePortalAuth` | `tech/25-portal-clientes.md` |
-| Cobrança manual (padrão sem provedor), checkout, assinatura, webhooks de pagamento, faturas, dunning, reconciliação, módulo de provedor | `tech/24-billing-cobranca.md`, `src/lib/payments/providers/README.md` |
+| Cobrança manual (padrão sem provedor), checkout, assinatura, edição de datas e status pelo admin, webhooks de pagamento, faturas, dunning, reconciliação, módulo de provedor | `tech/24-billing-cobranca.md`, `src/lib/payments/providers/README.md` |
 | Tokens de design, Tailwind, dark mode | `tech/09-tema-css.md` |
 | Landing, header, páginas públicas | `tech/10-site-publico.md` |
 | Áreas `/app/**`, `/admin/**`, `/portal/**` | `tech/11-dashboard.md` |

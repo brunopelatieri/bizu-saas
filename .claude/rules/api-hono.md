@@ -33,7 +33,7 @@ paths:
 - Falar com o provedor vem antes da transação local, nunca dentro dela.
 - `/api/admin/*` usa `requireAuth` + `requirePlatform()` e, nas escritas, `requirePlatform(["platform_owner"])` antes da validação; tabela de tenant só dentro de `withPlatformScope` (`tech/22-admin.md`).
 - Limite do plano: `assertWithinLimit(tenantId, metric)` antes de criar; organizações por dono, só por `createOrganizationWithinLimit(userId, create)` (`tech/23-billing-planos.md`).
-- Cobrança manual: só `platform_owner` marca pagamento (`/api/admin/subscriptions/:id/manual-*`); assinatura viva no provedor nunca é marcada à mão (`isProviderManaged`).
+- Cobrança manual: só `platform_owner` marca pagamento (`/api/admin/subscriptions/:id/manual-*`); assinatura viva no provedor nunca é marcada à mão (`isProviderManaged`). `PATCH /api/admin/subscriptions/:id` (datas e status) exige `reason`; com provedor, chama o provedor antes e só grava o que ele aceitou (`src/lib/billing/admin-edit.ts`).
 - Teste rotas com `api.request()` em `src/api/*.test.ts`; com banco real, em `tests/db/`.
 - Leia variáveis por `getEnv()` (`src/lib/env.ts`), não por `process.env` espalhado.
 - CORS só volta em escopo controlado, se a API for exposta a outra origem.
