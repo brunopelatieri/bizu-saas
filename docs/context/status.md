@@ -40,6 +40,11 @@
   e `/app/clientes` com limite do plano.
 - `/admin/**` (proprietário e suporte da plataforma): visão geral, organizações, usuários, planos,
   assinaturas, webhooks e configurações, com `requirePlatform` na API (`tech/22-admin.md`).
+- Edição e exclusão no `/admin` (`docs/specs/admin-crud/`): editar nome e slug da organização;
+  detalhe, edição e exclusão de usuários de equipe, suporte e portal; exclusão de organização,
+  usuário e pessoa do portal agendada (30 dias, reversível) ou imediata; excluir plano e preço sem
+  uso e arquivar em botão; editar datas e status da assinatura (manual e, com
+  `updateSubscriptionSchedule`, no provedor); nome da organização em todas as listagens.
 - Planos, preços, trial no onboarding, limites por plano (assentos), estado `read_only`/`locked` e job
   `billing.trial` (`tech/23-billing-planos.md`). `/precos` público com loader.
 - Cobrança manual como padrão (`docs/specs/cobranca-manual/`): sem provedor, o proprietário marca em
@@ -79,9 +84,12 @@
 ## Pendências Técnicas Conhecidas
 
 - Fase 7 da spec (adiada).
-- **CRUD no `/admin`** (`docs/specs/admin-crud/spec.md`, rascunho aguardando aprovação): excluir
-  organização, usuário (equipe, suporte e portal) e plano; editar datas e status de assinaturas
-  (manual e com provedor); nome da organização em todas as listagens.
+- **Dev server e `DELETE`:** com `npm run dev`, toda rota `DELETE` responde 500 (`TypeError: Cannot
+  read private member #state`, no `bodyLimit` do Hono sobre o `Request` do servidor de dev). Em produção
+  (`npm run start`, Docker) e nos testes sobre o servidor Node funciona. Afeta excluir plano, preço,
+  sessão e as exclusões do `/admin` só em desenvolvimento.
+- **`npm run test:db` com `npm run dev` no ar:** além de `billing-queue.test.ts`, `email-queue.test.ts`
+  falha porque o dev (`JOBS_MODE=inline`) consome a fila do banco `bizu`. Rode com o dev parado.
 - **Fase 11:** teste de onboarding com pessoa externa em até 30 minutos (checklist em `CONTRIBUTING.md`); tag `v0.1.0` e GitHub Release (notas do `CHANGELOG.md`); habilitar o relatório privado de vulnerabilidade e o Dependabot no GitHub; certificado real do Caddy e a stack no Portainer, sem teste num domínio real (a stack foi revalidada em `localhost` por HTTP, `tech/14-deploy.md`); `CODEOWNERS` usa o usuário do autor.
 - Site público: `siteConfig.url`, `public/sitemap.xml` e `public/robots.txt` usam o placeholder `https://example.com` (estáticos, não leem `APP_URL`): derivados trocam os três.
 - **Portal:** `organization.settings.portal_self_signup` liga o autocadastro, mas ainda não tem tela.

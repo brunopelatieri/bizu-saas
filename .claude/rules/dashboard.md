@@ -36,7 +36,7 @@ paths:
 - Busque dados no cliente com TanStack Query e `apiFetch`; siga `AccountCard` como exemplo.
 - O gate do cliente não protege dados: o endpoint usa `requireAuth` (+ `requireTenant`,
   `requirePermission` ou `requirePlatform`).
-- `/admin` reaproveita o shell de `/app` (menu por props em `AppSidebar`/`AppNav`) e usa `useAdminQuery`/`useAdminMutation`; toda rota `/api/admin/*` passa por `requirePlatform`, e escrita só por `["platform_owner"]`. Sem `loader` em `/admin`.
+- `/admin` reaproveita o shell de `/app` (menu por props em `AppSidebar`/`AppNav`) e usa `useAdminQuery`/`useAdminMutation`; toda rota `/api/admin/*` passa por `requirePlatform`, e escrita só por `["platform_owner"]`. Sem `loader` em `/admin`. Exclusões do `/admin` usam `components/admin/delete-dialog.tsx` (agendar ou excluir agora, `confirm` digitado e conferido no servidor); `platform_owner` nunca é editado nem excluído pela tela.
 - Esconder um botão por permissão é conveniência (`<Can>`, `useCan()`); a regra vale no servidor.
 - `security.tenantRequires2fa` e `platformRequires2fa`, de `useAuth()`, só levam à tela de ativar; quem barra é a API. Durante a personificação, `ImpersonationBanner` fica fixo e `signOut()` encerra só ela.
 - Pagamento confirmado é o que o banco diz: a página de retorno do checkout consulta o estado local e ignora a query string. Link vindo do provedor só entra como `href` se for `https` (`safeUrl`).

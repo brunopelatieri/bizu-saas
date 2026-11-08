@@ -1,6 +1,6 @@
 # SPEC: Edição e exclusão no `/admin` (organizações, usuários, planos e assinaturas)
 
-- **Status:** rascunho (revisão 3, com os ajustes do proprietário do template)
+- **Status:** implementada (revisão 3; desvios registrados em `docs/context/tech/22-admin.md`)
 - **PRD:** sem PRD próprio; pedido do proprietário do template. Fecha lacunas de
   `tech/22-admin.md` ("detalhe de usuário", "revogar sessões").
 - **Contexto carregado:** `tech/22-admin.md`, `tech/23-billing-planos.md`,
