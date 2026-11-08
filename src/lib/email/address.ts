@@ -18,3 +18,13 @@ export function extractEmailAddress(value: string) {
   const match = value.match(/<([^<>\s]+)>\s*$/);
   return (match?.[1] ?? value).trim();
 }
+
+/**
+ * `an***@exemplo.com`: o suficiente para a pessoa reconhecer o endereço, sem entregá-lo a
+ * quem lê a caixa antiga (`email-changed`).
+ */
+export function maskEmail(email: string) {
+  const [local = "", domain = ""] = normalizeEmail(email).split("@");
+
+  return `${local.slice(0, Math.min(2, Math.max(1, local.length - 1)))}***@${domain}`;
+}

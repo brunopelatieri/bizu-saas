@@ -1,6 +1,7 @@
 import {
   boolean,
   index,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -61,6 +62,20 @@ export const deletionStatuses = [
 ] as const;
 export type DeletionStatus = (typeof deletionStatuses)[number];
 
+/** `self`: a própria pessoa (ou o owner, para a organização). `platform`: pelo `/admin`. */
+export const deletionOrigins = ["self", "platform"] as const;
+export type DeletionOrigin = (typeof deletionOrigins)[number];
+
+/**
+ * O que o cancelamento precisa para desfazer o pedido da plataforma: o banimento anterior da
+ * conta e o estado da organização antes da exclusão. `reason` é o motivo dado no `/admin`.
+ */
+export type DeletionMetadata = {
+  wasBanned?: boolean;
+  previousStatus?: "active" | "suspended";
+  reason?: string;
+};
+
 /**
  * Pedido de exclusão com carência de 30 dias. `tenant_id` só existe quando o assunto é um
  * tenant (RLS); pedidos de pessoa ficam sem tenant e só se leem com `withPlatformScope`.
@@ -82,6 +97,9 @@ export const deletionRequest = pgTable(
       .default("pending"),
     createdAt: timestamptz("created_at").notNull().defaultNow(),
     canceledAt: timestamptz("canceled_at"),
+    // Cada lado só cancela o próprio pedido (`cancelDeletion`).
+    origin: text("origin", { enum: deletionOrigins }).notNull().default("self"),
+    metadata: jsonb("metadata").$type<DeletionMetadata>().notNull().default({}),
   },
   (table) => [
     // Um pedido em aberto por assunto: pedir de novo não agenda duas exclusões.

@@ -148,6 +148,13 @@
       "when": 1794091892315,
       "tag": "0020_cobranca_manual",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1794101982987,
+      "tag": "0021_exclusao_pela_plataforma",
+      "breakpoints": true
     }
   ]
 }

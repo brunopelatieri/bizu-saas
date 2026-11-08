@@ -12,6 +12,7 @@ import {
   sessionCookies,
   verify,
 } from "./portal-helpers";
+import { asPlatform, cleanUpBilling, makePlatformUser } from "./billing-helpers";
 import {
   call,
   cleanUp,
@@ -556,5 +557,149 @@ describe("portal: autenticação", () => {
       });
       expect(attacker.status).toBe(401);
     });
+  });
+});
+
+/**
+ * Exclusão agendada pela plataforma (`docs/specs/admin-crud/spec.md`, seção 3): na carência,
+ * o pedido `origin = platform` barra a sessão, o pedido de link e a senha, sem revelar nada.
+ */
+describe("portal: barreira na carência da exclusão pela plataforma", () => {
+  const barrierMail = createMemoryProvider();
+  let owner: postgres.Sql;
+  let tenantOwner: TestUser;
+  let platformOwner: TestUser;
+  let tenant: { id: string; slug: string };
+
+  beforeAll(async () => {
+    setEmailProviderForTests(barrierMail);
+    owner = connectOwner();
+    tenantOwner = await createUser(owner);
+    tenant = await createTenant(tenantOwner);
+    platformOwner = await makePlatformUser(owner, "platform_owner");
+  });
+
+  afterAll(async () => {
+    setEmailProviderForTests(undefined);
+    await asPlatform(
+      owner,
+      (tx) => tx`
+        delete from deletion_request where subject_id in (
+          select id from portal_user where email like ${"%@tenant-test.bizu.local"}
+        )
+      `,
+    );
+    await cleanUpPortal(owner);
+    await cleanUpBilling(owner);
+    await cleanUp(owner);
+    await owner.end();
+  });
+
+  beforeEach(() => barrierMail.reset());
+
+  async function personWithPassword() {
+    const { id, email } = await createCustomer(tenantOwner);
+    const cookie = await inviteAndEnter(tenantOwner, barrierMail, id, email);
+    const response = await call("POST", "/api/portal/auth-ext/set-password", {
+      cookie,
+      body: { newPassword: PASSWORD },
+    });
+    expect(response.status).toBe(200);
+    const [person] = await owner<{ id: string }[]>`
+      select id from portal_user where email = ${email}
+    `;
+
+    return { cookie, email, id: person?.id ?? "" };
+  }
+
+  const signIn = (email: string, password: string) =>
+    call("POST", "/api/portal/auth/sign-in/email", { body: { email, password } });
+
+  const askLink = (email: string) =>
+    call("POST", "/api/portal/auth-ext/magic-link", { body: { email, org: tenant.slug } });
+
+  async function linksTo(email: string) {
+    await waitForBackgroundTasks();
+    return barrierMail.sent.filter(
+      ({ to, tags }) => to === email && tags?.template === "portal-magic-link",
+    ).length;
+  }
+
+  async function snapshot(response: Response) {
+    return {
+      status: response.status,
+      headers: comparableHeaders(response),
+      body: await response.text(),
+    };
+  }
+
+  it("sem sessão, sem link e a senha certa responde como a errada; cancelar devolve", async () => {
+    const { cookie, email, id } = await personWithPassword();
+
+    // Link pedido antes da exclusão: não abre sessão depois dela.
+    expect((await askLink(email)).status).toBe(200);
+    await waitForBackgroundTasks();
+    const { token, org } = lastLink(barrierMail, email);
+
+    const scheduled = await call("DELETE", `/api/admin/portal-users/${id}`, {
+      cookie: platformOwner.cookie,
+      body: { mode: "scheduled", confirm: email },
+    });
+    expect(scheduled.status).toBe(200);
+
+    expect((await call("GET", "/api/portal/me", { cookie })).status).toBe(401);
+
+    const stale = await verify(token, org);
+    expect(stale.status).toBe(400);
+    expect(sessionCookies(stale)).toBe("");
+
+    barrierMail.reset();
+    const asked = await askLink(email);
+    expect(asked.status).toBe(200);
+    expect(await asked.json()).toEqual({ ok: true });
+    expect(await linksTo(email)).toBe(0);
+
+    const wrong = await snapshot(await signIn(email, "senha-errada-123"));
+    const right = await snapshot(await signIn(email, PASSWORD));
+    expect(right.status).toBe(401);
+    expect(right).toEqual(wrong);
+
+    const canceled = await call("POST", `/api/admin/portal-users/${id}/deletion/cancel`, {
+      cookie: platformOwner.cookie,
+    });
+    expect(canceled.status).toBe(200);
+    expect((await signIn(email, PASSWORD)).status).toBe(200);
+    await askLink(email);
+    expect(await linksTo(email)).toBe(1);
+  });
+
+  it("a sessão aberta cai na hora, mesmo sem ter sido apagada", async () => {
+    const { cookie, id } = await personWithPassword();
+    expect((await call("GET", "/api/portal/me", { cookie })).status).toBe(200);
+
+    await asPlatform(
+      owner,
+      (tx) => tx`
+        insert into deletion_request (subject_type, subject_id, requested_by, scheduled_for, origin)
+        values ('portal_user', ${id}, ${platformOwner.id}, now() + interval '30 days', 'platform')
+      `,
+    );
+
+    expect((await call("GET", "/api/portal/me", { cookie })).status).toBe(401);
+  });
+
+  it("o pedido da própria pessoa não barra: ela entra para desistir", async () => {
+    const { cookie, id } = await personWithPassword();
+
+    const asked = await call("DELETE", "/api/portal/me", { cookie, body: { password: PASSWORD } });
+    expect(asked.status).toBe(200);
+
+    expect((await call("GET", "/api/portal/me", { cookie })).status).toBe(200);
+    const byPlatform = await call("POST", `/api/admin/portal-users/${id}/deletion/cancel`, {
+      cookie: platformOwner.cookie,
+    });
+    expect(byPlatform.status).toBe(409);
+    expect(((await byPlatform.json()) as { code: string }).code).toBe("DELETION_NOT_PLATFORM");
+    expect((await call("POST", "/api/portal/me/deletion/cancel", { cookie })).status).toBe(200);
   });
 });

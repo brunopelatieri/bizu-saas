@@ -152,3 +152,28 @@ subdomínio por tenant, troca de e-mail pelo cliente e `Reply-To` do owner no co
 - A anonimização troca o `portal_user` e **todos** os `customer` ligados a ele ou ao mesmo e-mail (nome "Cliente removido", e-mail `deleted+<id>@invalid`, `blocked`).
 - `consentRequired` em `/api/portal/me` e re-aceite em `POST /api/portal/me/consent`. O autocadastro grava o aceite (`consent_log`, `subject_type = portal_user`).
 - `portal_session` e `portal_verification` vencidos saem no `maintenance.prune`.
+
+## Edição e exclusão pelo `/admin` (admin-crud)
+
+- `GET /api/admin/portal-users/:id`: pessoa (verificado, senha definida, sessões vivas),
+  vínculos `[{ tenant: { id, name }, status, lastLoginAt }]` e exclusão pendente. Tela em
+  `/admin/usuarios/portal/:id`; a linha da lista de usuários leva até ela.
+- `PATCH /api/admin/portal-users/:id { name?, email? }`: o nome é o de `portal_user` (o
+  `customer.name` de cada tenant é do owner). O e-mail muda na pessoa e em **todos** os vínculos
+  (`customer.portal_user_id`), numa transação (`withPlatformScope("admin: e-mail do portal")`):
+  outra pessoa com o endereço é 409 `EMAIL_TAKEN`; algum tenant com outro cliente no endereço é
+  409 `EMAIL_TAKEN { tenants: [{ id, name }] }`, e nada muda. Depois,
+  `revokeUnprovenAccountAccess` (`src/lib/admin/people.ts`): não verificado, sem senha e sem
+  sessões; o endereço novo entra por magic link, que prova a posse. Aviso `email-changed` ao
+  antigo; auditoria `admin.portal_user_updated` e, em cada tenant, `customer.updated` com
+  `actor_type = platform`.
+- `DELETE /api/admin/portal-users/:id { mode, confirm, reason? }` e `.../deletion/cancel`
+  (`tech/22-admin.md`). Agendar encerra as sessões; `customer.status` não muda, para o
+  cancelamento não perder o estado.
+- **Barreira na carência:** pedido `pending` com `origin = platform` (`portalAccessBarred`,
+  `src/lib/lgpd/deletion.ts`) barra a sessão em `requirePortalAuth` (401, como sessão
+  inexistente; falha da checagem é 503), o pedido de magic link (`requestPortalLogin` não envia;
+  a resposta pública não muda), a criação de qualquer sessão (`databaseHooks.session.create.before` do
+  `portalAuth` recusa: um link enviado antes responde o 400 de link inválido) e o `sign-in/email`: a senha vai trocada por uma aleatória ao
+  Better Auth, que responde o mesmo 401 de senha errada (corpo, cabeçalhos e tempo). O pedido da
+  própria pessoa (`origin = self`) não barra: ela entra para desistir.

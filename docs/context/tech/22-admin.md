@@ -2,7 +2,7 @@
 
 - **Escopo:** Área do proprietário da plataforma: rotas `/admin/**`, API `/api/admin/*`, papéis, suspensão, usuários, planos e configurações.
 - **Specs relacionadas:** `docs/specs/saas-foundation/spec-rotas-api.md`, `spec-tenant-rbac.md`, `spec-billing.md`
-- **Paths do código:** `src/api/admin.ts`, `src/lib/admin/` (`tenants.ts`, `users.ts`, `plans.ts`, `org-links.ts`), `src/lib/schemas/admin.ts`, `src/lib/constants/admin-nav.ts`, `src/components/admin/`, `src/pages/admin/`, `src/routes/admin/`, `tests/db/admin.test.ts`, `tests/db/admin-catalogo.test.ts`
+- **Paths do código:** `src/api/admin.ts`, `src/lib/admin/` (`tenants.ts`, `users.ts`, `plans.ts`, `org-links.ts`, `people.ts`, `deletion.ts`), `src/lib/schemas/admin.ts`, `src/lib/constants/admin-nav.ts`, `src/components/admin/`, `src/pages/admin/`, `src/routes/admin/`, `tests/db/admin.test.ts`, `tests/db/admin-catalogo.test.ts`, `tests/db/admin-deletion.test.ts`
 
 ## Acesso
 
@@ -55,8 +55,9 @@ tenant levam o `tenant_id`. Tabelas de tenant são lidas com `withPlatformScope(
 | Rota | Arquivo |
 |---|---|
 | `/admin` | `pages/admin/overview-page.tsx` |
-| `/admin/tenants`, `/admin/tenants/:id` | `tenants-page.tsx` (filtro `?plan=`), `tenant-detail-page.tsx` ("Editar": `components/admin/edit-tenant-dialog.tsx`); cobrança manual em `components/admin/manual-billing-card.tsx` |
-| `/admin/usuarios` | `users-page.tsx` |
+| `/admin/tenants`, `/admin/tenants/:id` | `tenants-page.tsx` (filtro `?plan=`), `tenant-detail-page.tsx` ("Editar": `components/admin/edit-tenant-dialog.tsx`; excluir e cancelar exclusão com `components/admin/delete-dialog.tsx`); cobrança manual em `components/admin/manual-billing-card.tsx` |
+| `/admin/usuarios` | `users-page.tsx`; o nome leva ao detalhe |
+| `/admin/usuarios/:id`, `/admin/usuarios/portal/:id` | `user-detail-page.tsx`, `portal-user-detail-page.tsx` (rotas `routes/admin/user.tsx`, `portal-user.tsx`) |
 | `/admin/planos`, `/admin/planos/:id` | `plans-page.tsx`, `plan-detail-page.tsx`: arquivar/reativar em botão, "Excluir plano" (desabilitado com uso, pede arquivar) e excluir preço, ambos com `confirm-dialog.tsx` |
 | `/admin/assinaturas` | `subscriptions-page.tsx`; menu por linha em `components/admin/subscription-actions.tsx`: editar datas e status (só os destinos de `allowedTargets`, motivo obrigatório), trocar plano, marcar pago/não pago (o mesmo `manual-billing-card`, com os dados de `GET /api/admin/tenants/:id`), buscar do provedor e cancelar |
 | `/admin/webhooks` | `webhooks-page.tsx` |
@@ -88,10 +89,43 @@ de todos os tenants.
 
 ## Ainda não existe
 
-Overview sem MRR e jobs mortos; `/admin/jobs`; detalhe de usuário; revogar sessões.
+Overview sem MRR e jobs mortos; `/admin/jobs`.
 
 ## Fase 10
 
 - `/admin/configuracoes` edita também `dpoEmail` (aparece em `/legal/*`) e `auditRetentionDays` (30 a 3650, padrão 365).
 - `/admin` mostra "Jobs mortos": soma das filas `*.dead` do pg-boss (`src/lib/admin/jobs.ts`), `—` se a fila não responder.
 - `/admin` mostra "Consumidores da fila": processos vivos por modo (`inline`, `worker`), com alerta para os dois juntos ou nenhum (`tech/20-jobs.md`).
+
+## Exclusões e pessoas (admin-crud, trilha C)
+
+SPEC: `docs/specs/admin-crud/spec.md` (seções 1 a 3). Lógica em `src/lib/admin/deletion.ts`
+(exclusões) e `src/lib/admin/people.ts` (detalhe, edição, sessões); o núcleo LGPD é o de
+`src/lib/lgpd/deletion.ts` (`tech/27-lgpd-arquivos.md`). Toda escrita é `ownerOnly` +
+`blockWhileImpersonating`; sessão personificada já cai no `requirePlatform` (papel do alvo).
+
+| Rota | Quem | Observação |
+|---|---|---|
+| `DELETE /api/admin/tenants/:id` `{ mode, confirm, reason? }` | owner | `confirm` = slug (400 `CONFIRMATION_MISMATCH`); encerra no provedor antes (409 `PROVIDER_CANCEL_FAILED`, nada agendado); aceita organização suspensa; 409 `DELETION_PENDING` |
+| `POST /api/admin/tenants/:id/deletion/cancel` | owner | só pedido `origin = platform` (409 `DELETION_NOT_PLATFORM`, `NO_PENDING_DELETION`); devolve `active` (`read_only` se a assinatura foi encerrada) ou a suspensão anterior |
+| `GET /api/admin/tenants/:id/deletion` | plataforma | `{ deletion: { scheduledFor, origin } | null }` |
+| `GET /api/admin/users/:id` | plataforma | perfil, papel, 2FA, banido, sessões vivas, organizações (nome, slug, papel, estado de cobrança, plano), exclusão pendente |
+| `PATCH /api/admin/users/:id` `{ name?, email? }` | owner | e-mail: 409 `EMAIL_TAKEN`; desverifica, encerra sessões, apaga a senha e os tokens de reset, `email-changed` ao antigo e link de definir senha ao novo (o reset marca verificado, `tech/08-auth.md`); auditoria `admin.user_updated` com os campos (sem valores) |
+| `POST /api/admin/users/:id/revoke-sessions` | owner | `{ revoked }` |
+| `DELETE /api/admin/users/:id` `{ mode, confirm, reason?, deleteSoleOrganizations }` | owner | `confirm` = e-mail; único owner sem a flag: 409 `LAST_OWNER { tenants }`; com ela, cada organização segue o mesmo `mode` (provedores encerrados antes de tudo). Agendar bane (motivo "Exclusão agendada pela plataforma"; já banido fica como estava) e encerra as sessões na mesma transação |
+| `POST /api/admin/users/:id/deletion/cancel` | owner | desbaneia só se `metadata.wasBanned` era `false`; organizações agendadas junto têm o próprio cancelamento |
+| `GET`, `PATCH`, `DELETE /api/admin/portal-users/:id`, `.../deletion/cancel` | leitura plataforma; escrita owner | regras em `tech/25-portal-clientes.md` |
+
+- **Alvo:** `assertManageableUser` aceita papel `user` e `platform_support`; `platform_owner` é
+  403 `PLATFORM_OWNER_PROTECTED` e o próprio ator, 409 `SELF_ACTION`. Banir continua em
+  `assertBannable` (só papel `user`). Conta já anonimizada responde 404.
+- **`mode`:** `scheduled` = 30 dias, reversível, acesso cortado na hora; `now` = mesma
+  anonimização do job, na hora, sem volta (antecipa pedido pendente de qualquer origem). E-mail
+  `deletion-scheduled` (variante da administração) ou `deletion-executed`.
+- **Auditoria:** `admin.{tenant,user,portal_user}_deletion_{requested,executed,canceled}` com
+  `metadata.mode`; o motivo (texto livre) fica em `deletion_request.metadata.reason`, nunca na
+  auditoria. Respostas 409 com dados extras usam `TenantRuleError(..., details)`, que
+  `handleTenantError` espalha na raiz do JSON.
+- **Telas:** `components/admin/delete-dialog.tsx` (um diálogo para tudo: agendar ou excluir
+  agora, digitar o slug ou o e-mail, motivo), `deletion-status.tsx` (faixa da exclusão pendente),
+  `person-edit-card.tsx`, `tenant-deletion-card.tsx` (em `/admin/tenants/:id`).

@@ -13,6 +13,7 @@ import { getPortalAuth } from "@/lib/auth/portal";
 import type { PortalLinkContext } from "@/lib/auth/portal-emails";
 import { type ConsentMeta, withSignupConsent } from "@/lib/lgpd/consent";
 import { checkLimit } from "@/lib/billing/limits";
+import { portalEmailBarred } from "@/lib/lgpd/deletion";
 import { ensurePortalUser } from "@/lib/portal/access";
 import type { PortalSignupInput } from "@/lib/schemas/portal";
 
@@ -61,8 +62,11 @@ export async function publicTenantInfo(slug: string) {
 /**
  * Só `active` recebe link: lead e bloqueado não entram, e e-mail desconhecido não gera
  * nada. A checagem vem antes do plugin, que gravaria a verificação para qualquer endereço.
+ * Na carência de uma exclusão pedida pela plataforma, também não sai link.
  */
 export async function requestPortalLogin(email: string, org: string) {
+  if (await portalEmailBarred(email)) return;
+
   const tenant = await findOpenTenant(org);
   if (!tenant) return;
 

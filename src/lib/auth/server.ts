@@ -1,5 +1,6 @@
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
+import { eq } from "drizzle-orm";
 import { admin, organization, twoFactor } from "better-auth/plugins";
 import { getDb } from "@/db";
 import * as schema from "@/db/schema";
@@ -91,6 +92,14 @@ function createAuth() {
       sendResetPassword: ({ user, token }) =>
         sendResetPasswordLink(user, token),
       onPasswordReset: async ({ user }, request) => {
+        // O link chegou ao endereço da conta: concluir o reset prova o e-mail (inclusive o
+        // trocado pelo /admin, que volta como não verificado).
+        if (!user.emailVerified) {
+          await getDb()
+            .update(schema.user)
+            .set({ emailVerified: true })
+            .where(eq(schema.user.id, user.id));
+        }
         runInBackground(sendPasswordChangedNotice(user));
         runInBackground(
           audit("auth.password_reset", {

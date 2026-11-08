@@ -29,6 +29,7 @@ import {
 import { logError } from "@/api/log";
 import { getEnv } from "@/lib/env";
 import { recordSignupConsent } from "@/lib/lgpd/consent";
+import { portalAccessBarred } from "@/lib/lgpd/deletion";
 import { recordPortalLogin, soleTenantId } from "@/lib/portal/access";
 
 /**
@@ -138,12 +139,18 @@ function createPortalAuth() {
       },
       session: {
         create: {
-          before: async (session) => ({
-            data: {
-              ...session,
-              activeTenantId: await soleTenantId(session.userId),
-            },
-          }),
+          // Na carência de uma exclusão pedida pela plataforma, nenhuma sessão nasce: nem por
+          // link enviado antes, nem por qualquer outro caminho (`portalAccessBarred`).
+          before: async (session) => {
+            if (await portalAccessBarred(session.userId)) return false;
+
+            return {
+              data: {
+                ...session,
+                activeTenantId: await soleTenantId(session.userId),
+              },
+            };
+          },
           after: async (session) => {
             const { activeTenantId, userId } = session as typeof session & {
               activeTenantId?: string | null;

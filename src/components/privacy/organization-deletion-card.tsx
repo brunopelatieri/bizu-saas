@@ -61,7 +61,7 @@ export function OrganizationDeletionCard() {
         <CardTitle className="text-base">Excluir a organização</CardTitle>
       </CardHeader>
       <CardContent className="space-y-3 text-sm">
-        {pending.map(({ tenantId, scheduledFor }) => (
+        {pending.map(({ tenantId, scheduledFor, origin }) => (
           <div
             key={tenantId}
             className="space-y-2 rounded-md border border-destructive/40 bg-destructive/5 p-3"
@@ -71,14 +71,20 @@ export function OrganizationDeletionCard() {
               será excluída em <strong>{formatDate(scheduledFor)}</strong>. O acesso da equipe já
               está bloqueado.
             </p>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={cancel.isPending}
-              onClick={() => cancel.mutate(tenantId)}
-            >
-              Cancelar exclusão
-            </Button>
+            {origin === "platform" ? (
+              <p className="text-muted-foreground">
+                A exclusão foi pedida pela administração da plataforma: fale com ela para desistir.
+              </p>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={cancel.isPending}
+                onClick={() => cancel.mutate(tenantId)}
+              >
+                Cancelar exclusão
+              </Button>
+            )}
           </div>
         ))}
 

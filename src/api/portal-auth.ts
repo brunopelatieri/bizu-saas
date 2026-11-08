@@ -4,6 +4,7 @@ import { logError } from "@/api/log";
 import { refusal } from "@/api/permissions";
 import { PORTAL_COOKIE_PREFIX } from "@/lib/auth/constants";
 import { getPortalAuth } from "@/lib/auth/portal";
+import { portalAccessBarred } from "@/lib/lgpd/deletion";
 import { findPortalCustomer, type PortalCustomer } from "@/lib/portal/access";
 
 export type PortalUserContext = {
@@ -36,6 +37,9 @@ export type ResolvedPortalSession = {
   user: PortalUserContext;
   session: PortalSessionContext;
 };
+
+/** A plataforma agendou a exclusão desta pessoa (`portalAccessBarred`). */
+export type PortalBarrier = (portalUserId: string) => Promise<boolean>;
 
 export type ResolvePortalSession = (
   headers: Headers,
@@ -71,9 +75,13 @@ const resolvePortalSession: ResolvePortalSession = async (headers) => {
 
 /**
  * `requireAuth` do portal. Olha só o cookie `bizu_portal`, assinado com outro segredo:
- * um nunca vale pelo outro. Falha fechada: Auth indisponível não abre a rota.
+ * um nunca vale pelo outro. Falha fechada: Auth indisponível não abre a rota. Na carência de
+ * uma exclusão pedida pela plataforma (`barred`), a sessão vale como inexistente (401).
  */
-export function createRequirePortalAuth(resolve: ResolvePortalSession) {
+export function createRequirePortalAuth(
+  resolve: ResolvePortalSession,
+  barred: PortalBarrier = async () => false,
+) {
   return createMiddleware<PortalAuthEnv>(async (c, next) => {
     const { headers } = c.req.raw;
 
@@ -85,6 +93,7 @@ export function createRequirePortalAuth(resolve: ResolvePortalSession) {
 
     try {
       resolved = await resolve(headers);
+      if (resolved && (await barred(resolved.user.id))) resolved = null;
     } catch (error) {
       logError("Falha ao validar sessão do portal", error);
       return c.json({ error: "Autenticação indisponível." }, 503);
@@ -107,7 +116,10 @@ export function createRequirePortalAuth(resolve: ResolvePortalSession) {
   });
 }
 
-export const requirePortalAuth = createRequirePortalAuth(resolvePortalSession);
+export const requirePortalAuth = createRequirePortalAuth(
+  resolvePortalSession,
+  portalAccessBarred,
+);
 
 /**
  * Vem depois de `requirePortalAuth`. O tenant é o da sessão, nunca o da requisição, e o

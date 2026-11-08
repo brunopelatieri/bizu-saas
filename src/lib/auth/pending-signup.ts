@@ -1,6 +1,6 @@
-import { and, eq, lt } from "drizzle-orm";
+import { and, eq, lt, sql } from "drizzle-orm";
 import { getDb } from "@/db";
-import { user } from "@/db/schema";
+import { account, user } from "@/db/schema";
 
 export const PENDING_SIGNUP_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -16,7 +16,11 @@ export function isPendingSignupExpired(
   return !emailVerified && now - createdAt.getTime() > PENDING_SIGNUP_TTL_MS;
 }
 
-/** Libera o e-mail: o próximo cadastro cria a conta do zero, com a senha de quem pediu. */
+/**
+ * Libera o e-mail: o próximo cadastro cria a conta do zero, com a senha de quem pediu. Só o
+ * cadastro pendente tem senha sem e-mail provado; a conta cujo e-mail o `/admin` trocou volta
+ * não verificada, mas sem senha (`updateUserByAdmin`), e por isso nunca é expurgada aqui.
+ */
 export async function purgeExpiredPendingSignup(email: string) {
   await getDb()
     .delete(user)
@@ -25,6 +29,7 @@ export async function purgeExpiredPendingSignup(email: string) {
         eq(user.email, email),
         eq(user.emailVerified, false),
         lt(user.createdAt, new Date(Date.now() - PENDING_SIGNUP_TTL_MS)),
+        sql`exists (select 1 from ${account} where ${account.userId} = "user"."id" and ${account.providerId} = 'credential')`,
       ),
     );
 }

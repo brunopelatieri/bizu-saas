@@ -301,10 +301,11 @@ function checkoutKey(subscriptionId: string, planPriceId: string, method: string
     .digest("hex");
 }
 
-type Actor = { userId: string; ip?: string | null };
+/** `platform`: a exclusão da organização pelo `/admin` (admin-crud C). */
+type Actor = { userId: string; ip?: string | null; platform?: boolean };
 
 const actorEntry = (actor: Actor): Pick<AuditEntry, "actor" | "ip"> => ({
-  actor: { type: "user", id: actor.userId },
+  actor: { type: actor.platform ? "platform" : "user", id: actor.userId },
   ip: actor.ip,
 });
 
@@ -503,7 +504,7 @@ async function applyOwnerEvent(
     if (decision.outcome === "ignored") return row;
 
     return applyDecision(tx, row, decision, {
-      source: "owner",
+      source: actor.platform ? "admin" : "owner",
       ...actorEntry(actor),
     });
   });
