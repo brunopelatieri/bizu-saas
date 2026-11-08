@@ -73,7 +73,10 @@ function errorCode(error: unknown) {
 /** `onError` das rotas de tenant. Nada interno chega ao cliente. */
 export function handleTenantError(error: Error, c: Context) {
   if (error instanceof TenantRuleError) {
-    return c.json({ error: error.message, code: error.code }, error.status);
+    return c.json(
+      { error: error.message, code: error.code, ...error.details },
+      error.status,
+    );
   }
 
   if (isAPIError(error)) {

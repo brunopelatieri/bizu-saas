@@ -13,6 +13,8 @@ import { handleTenantError } from "@/api/tenant-errors";
 import {
   createPlan,
   createPrice,
+  deletePlan,
+  deletePrice,
   listPlans,
   updatePlan,
   updatePrice,
@@ -24,6 +26,7 @@ import {
   listTenants,
   suspendTenant,
   unsuspendTenant,
+  updateTenantAsPlatform,
 } from "@/lib/admin/tenants";
 import { impersonationAccess } from "@/lib/admin/impersonation";
 import { countDeadJobs, getJobConsumers } from "@/lib/admin/jobs";
@@ -58,6 +61,7 @@ import {
   tenantsQuerySchema,
   updatePlanPriceSchema,
   updatePlanSchema,
+  updateTenantSchema,
   usersQuerySchema,
   webhooksQuerySchema,
 } from "@/lib/schemas/admin";
@@ -231,9 +235,13 @@ adminRoutes.patch(
   zValidator("json", updatePlanSchema, validationError),
   async (c) => {
     const { id } = c.req.valid("param");
-    const updated = await updatePlan(id, c.req.valid("json"));
+    const patch = c.req.valid("json");
+    const updated = await updatePlan(id, patch);
 
-    await auditAdmin(c, "admin.plan_updated", { target: { type: "plan", id } });
+    await auditAdmin(c, "admin.plan_updated", {
+      target: { type: "plan", id },
+      metadata: { fields: Object.keys(patch).join(",") },
+    });
 
     return c.json({ plan: updated });
   },
@@ -261,9 +269,13 @@ adminRoutes.patch(
   zValidator("json", updatePlanPriceSchema, validationError),
   async (c) => {
     const { id, priceId } = c.req.valid("param");
-    const price = await updatePrice(id, priceId, c.req.valid("json"));
+    const patch = c.req.valid("json");
+    const price = await updatePrice(id, priceId, patch);
 
-    await auditAdmin(c, "admin.plan_updated", { target: { type: "plan", id } });
+    await auditAdmin(c, "admin.plan_price_updated", {
+      target: { type: "plan_price", id: priceId },
+      metadata: { plan_id: id, fields: Object.keys(patch).join(",") },
+    });
 
     return c.json({ price });
   },
@@ -483,5 +495,82 @@ adminRoutes.post(
     });
 
     return c.json(result);
+  },
+);
+
+// admin-crud A ----------------------------------------------------------------------------
+
+/** Excluir só plano sem uso (409 `PLAN_IN_USE`, `PLAN_IS_TRIAL_DEFAULT`, `LAST_FREE_PLAN`). */
+adminRoutes.delete("/api/admin/plans/:id", ownerOnly, validId, async (c) => {
+  const { id } = c.req.valid("param");
+  const { plan, prices, providerRefs } = await deletePlan(id);
+
+  await auditAdmin(c, "admin.plan_deleted", {
+    target: { type: "plan", id },
+    metadata: { slug: plan.slug, name: plan.name, prices },
+  });
+
+  // Preço com referência no provedor não é apagado lá: a tela avisa.
+  return c.json({ ok: true, providerRefs });
+});
+
+adminRoutes.delete(
+  "/api/admin/plans/:id/prices/:priceId",
+  ownerOnly,
+  priceParams,
+  async (c) => {
+    const { id, priceId } = c.req.valid("param");
+    const price = await deletePrice(id, priceId);
+
+    await auditAdmin(c, "admin.plan_price_deleted", {
+      target: { type: "plan_price", id: priceId },
+      metadata: {
+        plan_id: id,
+        provider: price.provider,
+        interval: price.interval,
+        amount_cents: price.amountCents,
+      },
+    });
+
+    return c.json({
+      ok: true,
+      providerRefs: price.providerPriceRef
+        ? [{ provider: price.provider, ref: price.providerPriceRef }]
+        : [],
+    });
+  },
+);
+
+/** Nome e slug da organização. Trocar o slug quebra links `?org=` já enviados (a tela avisa). */
+adminRoutes.patch(
+  "/api/admin/tenants/:id",
+  ownerOnly,
+  validId,
+  zValidator("json", updateTenantSchema, validationError),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const { before, after, changes } = await updateTenantAsPlatform(
+      id,
+      c.req.valid("json"),
+    );
+
+    // Sem mudança real não há "antes e depois" a registrar.
+    if (Object.keys(changes).length > 0) {
+      await auditAdmin(c, "admin.tenant_updated", {
+        tenantId: id,
+        target: { type: "tenant", id },
+        metadata: {
+          fields: Object.keys(changes).join(","),
+          ...("name" in changes
+            ? { name_before: before.name, name_after: after.name }
+            : {}),
+          ...("slug" in changes
+            ? { slug_before: before.slug, slug_after: after.slug }
+            : {}),
+        },
+      });
+    }
+
+    return c.json({ tenant: { id, name: after.name, slug: after.slug } });
   },
 );

@@ -6,6 +6,8 @@ export class TenantRuleError extends Error {
     readonly status: ContentfulStatusCode,
     readonly code: string,
     message: string,
+    /** Campos extras da resposta (`{ error, code, ...details }`), como `tenants` do 409. */
+    readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = "TenantRuleError";

@@ -21,7 +21,8 @@ import type { BillingState } from "@/lib/billing/state";
 import { appLink } from "@/lib/auth/links";
 import { sendEmail } from "@/lib/email/send";
 import { tenantSuspendedTemplate } from "@/lib/email/templates/tenant-suspended";
-import { PAGE_SIZE } from "@/lib/schemas/admin";
+import { isUniqueViolation } from "@/lib/admin/plans";
+import { PAGE_SIZE, type UpdateTenantInput } from "@/lib/schemas/admin";
 import { notFound, TenantRuleError } from "@/lib/tenant/errors";
 
 /** Mesma regra de `billingState()`, para filtrar e contar no banco. */
@@ -377,4 +378,76 @@ export async function getOverview(now = new Date()) {
       failedWebhooks: failed?.total ?? 0,
     };
   });
+}
+
+// admin-crud A: editar organização ---------------------------------------------------------
+
+/**
+ * Nome e slug pela plataforma. O plugin `organization` só deixa editar quem é membro, e a
+ * plataforma não é; como não há `organizationHooks`, ele não faz mais que conferir o slug e
+ * gravar. Aqui vale a mesma regra (`slugSchema` na entrada, `organization.slug` único no
+ * banco), por Drizzle. Organização em exclusão não se edita.
+ */
+export async function updateTenantAsPlatform(
+  tenantId: string,
+  patch: UpdateTenantInput,
+) {
+  try {
+    return await withPlatformScope("admin: edita organização", async (tx) => {
+      const [before] = await tx
+        .select({
+          id: organization.id,
+          name: organization.name,
+          slug: organization.slug,
+          status: organization.status,
+        })
+        .from(organization)
+        .where(eq(organization.id, tenantId))
+        .for("update");
+
+      if (!before) throw notFound("Organização não encontrada.");
+
+      if (before.status === "deleting" || before.status === "deleted") {
+        throw new TenantRuleError(
+          409,
+          "TENANT_DELETING",
+          "Esta organização está em exclusão e não pode ser editada.",
+        );
+      }
+
+      const changes = {
+        ...(patch.name !== undefined && patch.name !== before.name
+          ? { name: patch.name }
+          : {}),
+        ...(patch.slug !== undefined && patch.slug !== before.slug
+          ? { slug: patch.slug }
+          : {}),
+      };
+
+      if (Object.keys(changes).length === 0) return { before, after: before, changes };
+
+      const [after] = await tx
+        .update(organization)
+        .set(changes)
+        .where(eq(organization.id, tenantId))
+        .returning({
+          id: organization.id,
+          name: organization.name,
+          slug: organization.slug,
+          status: organization.status,
+        });
+
+      return { before, after: after ?? before, changes };
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      throw new TenantRuleError(
+        409,
+        "SLUG_TAKEN",
+        "Este identificador já está em uso por outra organização.",
+      );
+    }
+
+    throw error;
+  }
 }
