@@ -62,6 +62,9 @@ export default [
       route("tenants", "routes/admin/tenants.tsx"),
       route("tenants/:id", "routes/admin/tenant.tsx"),
       route("usuarios", "routes/admin/users.tsx"),
+      // admin-crud C: detalhe de usuário de equipe e de pessoa do portal.
+      route("usuarios/portal/:id", "routes/admin/portal-user.tsx"),
+      route("usuarios/:id", "routes/admin/user.tsx"),
       route("planos", "routes/admin/plans.tsx"),
       route("planos/:id", "routes/admin/plan.tsx"),
       route("assinaturas", "routes/admin/subscriptions.tsx"),

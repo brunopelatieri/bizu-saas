@@ -17,6 +17,7 @@ import {
 } from "@/components/admin/manual-billing-card";
 import { PageTitle, QueryState } from "@/components/admin/query-state";
 import { ReasonDialog } from "@/components/admin/reason-dialog";
+import { TenantDeletionCard } from "@/components/admin/tenant-deletion-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -215,6 +216,9 @@ export function AdminTenantDetailPage() {
                 )
               ) : null}
             </div>
+
+            {/* admin-crud C: excluir e cancelar a exclusão */}
+            <TenantDeletionCard tenant={detail.tenant} />
 
             <Card>
               <CardHeader>

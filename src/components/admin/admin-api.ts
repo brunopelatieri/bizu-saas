@@ -27,7 +27,7 @@ export function useAdminQuery<T>(
 
 type AdminRequest = {
   path: string;
-  method: "POST" | "PATCH" | "PUT";
+  method: "POST" | "PATCH" | "PUT" | "DELETE";
   body?: unknown;
 };
 

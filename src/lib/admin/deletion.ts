@@ -4,7 +4,7 @@ import { getDb } from "@/db";
 import { withPlatformScope } from "@/db/rls";
 import { organization, portalSession, portalUser, session, user } from "@/db/schema";
 import type { DeletionSubjectType } from "@/db/schema/lgpd";
-import { assertManageableUser } from "@/lib/admin/people";
+import { assertManageableUser, sessionsOf } from "@/lib/admin/people";
 import { type AuditAction, audit, auditInTransaction } from "@/lib/audit";
 import { appLink } from "@/lib/auth/links";
 import { cancelSubscriptionForDeletion } from "@/lib/billing/checkout";
@@ -267,7 +267,7 @@ export async function adminDeleteUser(targetId: string, input: DeleteUserInput, 
             .set({ banned: true, banReason: PLATFORM_BAN_REASON, banExpires: null })
             .where(eq(user.id, target.id));
         }
-        await tx.delete(session).where(eq(session.userId, target.id));
+        await tx.delete(session).where(sessionsOf(target.id));
         await auditInTransaction(tx, REQUESTED.user, auditEntry(subject, actor, input.mode));
       },
     });

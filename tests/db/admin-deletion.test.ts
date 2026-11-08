@@ -130,10 +130,8 @@ async function auditCount(action: string, targetId: string) {
   return row;
 }
 
-function signInStatus(email: string, password = PASSWORD) {
-  return call("POST", "/api/auth/sign-in/email", { body: { email, password } }).then(
-    (response) => response.status,
-  );
+async function signInStatus(email: string, password = PASSWORD) {
+  return (await call("POST", "/api/auth/sign-in/email", { body: { email, password } })).status;
 }
 
 beforeAll(async () => {

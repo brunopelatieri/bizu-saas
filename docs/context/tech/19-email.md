@@ -156,3 +156,12 @@ de `List-Unsubscribe`.
 
 - `data-export-ready` (link assinado de 7 dias) e `deletion-scheduled` (conta, conta do portal ou organização) são enviados por `src/lib/lgpd/export.ts` e `deletion.ts`; `deletion-confirm` (novo) leva o link de confirmação da exclusão do cliente do portal, que só vale com o clique.
 - A exclusão apaga `email_message` do e-mail anonimizado (busca por `to_hash`).
+
+## Templates do `/admin` (admin-crud)
+
+- `deletion-scheduled` ganhou a variante `byPlatform`: quando a administração agenda a
+  exclusão, o texto diz isso e o botão leva a `/contato` (só a administração cancela).
+- `deletion-executed`: exclusão imediata pelo `/admin` ("Excluir agora"); vai ao titular, ou aos
+  owners da organização, com o endereço lido **antes** da anonimização.
+- `email-changed`: aviso ao endereço **antigo** quando a administração troca o e-mail de uma
+  conta de equipe ou do portal. Mostra o novo mascarado (`maskEmail`, `src/lib/email/address.ts`).

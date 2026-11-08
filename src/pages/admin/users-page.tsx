@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useSearchParams } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import {
   type Page,
   useAdminMutation,
@@ -119,7 +119,11 @@ export function AdminUsersPage() {
                   <TableBody>
                     {query.data.items.map((user) => (
                       <TableRow key={user.id}>
-                        <TableCell className="font-medium">{user.name}</TableCell>
+                        <TableCell className="font-medium">
+                          <Link to={`/admin/usuarios/${user.id}`} className="hover:underline">
+                            {user.name}
+                          </Link>
+                        </TableCell>
                         <TableCell className="break-all">{user.email}</TableCell>
                         <TableCell className="space-x-1">
                           {ROLE_LABELS[user.platformRole] ? (

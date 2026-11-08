@@ -1,5 +1,5 @@
 import { createHash, randomBytes } from "node:crypto";
-import { and, eq, inArray, lte, ne, sql } from "drizzle-orm";
+import { and, eq, inArray, lte, ne, or, sql } from "drizzle-orm";
 import { logError } from "@/api/log";
 import { getDb } from "@/db";
 import { type Tx, withPlatformScope } from "@/db/rls";
@@ -748,7 +748,8 @@ async function anonymizeUser(tx: Tx, id: string): Promise<Anonymized> {
 
   await tx.delete(account).where(eq(account.userId, id));
   await tx.delete(twoFactor).where(eq(twoFactor.userId, id));
-  await tx.delete(session).where(eq(session.userId, id));
+  // Também as personificações abertas por esta conta (suporte excluído).
+  await tx.delete(session).where(or(eq(session.userId, id), eq(session.impersonatedBy, id)));
   await tx.delete(emailVerificationIssue).where(eq(emailVerificationIssue.userId, id));
   await tx.delete(member).where(eq(member.userId, id));
   await tx.delete(invitation).where(eq(invitation.email, person.email));

@@ -1,4 +1,4 @@
-import { and, count, eq, gt, inArray, ne, sql } from "drizzle-orm";
+import { and, count, eq, gt, inArray, ne, or, sql } from "drizzle-orm";
 import { logError } from "@/api/log";
 import { getDb } from "@/db";
 import { type Tx, withPlatformScope } from "@/db/rls";
@@ -33,6 +33,13 @@ import { findPendingDeletion } from "@/lib/lgpd/deletion";
  */
 
 export type AdminActor = { id: string; ip?: string | null };
+
+/**
+ * As sessões da conta e as personificações que ela abriu (suporte): encerrar o acesso de uma
+ * conta de plataforma derruba também o que ela faz em nome de outros.
+ */
+export const sessionsOf = (userId: string) =>
+  or(eq(session.userId, userId), eq(session.impersonatedBy, userId));
 
 /** Conta já anonimizada pela exclusão: para o admin, não existe mais. */
 const isGhost = (email: string) => /^deleted\+[^@]+@invalid$/.test(email);
@@ -173,7 +180,7 @@ export async function updateUserByAdmin(
       .where(eq(user.id, target.id))
       .returning({ id: user.id, name: user.name, email: user.email, emailVerified: user.emailVerified });
 
-    if (emailChanged) await tx.delete(session).where(eq(session.userId, target.id));
+    if (emailChanged) await tx.delete(session).where(sessionsOf(target.id));
 
     await auditInTransaction(tx, "admin.user_updated", {
       actor: { type: "platform", id: actor.id },
@@ -207,7 +214,7 @@ export async function revokeUserSessions(targetId: string, actor: AdminActor) {
   return withPlatformScope("admin: encerra sessões", async (tx) => {
     const removed = await tx
       .delete(session)
-      .where(eq(session.userId, target.id))
+      .where(sessionsOf(target.id))
       .returning({ id: session.id });
 
     await auditInTransaction(tx, "admin.user_sessions_revoked", {

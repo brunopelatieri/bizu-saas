@@ -113,6 +113,11 @@ quando `afterEmailVerification` roda o usuário já tem o novo.
 (`verification.storeIdentifier: "hashed"`), encerra todas as sessões e dispara
 `password-changed`.
 
+Concluir o reset prova o e-mail: o link só chega ao endereço da conta, então
+`onPasswordReset` marca `emailVerified = true`. É por aí que entra quem teve o e-mail trocado
+pelo `/admin` (`PATCH /api/admin/users/:id`), que volta como não verificado e recebe o link de
+definir senha no endereço novo (`tech/22-admin.md`).
+
 ## Sessão e `requireAuth`
 
 - Cookies `bizu.session_token` e `bizu.session_data`: `HttpOnly`, `SameSite=Lax`, e
