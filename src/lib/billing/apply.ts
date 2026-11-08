@@ -104,7 +104,9 @@ type ApplyContext = {
    * Campos além da decisão, como o plano ativado pelo primeiro pagamento ou o preço manual
    * (com `provider: null`, a assinatura deixa de apontar para o provedor antigo).
    */
-  extra?: Partial<Pick<SubscriptionRow, "planId" | "planPriceId" | "provider">>;
+  extra?: Partial<Pick<SubscriptionRow, "planId" | "planPriceId" | "provider" | "trialEndsAt">>;
+  /** Motivo gravado no `subscription_event` no lugar do da decisão (edição do admin). */
+  reason?: string;
 };
 
 function nextMetadata(
@@ -161,7 +163,7 @@ export async function applyDecision(
     subscriptionId: row.id,
     from: row.status,
     to: decision.status,
-    reason: decision.reason,
+    reason: context.reason ?? decision.reason,
     source: context.source,
     paymentEventId: context.paymentEventId,
     occurredAt: context.occurredAt,

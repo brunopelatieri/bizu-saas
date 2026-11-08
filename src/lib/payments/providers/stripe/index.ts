@@ -87,6 +87,7 @@ function remoteSubscription(subscription: Stripe.Subscription): RemoteSubscripti
     cancelAtPeriodEnd:
       subscription.cancel_at_period_end || Boolean(subscription.cancel_at),
     priceRef: item?.price.id,
+    trialEnd: time(subscription.trial_end ?? undefined),
   };
 }
 
@@ -255,6 +256,22 @@ export function createStripeProvider(deps: {
               }
             : {}),
         });
+      }),
+
+    // `trial_end` adia a próxima cobrança: no fim do trial o Stripe fatura e abre o ciclo
+    // novo. Em assinatura ativa o status lá vira `trialing` até a data, mas a reconciliação
+    // não tira ninguém de `active` por isso. `none`: sem crédito nem cobrança da diferença.
+    updateSubscriptionSchedule: (_ctx, ref, { trialEnd, nextBillingAt }) =>
+      guard(async () => {
+        const at = trialEnd ?? nextBillingAt;
+        if (!at) throw new PaymentProviderError("config", "Informe a data nova.");
+
+        const updated = await client.subscriptions.update(ref, {
+          trial_end: Math.floor(at.getTime() / 1000),
+          proration_behavior: "none",
+        });
+
+        return remoteSubscription(updated);
       }),
 
     refund: (_ctx, { invoiceRef, amountCents, idempotencyKey }) =>

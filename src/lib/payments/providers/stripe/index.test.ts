@@ -477,6 +477,67 @@ describe("assinatura", () => {
     });
   });
 
+  it("updateSubscriptionSchedule adia a cobrança por trial_end, sem proração", async () => {
+    const remote = JSON.parse(fixture("customer.subscription.updated.trial_end")).data.object;
+    const stub = { subscriptions: { update: vi.fn().mockResolvedValue(remote) } };
+    const next = new Date(1797422400 * 1000);
+
+    await expect(
+      stubbed(stub).updateSubscriptionSchedule?.(ctx, "sub_test_1", { nextBillingAt: next }),
+    ).resolves.toEqual({
+      ref: "sub_test_1",
+      // Ativa com `trial_end` fica `trialing` lá; a reconciliação não tira ninguém de `active`.
+      status: "trialing",
+      currentPeriodStart: new Date(1794000000 * 1000),
+      currentPeriodEnd: next,
+      cancelAtPeriodEnd: false,
+      priceRef: "price_test_pro",
+      trialEnd: next,
+    });
+    expect(stub.subscriptions.update).toHaveBeenCalledWith("sub_test_1", {
+      trial_end: 1797422400,
+      proration_behavior: "none",
+    });
+  });
+
+  it("updateSubscriptionSchedule muda o fim do trial e não deixa sair a mensagem do Stripe", async () => {
+    const remote = JSON.parse(fixture("customer.subscription.updated.trial_end")).data.object;
+    const ok = { subscriptions: { update: vi.fn().mockResolvedValue(remote) } };
+    const trialEnd = new Date("2026-12-20T15:30:45.900Z");
+
+    await stubbed(ok).updateSubscriptionSchedule?.(ctx, "sub_test_1", { trialEnd });
+    expect(ok.subscriptions.update).toHaveBeenCalledWith("sub_test_1", {
+      trial_end: Math.floor(trialEnd.getTime() / 1000),
+      proration_behavior: "none",
+    });
+
+    const failing = {
+      subscriptions: {
+        update: vi.fn().mockRejectedValue(
+          Object.assign(new Error("fulano@cliente.test: invalid trial_end"), {
+            code: "parameter_invalid_integer",
+          }),
+        ),
+      },
+    };
+    const error = await stubbed(failing)
+      .updateSubscriptionSchedule?.(ctx, "sub_test_1", { trialEnd })
+      .catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(PaymentProviderError);
+    expect((error as PaymentProviderError).code).toBe("parameter_invalid_integer");
+    expect((error as PaymentProviderError).message).not.toContain("fulano");
+  });
+
+  it("o webhook depois da mudança chega como subscription.updated em trial", () => {
+    expect(parsed("customer.subscription.updated.trial_end")).toMatchObject({
+      type: "subscription.updated",
+      subscriptionRef: "sub_test_1",
+      status: "trialing",
+      currentPeriodEnd: new Date(1797422400 * 1000),
+    });
+  });
+
   it("fetchInvoice traduz o status", async () => {
     const remote = JSON.parse(fixture("invoice.paid")).data.object;
     const stub = { invoices: { retrieve: vi.fn().mockResolvedValue(remote) } };

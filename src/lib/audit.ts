@@ -60,6 +60,8 @@ export type AuditAction =
   | "admin.subscription_synced"
   | "admin.manual_payment_recorded"
   | "admin.manual_payment_missed"
+  // admin-crud B
+  | "admin.subscription_updated"
   | "admin.webhook_reprocessed"
   | "admin.portal_sessions_revoked"
   | "platform.impersonation_requested"

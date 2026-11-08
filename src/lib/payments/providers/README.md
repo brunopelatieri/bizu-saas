@@ -35,6 +35,17 @@ liga o módulo é `PAYMENT_PROVIDERS`. Nada fora da pasta importa o módulo nem 
 | Sem proração (`proration: false`) | Calcula a diferença e chama `chargeOnce` |
 | Sem pausa ou portal | A tela não oferece |
 | Checkout `inline` (Pix, boleto) | Grava a fatura local e a tela faz polling a cada 5 s |
+| Sem `updateSubscriptionSchedule` | O `/admin` não muda fim do trial nem próxima cobrança dessa assinatura: 409 `PROVIDER_UNSUPPORTED` |
+
+## Métodos opcionais para o `/admin`
+
+- `updateSubscriptionSchedule(ctx, ref, { trialEnd?, nextBillingAt? })`: muda o fim do trial ou
+  a data da próxima cobrança **sem** crédito nem cobrança da diferença, e devolve a assinatura
+  como ficou (`RemoteSubscription`, com `trialEnd` se houver). O núcleo chama antes de gravar
+  aqui e aplica a resposta pela reconciliação; erro lançado = nada muda (409
+  `PROVIDER_UPDATE_FAILED`). No Stripe: `trial_end` = data nova com `proration_behavior: none`
+  (a assinatura ativa aparece como `trialing` lá até a data; aqui continua `active`).
+- `pauseSubscription` e `resumeSubscription` também servem à pausa e retomada pelo `/admin`.
 
 ## Eventos e o que se espera deles
 

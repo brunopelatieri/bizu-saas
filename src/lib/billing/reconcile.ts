@@ -1,4 +1,4 @@
-import { withPlatformScope } from "@/db/rls";
+import { type Tx, withPlatformScope } from "@/db/rls";
 import type { SubscriptionEventSource } from "@/db/schema/billing";
 import type { AuditEntry } from "@/lib/audit";
 import {
@@ -6,6 +6,7 @@ import {
   findPriceByRef,
   lockSubscription,
   planDivergence,
+  type SubscriptionRow,
   setAlert,
   snapshotOf,
 } from "@/lib/billing/apply";
@@ -13,6 +14,7 @@ import { loadSettings } from "@/lib/billing/settings";
 import { type AppliedDecision, transition } from "@/lib/billing/state-machine";
 import { findFreePlanId } from "@/lib/billing/subscription";
 import { getProvider, platformContext } from "@/lib/payments/registry";
+import type { RemoteSubscription } from "@/lib/payments/types";
 
 export type ReconcileTarget = {
   id: string;
@@ -23,6 +25,18 @@ export type ReconcileTarget = {
 type SyncOptions = {
   source: SubscriptionEventSource;
   actor?: AuditEntry["actor"];
+};
+
+type ApplyRemoteOptions = SyncOptions & {
+  /**
+   * Divergência é o padrão da reconciliação. A edição do admin (`admin-edit.ts`) pede a
+   * mudança ao provedor e aplica a resposta: o que mudou foi pedido, não é alerta.
+   */
+  expected?: boolean;
+  /** Motivo do `subscription_event` no lugar do da máquina de estados. */
+  eventReason?: string;
+  /** Roda na mesma transação, com a linha travada, quando a resposta vale para ela. */
+  onApplied?: (tx: Tx, row: SubscriptionRow, applied: boolean) => Promise<void>;
 };
 
 /**
@@ -43,6 +57,22 @@ export async function syncSubscription(
     platformContext(),
     target.providerSubscriptionRef,
   );
+
+  // A resposta de "Buscar do provedor" segue a mesma: `applied` é da edição do admin.
+  const { skipped, diverged } = await applyRemoteSubscription(target, remote, now, options);
+  return { skipped, diverged };
+}
+
+/**
+ * Aplica o que o provedor diz da assinatura (`fetchSubscription` ou a resposta de uma
+ * escrita, como `updateSubscriptionSchedule`). `applied`: gravou algo na assinatura.
+ */
+export async function applyRemoteSubscription(
+  target: ReconcileTarget,
+  remote: RemoteSubscription,
+  now: Date,
+  options: ApplyRemoteOptions,
+) {
   const { graceDays } = await loadSettings();
   const freePlanId = await findFreePlanId();
 
@@ -51,7 +81,7 @@ export async function syncSubscription(
 
     // A assinatura trocou de referência enquanto a resposta vinha: o dado é velho.
     if (!row || row.providerSubscriptionRef !== target.providerSubscriptionRef) {
-      return { skipped: true, diverged: false };
+      return { skipped: true, diverged: false, applied: false };
     }
 
     const decision = transition(
@@ -79,13 +109,14 @@ export async function syncSubscription(
       // Encerrada aqui e viva lá não se corrige sozinha: precisa de alguém olhando.
       if (decision.reason === "subscription_ended" && remote.status !== "canceled") {
         await setAlert(tx, row, { kind: "divergence", at: now.toISOString(), detail });
-        return { skipped: false, diverged: true };
+        return { skipped: false, diverged: true, applied: false };
       }
 
       // Conferido e igual: o alerta antigo perde o sentido.
       if (row.metadata.alert?.kind === "divergence") await setAlert(tx, row, null);
+      await options.onApplied?.(tx, row, false);
 
-      return { skipped: false, diverged: false };
+      return { skipped: false, diverged: false, applied: false };
     }
 
     const applied: AppliedDecision =
@@ -99,6 +130,7 @@ export async function syncSubscription(
           };
     const updated = await applyDecision(tx, row, applied, {
       source: options.source,
+      reason: options.eventReason,
       actor: options.actor ?? { type: "system", id: null },
       // Encerrada ou migrada para o gratuito, o plano do provedor não vale mais.
       extra:
@@ -106,12 +138,21 @@ export async function syncSubscription(
           ? undefined
           : (plan ?? undefined),
     });
+    // Só o pedido mudou (datas): sem alerta. Status diferente é algo que o provedor sabia e
+    // aqui não: continua divergência, mesmo na edição do admin.
+    if (options.expected && updated.status === row.status) {
+      if (row.metadata.alert?.kind === "divergence") await setAlert(tx, updated, null);
+      await options.onApplied?.(tx, updated, true);
+      return { skipped: false, diverged: false, applied: true };
+    }
+
     await setAlert(tx, updated, {
       kind: "divergence",
       at: now.toISOString(),
       detail: plan ? `${detail} plano` : detail,
     });
+    await options.onApplied?.(tx, updated, true);
 
-    return { skipped: false, diverged: true };
+    return { skipped: false, diverged: true, applied: true };
   });
 }

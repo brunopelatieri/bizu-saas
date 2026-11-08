@@ -64,6 +64,9 @@ import {
 import { adminAuditQuerySchema } from "@/lib/schemas/security";
 import { notFound } from "@/lib/tenant/errors";
 import { z } from "zod";
+// admin-crud B
+import { editSubscription } from "@/lib/billing/admin-edit";
+import { updateSubscriptionSchema } from "@/lib/schemas/admin";
 
 /**
  * `/api/admin/*`: só quem tem papel de plataforma. Leitura é de `platform_owner` e
@@ -483,5 +486,32 @@ adminRoutes.post(
     });
 
     return c.json(result);
+  },
+);
+
+// admin-crud B: editar datas e status da assinatura (`src/lib/billing/admin-edit.ts`).
+// Manual: aplica aqui. Com provedor: vai primeiro a ele, e só a resposta aceita grava.
+adminRoutes.patch(
+  "/api/admin/subscriptions/:id",
+  ownerOnly,
+  validId,
+  zValidator("json", updateSubscriptionSchema, validationError),
+  async (c) => {
+    const { id } = c.req.valid("param");
+    const updated = await editSubscription(id, c.req.valid("json"), {
+      userId: c.get("user").id,
+      ip: clientKey(c),
+    });
+
+    return c.json({
+      subscription: {
+        id: updated.id,
+        status: updated.status,
+        trialEndsAt: updated.trialEndsAt,
+        currentPeriodStart: updated.currentPeriodStart,
+        currentPeriodEnd: updated.currentPeriodEnd,
+        graceUntil: updated.graceUntil,
+      },
+    });
   },
 );

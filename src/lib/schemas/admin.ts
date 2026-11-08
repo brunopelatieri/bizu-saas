@@ -192,3 +192,34 @@ export const subscriptionsQuerySchema = z.object({
   q: search,
   page,
 });
+
+// admin-crud B: edição de datas e status da assinatura (`src/lib/billing/admin-edit.ts`).
+const isoDate = z.iso
+  .datetime({ offset: true, message: "Data inválida." })
+  .transform((value) => new Date(value));
+
+/**
+ * `PATCH /api/admin/subscriptions/:id`. Datas ISO 8601. O que cada status aceita e os efeitos
+ * de cada mudança estão em `admin-edit-rules.ts`; o motivo vai para o histórico da assinatura.
+ */
+export const updateSubscriptionSchema = z
+  .object({
+    status: z.enum(subscriptionStatusList).optional(),
+    currentPeriodEnd: isoDate.optional(),
+    trialEndsAt: isoDate.optional(),
+    graceUntil: isoDate.optional(),
+    reason: z
+      .string("Informe o motivo.")
+      .trim()
+      .min(3, "Informe o motivo.")
+      .max(200, "Motivo muito longo."),
+  })
+  .refine(
+    (value) =>
+      value.status !== undefined ||
+      value.currentPeriodEnd !== undefined ||
+      value.trialEndsAt !== undefined ||
+      value.graceUntil !== undefined,
+    "Nada para alterar.",
+  );
+export type UpdateSubscriptionInput = z.output<typeof updateSubscriptionSchema>;

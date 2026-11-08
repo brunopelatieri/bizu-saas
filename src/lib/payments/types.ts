@@ -98,6 +98,8 @@ export type RemoteSubscription = {
   currentPeriodEnd?: Date;
   cancelAtPeriodEnd: boolean;
   priceRef?: string;
+  /** Além da spec: fim do trial nativo, para a edição do admin acertar `trial_ends_at`. */
+  trialEnd?: Date;
 };
 
 export type RemoteInvoice = {
@@ -234,6 +236,17 @@ export interface PaymentProvider {
     input: { atPeriodEnd: boolean },
   ): Promise<void>;
   pauseSubscription?(ctx: PaymentContext, ref: string): Promise<void>;
+  /**
+   * Além da spec (`docs/specs/admin-crud/spec.md`): o admin muda o fim do trial
+   * (`trialEnd`) ou a próxima cobrança (`nextBillingAt`) sem crédito nem cobrança extra.
+   * Devolve a assinatura como ficou lá; o núcleo a aplica pela reconciliação. Sem o
+   * método, a edição de datas com provedor responde 409 `PROVIDER_UNSUPPORTED`.
+   */
+  updateSubscriptionSchedule?(
+    ctx: PaymentContext,
+    ref: string,
+    input: { trialEnd?: Date; nextBillingAt?: Date },
+  ): Promise<RemoteSubscription>;
   /**
    * Além da spec: desfaz a pausa e o cancelamento agendado. `chargeNow`: o período pago
    * acabou durante a pausa, e a retomada abre um ciclo novo, cobrado na hora. Se a cobrança

@@ -7,10 +7,13 @@ import {
   useIsPlatformOwner,
 } from "@/components/admin/admin-api";
 import { Pager } from "@/components/admin/pager";
+import {
+  type AdminSubscription,
+  SubscriptionActions,
+} from "@/components/admin/subscription-actions";
 import { PageTitle, QueryState } from "@/components/admin/query-state";
 import { ConfirmDialog } from "@/components/app/confirm-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
@@ -27,27 +30,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import type { SubscriptionStatus } from "@/db/schema/billing";
 import {
   PROVIDER_LABELS,
   SUBSCRIPTION_STATUS_LABELS,
   subscriptionStatusList,
 } from "@/lib/billing/constants";
-
-type AdminSubscription = {
-  id: string;
-  tenantId: string;
-  tenantName: string;
-  status: SubscriptionStatus;
-  provider: keyof typeof PROVIDER_LABELS | null;
-  planName: string;
-  planIsFree: boolean;
-  currentPeriodEnd: string | null;
-  cancelAtPeriodEnd: boolean;
-  graceUntil: string | null;
-  linked: boolean;
-  alert: { kind: string; at: string; detail?: string } | null;
-};
 
 const ALERT_LABELS: Record<string, string> = {
   divergence: "Divergência com o provedor",
@@ -177,34 +164,19 @@ export function AdminSubscriptionsPage() {
                               : "Manual"}
                         </TableCell>
                         <TableCell>{formatDate(row.currentPeriodEnd)}</TableCell>
-                        <TableCell>
+                        <TableCell className="text-right">
                           {owner ? (
-                            <div className="flex justify-end gap-2">
-                              {row.linked ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  disabled={sync.isPending}
-                                  onClick={() =>
-                                    sync.mutate({
-                                      path: `/api/admin/subscriptions/${row.id}/sync`,
-                                      method: "POST",
-                                    })
-                                  }
-                                >
-                                  Buscar do provedor
-                                </Button>
-                              ) : null}
-                              {row.status !== "canceled" ? (
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => setCanceling(row)}
-                                >
-                                  Cancelar
-                                </Button>
-                              ) : null}
-                            </div>
+                            <SubscriptionActions
+                              row={row}
+                              syncing={sync.isPending}
+                              onSync={() =>
+                                sync.mutate({
+                                  path: `/api/admin/subscriptions/${row.id}/sync`,
+                                  method: "POST",
+                                })
+                              }
+                              onCancel={() => setCanceling(row)}
+                            />
                           ) : null}
                         </TableCell>
                       </TableRow>
