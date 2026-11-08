@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import {
@@ -50,6 +51,11 @@ import {
 import { activeTenantSchema, slugSchema } from "@/lib/schemas/tenant";
 import { LEGAL_VERSIONS } from "@/lib/legal/versions";
 import { acceptCurrentVersions, pendingConsents } from "@/lib/lgpd/consent";
+import {
+  portalAccessBarred,
+  portalEmailBarred,
+  revokePortalSession,
+} from "@/lib/lgpd/deletion";
 import { acceptConsentSchema } from "@/lib/schemas/lgpd";
 import { notFound, TenantRuleError } from "@/lib/tenant/errors";
 
@@ -65,6 +71,28 @@ const PORTAL_AUTH_PATHS = new Set([
   "POST /revoke-session",
   "POST /revoke-other-sessions",
 ]);
+
+/**
+ * Na carência de uma exclusão pedida pela plataforma, a senha certa não entra. Em vez de uma
+ * resposta própria, a senha vai trocada por uma aleatória: o Better Auth responde o mesmo 401
+ * de senha errada, com o mesmo corpo, cabeçalhos e tempo (o hash ainda é conferido).
+ */
+async function barredSignIn(body: string) {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(body);
+  } catch {
+    return body;
+  }
+
+  const email = (parsed as { email?: unknown } | null)?.email;
+  if (typeof email !== "string" || !(await portalEmailBarred(email))) return body;
+
+  return JSON.stringify({
+    ...(parsed as object),
+    password: randomBytes(24).toString("base64url"),
+  });
+}
 
 /** Só para quem chega depois de um GET: a página renderiza e o botão faz o POST. */
 const GET_NOT_ALLOWED = { error: "Use o botão da página do link." };
@@ -111,14 +139,20 @@ portalRoutes.post(
     // Expirado, usado ou inventado: o plugin redireciona, e aqui é tudo a mesma resposta.
     if (!response.ok) return c.json({ error: INVALID_LINK_MESSAGE }, 400);
 
-    for (const cookie of response.headers.getSetCookie()) {
-      c.header("Set-Cookie", cookie, { append: true });
-    }
-
     const { user, session } = (await response.json()) as {
       user: { id: string };
       session: { id: string };
     };
+
+    // Link enviado antes da exclusão agendada pela plataforma: a sessão nova não vale.
+    if (await portalAccessBarred(user.id)) {
+      await revokePortalSession(session.id);
+      return c.json({ error: INVALID_LINK_MESSAGE }, 400);
+    }
+
+    for (const cookie of response.headers.getSetCookie()) {
+      c.header("Set-Cookie", cookie, { append: true });
+    }
 
     await enterRequestedTenant(session.id, user.id, org);
 
@@ -159,7 +193,10 @@ portalRoutes.on(["GET", "POST"], `${PORTAL_AUTH_BASE_PATH}/*`, async (c) => {
     return c.json({ error: "Não encontrado." }, 404);
   }
 
-  const body = method === "POST" ? await c.req.text() : undefined;
+  let body = method === "POST" ? await c.req.text() : undefined;
+  if (body && path === `${PORTAL_AUTH_BASE_PATH}/sign-in/email`) {
+    body = await barredSignIn(body);
+  }
   const response = await getPortalAuth().handler(
     new Request(url, { method, headers: forwardedHeaders(c), body }),
   );

@@ -28,13 +28,17 @@ import {
   twoFactor,
   user,
 } from "@/db/schema";
-import type { DeletionSubjectType } from "@/db/schema/lgpd";
-import { audit, auditInTransaction } from "@/lib/audit";
+import type {
+  DeletionMetadata,
+  DeletionOrigin,
+  DeletionSubjectType,
+} from "@/db/schema/lgpd";
+import { type AuditAction, auditInTransaction } from "@/lib/audit";
 import { appLink } from "@/lib/auth/links";
 import { getPortalAuth } from "@/lib/auth/portal";
 import { cancelSubscriptionForDeletion } from "@/lib/billing/checkout";
 import { listTenantOwners } from "@/lib/billing/notify";
-import { hashEmail } from "@/lib/email/address";
+import { hashEmail, normalizeEmail } from "@/lib/email/address";
 import { sendEmail } from "@/lib/email/send";
 import { deletionConfirmTemplate } from "@/lib/email/templates/deletion-confirm";
 import { deletionScheduledTemplate } from "@/lib/email/templates/deletion-scheduled";
@@ -47,40 +51,77 @@ import { soleOwnerTenants } from "@/lib/tenant/ownership";
  * o job `lgpd.delete` executa o que venceu. Executar **anonimiza**, não apaga a linha: o
  * histórico de auditoria, as faturas e os vínculos continuam íntegros, sem apontar para
  * ninguém. Tudo roda em uma transação com `withPlatformScope("lgpd")` e é idempotente.
+ *
+ * Quem pede é a própria pessoa (ou o owner, para a organização), com `origin = self`, ou a
+ * plataforma pelo `/admin`, com `origin = platform`. Cada lado só cancela o próprio pedido.
+ * O núcleo (`schedule*Deletion`: checagens, pedido e aviso) é o mesmo para os dois.
  */
 
 export const DELETION_GRACE_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const PORTAL_CONFIRM_TTL_MS = 60 * 60 * 1000;
 const REMOVED_USER = "Usuário removido";
+export const PLATFORM_BAN_REASON = "Exclusão agendada pela plataforma";
 
 const ghostEmail = (id: string) => `deleted+${id}@invalid`;
 
-type Created = { created: boolean; scheduledFor: Date };
+/** Fim da carência de um pedido feito agora. */
+export const graceEnd = (now: Date) => new Date(now.getTime() + DELETION_GRACE_DAYS * DAY_MS);
 
-/** Um pedido em aberto por assunto: pedir de novo devolve o que já está agendado. */
+export const deletionPending = (message = "Já existe uma exclusão agendada.") =>
+  new TenantRuleError(409, "DELETION_PENDING", message);
+
+export type ScheduledRequest = { id: string | null; created: boolean; scheduledFor: Date };
+
+export type ScheduleOptions = {
+  origin: DeletionOrigin;
+  /** Quem pede: a própria pessoa, o owner ou o proprietário da plataforma. */
+  actorId: string;
+  scheduledFor: Date;
+  metadata?: DeletionMetadata;
+  /**
+   * Roda na mesma transação do pedido novo: o que precisa valer junto com ele (derrubar
+   * sessões, banir, auditar). Pedido já existente (`self`, idempotente) não chama.
+   */
+  onCreated?: (tx: Tx, request: ScheduledRequest) => Promise<void>;
+  /** `false` na exclusão imediata: o aviso é o `deletion-executed`, depois de executar. */
+  notify?: boolean;
+};
+
+/**
+ * Um pedido em aberto por assunto. A própria pessoa que pede de novo recebe o que já está
+ * agendado; a plataforma não reaproveita pedido nenhum (409 `DELETION_PENDING`).
+ */
 async function createRequest(
   tx: Tx,
   input: {
     subjectType: DeletionSubjectType;
     subjectId: string;
     tenantId?: string;
-    requestedBy: string;
   },
-  now: Date,
-): Promise<Created> {
-  const scheduledFor = new Date(now.getTime() + DELETION_GRACE_DAYS * DAY_MS);
+  options: ScheduleOptions,
+): Promise<ScheduledRequest> {
+  const { scheduledFor } = options;
 
   const [row] = await tx
     .insert(deletionRequest)
-    .values({ ...input, tenantId: input.tenantId ?? null, scheduledFor })
+    .values({
+      ...input,
+      tenantId: input.tenantId ?? null,
+      requestedBy: options.actorId,
+      scheduledFor,
+      origin: options.origin,
+      metadata: options.metadata ?? {},
+    })
     .onConflictDoNothing()
     .returning({ id: deletionRequest.id });
 
-  if (row) return { created: true, scheduledFor };
+  if (row) return { id: row.id, created: true, scheduledFor };
+
+  if (options.origin === "platform") throw deletionPending();
 
   const [existing] = await tx
-    .select({ scheduledFor: deletionRequest.scheduledFor })
+    .select({ id: deletionRequest.id, scheduledFor: deletionRequest.scheduledFor })
     .from(deletionRequest)
     .where(
       and(
@@ -90,16 +131,28 @@ async function createRequest(
       ),
     );
 
-  return { created: false, scheduledFor: existing?.scheduledFor ?? scheduledFor };
+  return {
+    id: existing?.id ?? null,
+    created: false,
+    scheduledFor: existing?.scheduledFor ?? scheduledFor,
+  };
 }
 
+/** No pedido da plataforma, quem é avisado não cancela: o link leva ao contato. */
 function notifyScheduled(
   to: string,
   input: { name: string; subjectLabel: string; scheduledFor: Date; url: string },
+  origin: DeletionOrigin,
 ) {
+  const byPlatform = origin === "platform";
+
   return sendEmail({
     to,
-    ...deletionScheduledTemplate(input),
+    ...deletionScheduledTemplate({
+      ...input,
+      url: byPlatform ? appLink("/contato") : input.url,
+      byPlatform,
+    }),
     tags: { template: "deletion-scheduled" },
   }).catch((error) => logError("Falha ao avisar a exclusão agendada", error));
 }
@@ -112,16 +165,12 @@ type TeamUser = {
 };
 
 /**
- * Exclusão da conta de equipe. A identidade já foi provada pela rota. Recusa conta da
- * plataforma e quem é o último proprietário de alguma organização. Encerra as outras sessões.
+ * Núcleo da exclusão da conta de equipe: checagens, pedido e aviso. A própria pessoa não
+ * exclui conta da plataforma; a plataforma não exclui o `platform_owner`. Ninguém deixa uma
+ * organização sem proprietário (409 `LAST_OWNER`).
  */
-export async function requestUserDeletion(
-  current: TeamUser,
-  currentSessionId: string,
-  ip?: string | null,
-  now = new Date(),
-) {
-  if (current.platformRole !== "user") {
+export async function scheduleUserDeletion(target: TeamUser, options: ScheduleOptions) {
+  if (options.origin === "self" && target.platformRole !== "user") {
     throw new TenantRuleError(
       403,
       "PLATFORM_ACCOUNT",
@@ -129,41 +178,85 @@ export async function requestUserDeletion(
     );
   }
 
-  const sole = await soleOwnerTenants(current.id);
-
-  if (sole.length > 0) {
+  if (target.platformRole === "platform_owner") {
     throw new TenantRuleError(
-      409,
-      "LAST_OWNER",
-      `Você é o único proprietário de ${sole.map(({ name }) => name).join(", ")}. Transfira a propriedade ou exclua a organização antes.`,
+      403,
+      "PLATFORM_OWNER_PROTECTED",
+      "O proprietário da plataforma não é excluído por aqui.",
     );
   }
 
-  const result = await withPlatformScope("lgpd: pedido de exclusão", (tx) =>
-    createRequest(
-      tx,
-      { subjectType: "user", subjectId: current.id, requestedBy: current.id },
-      now,
-    ),
-  );
+  const sole = await soleOwnerTenants(target.id);
 
-  if (result.created) {
-    await getDb()
-      .delete(session)
-      .where(and(eq(session.userId, current.id), ne(session.id, currentSessionId)));
+  if (sole.length > 0) {
+    const names = sole.map(({ name }) => name).join(", ");
 
-    await audit("lgpd.deletion_requested", {
-      actor: { id: current.id },
-      target: { type: "user", id: current.id },
-      ip,
-    });
-    await notifyScheduled(current.email, {
-      name: current.name,
-      subjectLabel: "sua conta",
-      scheduledFor: result.scheduledFor,
-      url: appLink("/app/configuracoes/privacidade"),
-    });
+    throw options.origin === "self"
+      ? new TenantRuleError(
+          409,
+          "LAST_OWNER",
+          `Você é o único proprietário de ${names}. Transfira a propriedade ou exclua a organização antes.`,
+        )
+      : new TenantRuleError(
+          409,
+          "LAST_OWNER",
+          `Esta pessoa é a única proprietária de ${names}.`,
+          { tenants: sole },
+        );
   }
+
+  const result = await withPlatformScope("lgpd: pedido de exclusão", async (tx) => {
+    const created = await createRequest(
+      tx,
+      { subjectType: "user", subjectId: target.id },
+      options,
+    );
+    if (created.created) await options.onCreated?.(tx, created);
+    return created;
+  });
+
+  if (result.created && options.notify !== false) {
+    await notifyScheduled(
+      target.email,
+      {
+        name: target.name,
+        subjectLabel: "sua conta",
+        scheduledFor: result.scheduledFor,
+        url: appLink("/app/configuracoes/privacidade"),
+      },
+      options.origin,
+    );
+  }
+
+  return result;
+}
+
+/**
+ * Exclusão da conta de equipe, pela própria pessoa. A identidade já foi provada pela rota.
+ * Encerra as outras sessões.
+ */
+export async function requestUserDeletion(
+  current: TeamUser,
+  currentSessionId: string,
+  ip?: string | null,
+  now = new Date(),
+) {
+  const result = await scheduleUserDeletion(current, {
+    origin: "self",
+    actorId: current.id,
+    scheduledFor: graceEnd(now),
+    onCreated: async (tx) => {
+      await tx
+        .delete(session)
+        .where(and(eq(session.userId, current.id), ne(session.id, currentSessionId)));
+
+      await auditInTransaction(tx, "lgpd.deletion_requested", {
+        actor: { id: current.id },
+        target: { type: "user", id: current.id },
+        ip,
+      });
+    },
+  });
 
   return { scheduledFor: result.scheduledFor };
 }
@@ -191,39 +284,58 @@ const sha256 = (value: string) => createHash("sha256").update(value).digest("hex
 /** Só o hash do token fica no banco, no mesmo formato de identificador do portal. */
 const confirmIdentifier = (token: string) => `lgpd-delete:${sha256(token)}`;
 
+/** Núcleo da exclusão da conta do portal: pedido e aviso. */
+export async function schedulePortalDeletion(person: PortalPerson, options: ScheduleOptions) {
+  const result = await withPlatformScope("lgpd: pedido de exclusão do portal", async (tx) => {
+    const created = await createRequest(
+      tx,
+      { subjectType: "portal_user", subjectId: person.id },
+      options,
+    );
+    if (created.created) await options.onCreated?.(tx, created);
+    return created;
+  });
+
+  if (result.created && options.notify !== false) {
+    await notifyScheduled(
+      person.email,
+      {
+        name: person.name,
+        subjectLabel: "sua conta no portal",
+        scheduledFor: result.scheduledFor,
+        url: appLink("/portal/conta"),
+      },
+      options.origin,
+    );
+  }
+
+  return result;
+}
+
 async function scheduleForPortal(
   person: PortalPerson,
   currentSessionId: string,
   ip: string | null | undefined,
   now: Date,
 ) {
-  const result = await withPlatformScope("lgpd: pedido de exclusão do portal", (tx) =>
-    createRequest(
-      tx,
-      { subjectType: "portal_user", subjectId: person.id, requestedBy: person.id },
-      now,
-    ),
-  );
+  const result = await schedulePortalDeletion(person, {
+    origin: "self",
+    actorId: person.id,
+    scheduledFor: graceEnd(now),
+    onCreated: async (tx) => {
+      await tx
+        .delete(portalSession)
+        .where(
+          and(eq(portalSession.userId, person.id), ne(portalSession.id, currentSessionId)),
+        );
 
-  if (result.created) {
-    await getDb()
-      .delete(portalSession)
-      .where(
-        and(eq(portalSession.userId, person.id), ne(portalSession.id, currentSessionId)),
-      );
-
-    await audit("lgpd.deletion_requested", {
-      actor: { type: "portal_user", id: person.id },
-      target: { type: "portal_user", id: person.id },
-      ip,
-    });
-    await notifyScheduled(person.email, {
-      name: person.name,
-      subjectLabel: "sua conta no portal",
-      scheduledFor: result.scheduledFor,
-      url: appLink("/portal/conta"),
-    });
-  }
+      await auditInTransaction(tx, "lgpd.deletion_requested", {
+        actor: { type: "portal_user", id: person.id },
+        target: { type: "portal_user", id: person.id },
+        ip,
+      });
+    },
+  });
 
   return { scheduledFor: result.scheduledFor };
 }
@@ -295,75 +407,169 @@ export async function confirmPortalDeletion(
 }
 
 /**
- * Exclusão da organização, pelo proprietário. Primeiro encerra a cobrança no provedor (se o
- * provedor falhar, nada é agendado); depois suspende a organização e agenda a anonimização.
+ * Núcleo da exclusão da organização. Primeiro encerra a cobrança no provedor (se o provedor
+ * falhar, nada é agendado); depois trava a organização (`deleting`/`locked`), agenda e avisa
+ * os owners. O owner só exclui organização ativa; a plataforma também a suspensa, e o estado
+ * anterior fica em `metadata.previousStatus` para o cancelamento devolver.
  */
+export async function scheduleTenantDeletion(
+  tenant: { id: string; name: string },
+  options: ScheduleOptions & { ip?: string | null; now?: Date },
+) {
+  const now = options.now ?? new Date();
+  const allowed = options.origin === "platform" ? ["active", "suspended"] : ["active"];
+
+  await cancelSubscriptionForDeletion(
+    tenant.id,
+    { userId: options.actorId, ip: options.ip, platform: options.origin === "platform" },
+    now,
+  );
+
+  const result = await withPlatformScope("lgpd: pedido de exclusão da organização", async (tx) => {
+    const [current] = await tx
+      .select({ status: organization.status })
+      .from(organization)
+      .where(eq(organization.id, tenant.id))
+      .for("update");
+
+    if (!current || current.status === "deleted") {
+      throw notFound("Organização não encontrada.");
+    }
+
+    if (!allowed.includes(current.status)) {
+      throw deletionPending("Esta organização já tem a exclusão agendada.");
+    }
+
+    await tx
+      .update(organization)
+      .set({ status: "deleting", accessMode: "locked" })
+      .where(eq(organization.id, tenant.id));
+
+    const created = await createRequest(
+      tx,
+      { subjectType: "tenant", subjectId: tenant.id, tenantId: tenant.id },
+      {
+        ...options,
+        metadata: {
+          ...options.metadata,
+          previousStatus: current.status as "active" | "suspended",
+        },
+      },
+    );
+    if (created.created) await options.onCreated?.(tx, created);
+    return created;
+  });
+
+  if (options.notify !== false) {
+    for (const owner of await listTenantOwners(tenant.id)) {
+      await notifyScheduled(
+        owner.email,
+        {
+          name: owner.name,
+          subjectLabel: `a organização ${tenant.name}`,
+          scheduledFor: result.scheduledFor,
+          url: appLink("/app/configuracoes/privacidade"),
+        },
+        options.origin,
+      );
+    }
+  }
+
+  return result;
+}
+
+/** Exclusão da organização, pelo proprietário (`DELETE /api/tenant`). */
 export async function requestTenantDeletion(
   tenant: { id: string; name: string },
   actor: { userId: string; ip?: string | null },
   now = new Date(),
 ) {
-  await cancelSubscriptionForDeletion(tenant.id, actor, now);
-
-  const result = await withPlatformScope("lgpd: pedido de exclusão da organização", async (tx) => {
-    const [locked] = await tx
-      .update(organization)
-      .set({ status: "deleting", accessMode: "locked" })
-      .where(and(eq(organization.id, tenant.id), eq(organization.status, "active")))
-      .returning({ id: organization.id });
-
-    if (!locked) {
-      throw new TenantRuleError(
-        409,
-        "DELETION_PENDING",
-        "Esta organização já tem a exclusão agendada.",
-      );
-    }
-
-    const created = await createRequest(
-      tx,
-      {
-        subjectType: "tenant",
-        subjectId: tenant.id,
+  const result = await scheduleTenantDeletion(tenant, {
+    origin: "self",
+    actorId: actor.userId,
+    scheduledFor: graceEnd(now),
+    ip: actor.ip,
+    now,
+    onCreated: (tx) =>
+      auditInTransaction(tx, "lgpd.deletion_requested", {
+        actor: { id: actor.userId },
         tenantId: tenant.id,
-        requestedBy: actor.userId,
-      },
-      now,
-    );
-
-    await auditInTransaction(tx, "lgpd.deletion_requested", {
-      actor: { id: actor.userId },
-      tenantId: tenant.id,
-      target: { type: "tenant", id: tenant.id },
-      ip: actor.ip,
-    });
-
-    return created;
+        target: { type: "tenant", id: tenant.id },
+        ip: actor.ip,
+      }),
   });
-
-  for (const owner of await listTenantOwners(tenant.id)) {
-    await notifyScheduled(owner.email, {
-      name: owner.name,
-      subjectLabel: `a organização ${tenant.name}`,
-      scheduledFor: result.scheduledFor,
-      url: appLink("/app/configuracoes/privacidade"),
-    });
-  }
 
   return { scheduledFor: result.scheduledFor };
 }
 
+/** O pedido em aberto do assunto, de qualquer origem. */
+export async function findPendingDeletion(subject: { type: DeletionSubjectType; id: string }) {
+  const [row] = await withPlatformScope("lgpd: pedido em aberto", (tx) =>
+    tx
+      .select({
+        id: deletionRequest.id,
+        origin: deletionRequest.origin,
+        scheduledFor: deletionRequest.scheduledFor,
+        createdAt: deletionRequest.createdAt,
+      })
+      .from(deletionRequest)
+      .where(
+        and(
+          eq(deletionRequest.subjectType, subject.type),
+          eq(deletionRequest.subjectId, subject.id),
+          eq(deletionRequest.status, "pending"),
+        ),
+      ),
+  );
+
+  return row ?? null;
+}
+
 /**
- * Desfaz o pedido dentro da carência. Para uma organização, devolve o acesso (a assinatura
- * encerrada no provedor não volta: o proprietário contrata de novo).
+ * Barreira do portal na carência: a plataforma agendou a exclusão desta pessoa. Pedido da
+ * própria pessoa não barra (ela ainda entra para cancelar).
+ */
+export async function portalAccessBarred(personId: string) {
+  return (await findPendingDeletion({ type: "portal_user", id: personId }))?.origin === "platform";
+}
+
+/** A mesma barreira pelo e-mail, para quem ainda não tem sessão (login e magic link). */
+export async function portalEmailBarred(email: string) {
+  const [person] = await getDb()
+    .select({ id: portalUser.id })
+    .from(portalUser)
+    .where(eq(portalUser.email, normalizeEmail(email)));
+
+  return person ? portalAccessBarred(person.id) : false;
+}
+
+/** A sessão que o magic link acabou de abrir para quem está barrado. */
+export async function revokePortalSession(sessionId: string) {
+  await getDb().delete(portalSession).where(eq(portalSession.id, sessionId));
+}
+
+const CANCELED_BY: Record<DeletionSubjectType, AuditAction> = {
+  user: "admin.user_deletion_canceled",
+  portal_user: "admin.portal_user_deletion_canceled",
+  tenant: "admin.tenant_deletion_canceled",
+};
+
+/**
+ * Desfaz o pedido dentro da carência. Cada lado só desfaz o próprio: a pessoa (ou o owner)
+ * recebe 409 `DELETION_BY_PLATFORM` no pedido da plataforma, e a plataforma, 409
+ * `DELETION_NOT_PLATFORM` no da pessoa. Para uma organização, devolve o acesso (a assinatura
+ * encerrada no provedor não volta: o proprietário contrata de novo) ou a suspensão anterior;
+ * para a conta banida pela plataforma, tira o banimento se ela não estava banida antes.
  */
 export async function cancelDeletion(
   subject: { type: DeletionSubjectType; id: string },
-  actor: { type: "user" | "portal_user"; id: string },
+  actor: { type: "user" | "portal_user" | "platform"; id: string },
   ip?: string | null,
   now = new Date(),
 ) {
-  const canceled = await withPlatformScope("lgpd: cancela exclusão", async (tx) => {
+  const origin: DeletionOrigin = actor.type === "platform" ? "platform" : "self";
+
+  const outcome = await withPlatformScope("lgpd: cancela exclusão", async (tx) => {
     const [row] = await tx
       .update(deletionRequest)
       .set({ status: "canceled", canceledAt: now })
@@ -371,14 +577,28 @@ export async function cancelDeletion(
         and(
           eq(deletionRequest.subjectType, subject.type),
           eq(deletionRequest.subjectId, subject.id),
+          eq(deletionRequest.origin, origin),
           // Vale até o job executar: `pending` com data vencida ainda não foi anonimizado, e
           // o `FOR UPDATE` do executor decide a corrida com o cancelamento.
           eq(deletionRequest.status, "pending"),
         ),
       )
-      .returning({ tenantId: deletionRequest.tenantId });
+      .returning({ tenantId: deletionRequest.tenantId, metadata: deletionRequest.metadata });
 
-    if (!row) return null;
+    if (!row) {
+      const [other] = await tx
+        .select({ origin: deletionRequest.origin })
+        .from(deletionRequest)
+        .where(
+          and(
+            eq(deletionRequest.subjectType, subject.type),
+            eq(deletionRequest.subjectId, subject.id),
+            eq(deletionRequest.status, "pending"),
+          ),
+        );
+
+      return { canceled: false as const, otherOrigin: other?.origin ?? null };
+    }
 
     if (subject.type === "tenant") {
       const [sub] = await tx
@@ -388,27 +608,74 @@ export async function cancelDeletion(
 
       await tx
         .update(organization)
-        .set({
-          status: "active",
-          accessMode:
-            sub && ["expired", "unpaid", "canceled", "paused"].includes(sub.status)
-              ? "read_only"
-              : "full",
-        })
+        .set(
+          row.metadata.previousStatus === "suspended"
+            ? { status: "suspended", accessMode: "locked" }
+            : {
+                status: "active",
+                accessMode:
+                  sub && ["expired", "unpaid", "canceled", "paused"].includes(sub.status)
+                    ? "read_only"
+                    : "full",
+              },
+        )
         .where(and(eq(organization.id, subject.id), eq(organization.status, "deleting")));
     }
 
-    await auditInTransaction(tx, "lgpd.deletion_canceled", {
-      actor: { type: actor.type, id: actor.id },
-      tenantId: row.tenantId,
-      target: { type: subject.type, id: subject.id },
-      ip,
-    });
+    if (subject.type === "user" && origin === "platform" && row.metadata.wasBanned === false) {
+      await tx
+        .update(user)
+        .set({ banned: false, banReason: null, banExpires: null })
+        .where(eq(user.id, subject.id));
+    }
 
-    return row;
+    await auditInTransaction(
+      tx,
+      origin === "platform" ? CANCELED_BY[subject.type] : "lgpd.deletion_canceled",
+      {
+        actor: { type: actor.type, id: actor.id },
+        tenantId: row.tenantId,
+        target: { type: subject.type, id: subject.id },
+        ip,
+      },
+    );
+
+    return { canceled: true as const };
   });
 
-  if (!canceled) throw notFound("Nenhuma exclusão agendada.");
+  if (outcome.canceled) return;
+
+  if (outcome.otherOrigin === "platform") {
+    throw new TenantRuleError(
+      409,
+      "DELETION_BY_PLATFORM",
+      "Esta exclusão foi agendada pela administração da plataforma. Fale com ela para desistir.",
+    );
+  }
+
+  if (outcome.otherOrigin === "self") {
+    throw new TenantRuleError(
+      409,
+      "DELETION_NOT_PLATFORM",
+      "Esta exclusão foi pedida pela própria pessoa: só ela pode desistir.",
+    );
+  }
+
+  if (origin === "platform") {
+    throw new TenantRuleError(409, "NO_PENDING_DELETION", "Nenhuma exclusão agendada.");
+  }
+
+  throw notFound("Nenhuma exclusão agendada.");
+}
+
+/** Na exclusão imediata, o pedido em aberto (de qualquer origem) vence agora. */
+export async function anticipateDeletion(requestId: string, now: Date) {
+  await withPlatformScope("lgpd: antecipa exclusão", (tx) =>
+    tx
+      .update(deletionRequest)
+      .set({ scheduledFor: now })
+      .where(and(eq(deletionRequest.id, requestId), eq(deletionRequest.status, "pending"))),
+  );
 }
 
 /** O que a tela de privacidade mostra: a conta e as organizações que a pessoa possui. */
@@ -474,6 +741,8 @@ async function anonymizeUser(tx: Tx, id: string): Promise<Anonymized> {
       emailVerified: false,
       twoFactorEnabled: false,
       lastTenantId: null,
+      // Conta de suporte excluída não sobra com acesso de plataforma.
+      role: "user",
     })
     .where(eq(user.id, id));
 

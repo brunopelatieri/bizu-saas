@@ -38,6 +38,19 @@ const AUDIT_LABELS: Record<string, string> = {
   "platform.impersonation_started": "Suporte entrou",
   "platform.impersonation_stopped": "Suporte saiu",
   "platform.impersonation_blocked_action": "Ação do suporte bloqueada",
+  // admin-crud C
+  "admin.tenant_deletion_requested": "Exclusão da organização pedida pela plataforma",
+  "admin.tenant_deletion_executed": "Organização excluída pela plataforma",
+  "admin.tenant_deletion_canceled": "Exclusão da organização cancelada pela plataforma",
+  "admin.user_deletion_requested": "Exclusão de usuário pedida pela plataforma",
+  "admin.user_deletion_executed": "Usuário excluído pela plataforma",
+  "admin.user_deletion_canceled": "Exclusão de usuário cancelada pela plataforma",
+  "admin.user_updated": "Usuário alterado pela plataforma",
+  "admin.user_sessions_revoked": "Sessões do usuário encerradas pela plataforma",
+  "admin.portal_user_deletion_requested": "Exclusão de cliente do portal pedida pela plataforma",
+  "admin.portal_user_deletion_executed": "Cliente do portal excluído pela plataforma",
+  "admin.portal_user_deletion_canceled": "Exclusão de cliente do portal cancelada pela plataforma",
+  "admin.portal_user_updated": "Cliente do portal alterado pela plataforma",
 };
 
 export function auditActionLabel(action: string) {

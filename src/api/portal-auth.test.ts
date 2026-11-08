@@ -4,6 +4,7 @@ import { requireAuth } from "@/api/auth";
 import {
   createRequirePortalAuth,
   type PortalAuthEnv,
+  type PortalBarrier,
   type ResolvedPortalSession,
   type ResolvePortalSession,
 } from "@/api/portal-auth";
@@ -29,10 +30,10 @@ function resolved(emailVerified = true): ResolvedPortalSession {
   };
 }
 
-function get(resolve: ResolvePortalSession, cookie?: string) {
+function get(resolve: ResolvePortalSession, cookie?: string, barred?: PortalBarrier) {
   const app = new Hono<PortalAuthEnv>();
 
-  app.get("/private", createRequirePortalAuth(resolve), (c) =>
+  app.get("/private", createRequirePortalAuth(resolve, barred), (c) =>
     c.json({ id: c.get("portalUser").id }),
   );
 
@@ -84,6 +85,25 @@ describe("requirePortalAuth", () => {
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ id: resolved().user.id });
+  });
+});
+
+describe("requirePortalAuth: exclusão pela plataforma", () => {
+  it("na carência, a sessão válida vale como inexistente (401)", async () => {
+    const resolve = vi.fn<ResolvePortalSession>(async () => resolved());
+    const barred = vi.fn<PortalBarrier>(async () => true);
+
+    expect((await get(resolve, PORTAL_COOKIE, barred)).status).toBe(401);
+    expect(barred).toHaveBeenCalledWith(resolved().user.id);
+  });
+
+  it("falha ao conferir a barreira é fechada (503)", async () => {
+    const resolve = vi.fn<ResolvePortalSession>(async () => resolved());
+    const barred = vi.fn<PortalBarrier>(async () => {
+      throw new Error("banco fora do ar");
+    });
+
+    expect((await get(resolve, PORTAL_COOKIE, barred)).status).toBe(503);
   });
 });
 

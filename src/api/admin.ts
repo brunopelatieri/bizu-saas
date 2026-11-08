@@ -64,6 +64,30 @@ import {
 import { adminAuditQuerySchema } from "@/lib/schemas/security";
 import { notFound } from "@/lib/tenant/errors";
 import { z } from "zod";
+// admin-crud C
+import { blockWhileImpersonating } from "@/api/impersonation";
+import {
+  adminCancelPortalUserDeletion,
+  adminCancelTenantDeletion,
+  adminCancelUserDeletion,
+  adminDeletePortalUser,
+  adminDeleteTenant,
+  adminDeleteUser,
+  pendingDeletionOf,
+} from "@/lib/admin/deletion";
+import {
+  getPortalUserDetail,
+  getUserDetail,
+  revokeUserSessions,
+  updatePortalUserByAdmin,
+  updateUserByAdmin,
+} from "@/lib/admin/people";
+import {
+  deleteSchema,
+  deleteUserSchema,
+  updatePortalUserSchema,
+  updateUserSchema,
+} from "@/lib/schemas/admin";
 
 /**
  * `/api/admin/*`: só quem tem papel de plataforma. Leitura é de `platform_owner` e
@@ -483,5 +507,139 @@ adminRoutes.post(
     });
 
     return c.json(result);
+  },
+);
+
+// admin-crud C: exclusões (agendada ou imediata), detalhe e edição de pessoas.
+// Regras em `docs/specs/admin-crud/spec.md` (seções 1 a 3) e `tech/22-admin.md`.
+
+const platformActor = (c: Context<AuthEnv>) => ({ id: c.get("user").id, ip: clientKey(c) });
+
+adminRoutes.get("/api/admin/tenants/:id/deletion", validId, async (c) => {
+  const { id } = c.req.valid("param");
+
+  return c.json({ deletion: await pendingDeletionOf({ type: "tenant", id }) });
+});
+
+adminRoutes.delete(
+  "/api/admin/tenants/:id",
+  ownerOnly,
+  blockWhileImpersonating,
+  validId,
+  zValidator("json", deleteSchema, validationError),
+  async (c) => {
+    const { id } = c.req.valid("param");
+
+    return c.json(await adminDeleteTenant(id, c.req.valid("json"), platformActor(c)));
+  },
+);
+
+adminRoutes.post(
+  "/api/admin/tenants/:id/deletion/cancel",
+  ownerOnly,
+  blockWhileImpersonating,
+  validId,
+  async (c) => {
+    await adminCancelTenantDeletion(c.req.valid("param").id, platformActor(c));
+
+    return c.json({ ok: true });
+  },
+);
+
+adminRoutes.get("/api/admin/users/:id", validId, async (c) =>
+  c.json(await getUserDetail(c.req.valid("param").id)),
+);
+
+adminRoutes.patch(
+  "/api/admin/users/:id",
+  ownerOnly,
+  blockWhileImpersonating,
+  validId,
+  zValidator("json", updateUserSchema, validationError),
+  async (c) => {
+    const user = await updateUserByAdmin(
+      c.req.valid("param").id,
+      c.req.valid("json"),
+      platformActor(c),
+    );
+
+    return c.json({ user });
+  },
+);
+
+adminRoutes.post(
+  "/api/admin/users/:id/revoke-sessions",
+  ownerOnly,
+  blockWhileImpersonating,
+  validId,
+  async (c) => c.json(await revokeUserSessions(c.req.valid("param").id, platformActor(c))),
+);
+
+adminRoutes.delete(
+  "/api/admin/users/:id",
+  ownerOnly,
+  blockWhileImpersonating,
+  validId,
+  zValidator("json", deleteUserSchema, validationError),
+  async (c) =>
+    c.json(
+      await adminDeleteUser(c.req.valid("param").id, c.req.valid("json"), platformActor(c)),
+    ),
+);
+
+adminRoutes.post(
+  "/api/admin/users/:id/deletion/cancel",
+  ownerOnly,
+  blockWhileImpersonating,
+  validId,
+  async (c) => {
+    await adminCancelUserDeletion(c.req.valid("param").id, platformActor(c));
+
+    return c.json({ ok: true });
+  },
+);
+
+adminRoutes.get("/api/admin/portal-users/:id", validId, async (c) =>
+  c.json(await getPortalUserDetail(c.req.valid("param").id)),
+);
+
+adminRoutes.patch(
+  "/api/admin/portal-users/:id",
+  ownerOnly,
+  blockWhileImpersonating,
+  validId,
+  zValidator("json", updatePortalUserSchema, validationError),
+  async (c) => {
+    const person = await updatePortalUserByAdmin(
+      c.req.valid("param").id,
+      c.req.valid("json"),
+      platformActor(c),
+    );
+
+    return c.json({ person });
+  },
+);
+
+adminRoutes.delete(
+  "/api/admin/portal-users/:id",
+  ownerOnly,
+  blockWhileImpersonating,
+  validId,
+  zValidator("json", deleteSchema, validationError),
+  async (c) =>
+    c.json(
+      await adminDeletePortalUser(c.req.valid("param").id, c.req.valid("json"), platformActor(c)),
+    ),
+);
+
+adminRoutes.post(
+  "/api/admin/portal-users/:id/deletion/cancel",
+  ownerOnly,
+  blockWhileImpersonating,
+  validId,
+  async (c) => {
+    await adminCancelPortalUserDeletion(c.req.valid("param").id, platformActor(c));
+
+    return c.json({ ok: true });
   },
 );

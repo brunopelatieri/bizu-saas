@@ -20,6 +20,8 @@ const EXPECTED_GENERAL = [
   "data-export-ready",
   "deletion-scheduled",
   "tenant-suspended",
+  "deletion-executed",
+  "email-changed",
 ];
 
 describe("catálogo de templates", () => {

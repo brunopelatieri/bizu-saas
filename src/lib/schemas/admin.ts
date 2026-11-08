@@ -192,3 +192,44 @@ export const subscriptionsQuerySchema = z.object({
   q: search,
   page,
 });
+
+// admin-crud C: exclusão (agendada ou imediata) e edição de pessoas pelo `/admin`.
+
+export const deletionModes = ["scheduled", "now"] as const;
+export type DeletionMode = (typeof deletionModes)[number];
+
+/**
+ * `scheduled`: 30 dias de carência, reversível. `now`: executa na hora, sem volta. `confirm`
+ * é o slug da organização ou o e-mail da pessoa, conferido no servidor.
+ */
+export const deleteSchema = z.object({
+  mode: z.enum(deletionModes, "Escolha agendar ou excluir agora."),
+  confirm: z.string().trim().min(1, "Digite a confirmação.").max(254, "Texto muito longo."),
+  reason: z.string().trim().max(200, "Motivo muito longo.").optional(),
+});
+export type DeleteInput = z.infer<typeof deleteSchema>;
+
+/** Organizações de que a pessoa é a única owner só caem junto com a flag explícita. */
+export const deleteUserSchema = deleteSchema.extend({
+  deleteSoleOrganizations: z.boolean().default(false),
+});
+export type DeleteUserInput = z.infer<typeof deleteUserSchema>;
+
+const personFields = {
+  name: z.string().trim().min(2, "Informe o nome.").max(120, "Nome muito longo."),
+  email: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .max(254, "E-mail muito longo.")
+    .email("Informe um e-mail válido."),
+};
+
+/** Papéis não se editam por aqui. */
+export const updateUserSchema = z
+  .object(personFields)
+  .partial()
+  .refine((value) => Object.keys(value).length > 0, "Nada para alterar.");
+export type UpdatePersonInput = z.infer<typeof updateUserSchema>;
+
+export const updatePortalUserSchema = updateUserSchema;
