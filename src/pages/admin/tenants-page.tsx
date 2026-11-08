@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import {
+  type AdminPlan,
   type AdminTenant,
   type Page,
   useAdminQuery,
@@ -11,6 +12,8 @@ import {
 } from "@/components/admin/billing-state-badge";
 import { Pager } from "@/components/admin/pager";
 import { PageTitle, QueryState } from "@/components/admin/query-state";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,6 +32,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { billingStates } from "@/lib/billing/state";
+import { z } from "zod";
 
 const ALL = "all";
 const stateItems = [
@@ -48,10 +52,20 @@ export function AdminTenantsPage() {
   const status = params.get("status") ?? ALL;
   const page = Number(params.get("page") ?? "1") || 1;
   const q = params.get("q") ?? "";
+  // admin-crud A: filtro por plano, vindo do "+N" de /admin/planos.
+  const planParam = params.get("plan") ?? "";
+  const planId = z.uuid().safeParse(planParam).success ? planParam : undefined;
+  const plans = useAdminQuery<{ plans: AdminPlan[] }>(
+    "/api/admin/plans",
+    undefined,
+    planId !== undefined,
+  );
+  const planName = plans.data?.plans.find(({ id }) => id === planId)?.name;
 
   const query = useAdminQuery<Page<AdminTenant>>("/api/admin/tenants", {
     q,
     status: status === ALL ? undefined : status,
+    plan: planId,
     page,
   });
 
@@ -70,6 +84,19 @@ export function AdminTenantsPage() {
         title="Organizações"
         description="Todos os tenants da plataforma."
       />
+
+      {planId ? (
+        <div className="flex items-center gap-2 text-sm">
+          <Badge variant="secondary">Plano: {planName ?? "…"}</Badge>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => update({ plan: null, page: null })}
+          >
+            Limpar filtro
+          </Button>
+        </div>
+      ) : null}
 
       <div className="flex flex-col gap-3 sm:flex-row">
         <form

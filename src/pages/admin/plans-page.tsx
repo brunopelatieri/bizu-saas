@@ -8,6 +8,7 @@ import {
   useIsPlatformOwner,
 } from "@/components/admin/admin-api";
 import { Field } from "@/components/admin/field";
+import { OrgList } from "@/components/admin/org-list";
 import { PageTitle, QueryState } from "@/components/admin/query-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -131,7 +132,7 @@ export function AdminPlansPage() {
                     <TableHead>Plano</TableHead>
                     <TableHead>Preço</TableHead>
                     <TableHead>Situação</TableHead>
-                    <TableHead className="text-right">Organizações</TableHead>
+                    <TableHead>Organizações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -152,7 +153,13 @@ export function AdminPlansPage() {
                           {plan.active ? "Ativo" : "Inativo"}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right">{plan.tenants}</TableCell>
+                      <TableCell>
+                        <OrgList
+                          organizations={plan.organizations}
+                          more={plan.more}
+                          moreHref={`/admin/tenants?plan=${plan.id}`}
+                        />
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

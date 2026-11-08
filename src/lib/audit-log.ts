@@ -1,4 +1,4 @@
-import { and, count, desc, eq, like, type SQL } from "drizzle-orm";
+import { and, count, desc, eq, ilike, like, type SQL } from "drizzle-orm";
 import { withPlatformScope, withTenant, type Tx } from "@/db/rls";
 import { auditLog, organization, user } from "@/db/schema";
 import { escapeLike } from "@/lib/admin/tenants";
@@ -41,7 +41,12 @@ async function readPage(tx: Tx, where: SQL | undefined, page: number) {
     .limit(AUDIT_PAGE_SIZE)
     .offset((page - 1) * AUDIT_PAGE_SIZE);
 
-  const [total] = await tx.select({ value: count() }).from(auditLog).where(where);
+  // Junta `organization` também aqui: o filtro `tenantQ` olha o nome.
+  const [total] = await tx
+    .select({ value: count() })
+    .from(auditLog)
+    .leftJoin(organization, eq(auditLog.tenantId, organization.id))
+    .where(where);
 
   return { items, total: total?.value ?? 0, page, pageSize: AUDIT_PAGE_SIZE };
 }
@@ -83,6 +88,9 @@ export function listPlatformAudit(query: AdminAuditQuery) {
       tx,
       and(
         query.tenant ? eq(auditLog.tenantId, query.tenant) : undefined,
+        query.tenantQ
+          ? ilike(organization.name, `%${escapeLike(query.tenantQ)}%`)
+          : undefined,
         ...filtersOf(query),
       ),
       query.page,

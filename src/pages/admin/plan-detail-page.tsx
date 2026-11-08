@@ -9,6 +9,7 @@ import {
   useIsPlatformOwner,
 } from "@/components/admin/admin-api";
 import { Field } from "@/components/admin/field";
+import { OrgList } from "@/components/admin/org-list";
 import { PageTitle, QueryState } from "@/components/admin/query-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -369,6 +370,16 @@ export function AdminPlanDetailPage() {
               title={plan.name}
               description={`${plan.slug} · ${plan.tenants} ${plan.tenants === 1 ? "organização" : "organizações"}`}
             />
+            {plan.tenants > 0 ? (
+              <p className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-muted-foreground">Organizações:</span>
+                <OrgList
+                  organizations={plan.organizations}
+                  more={plan.more}
+                  moreHref={`/admin/tenants?plan=${plan.id}`}
+                />
+              </p>
+            ) : null}
             <PlanForm key={plan.id + plan.name} plan={plan} readOnly={!owner} />
 
             {plan.isFree ? null : (

@@ -23,8 +23,8 @@ export default function AdminAudit() {
   const [page, setPage] = useState(1);
   const query = useAdminQuery<Page<AuditItem>>("/api/admin/audit", {
     action,
-    // Id pela metade não vai à API: só depois de colado por inteiro.
-    tenant: validId(tenant) ? tenant.trim() : undefined,
+    // admin-crud A: a organização se busca pelo nome, não pelo id.
+    tenantQ: tenant.trim() || undefined,
     actor: validId(actor) ? actor.trim() : undefined,
     page,
   });
@@ -46,14 +46,14 @@ export default function AdminAudit() {
               }}
             />
             <Input
-              aria-label="Id da organização"
-              placeholder="Id da organização"
+              aria-label="Nome da organização"
+              placeholder="Nome da organização"
               value={tenant}
               onChange={(event) => {
                 setTenant(event.target.value);
                 setPage(1);
               }}
-              className="w-80"
+              className="w-64"
             />
             <Input
               aria-label="Id de quem agiu"

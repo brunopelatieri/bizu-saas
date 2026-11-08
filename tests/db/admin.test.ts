@@ -540,7 +540,15 @@ describe("usuários", () => {
     expect(portal.status).toBe(200);
     expect(await bodyOf(portal)).toMatchObject({
       total: 1,
-      items: [{ email, tenants: 1, sessions: 0, emailVerified: false }],
+      items: [
+        {
+          email,
+          organizations: [{ id: tenantId, name: "Clínica Admin", status: "lead" }],
+          more: 0,
+          sessions: 0,
+          emailVerified: false,
+        },
+      ],
     });
 
     const team = await get(support, `/api/admin/users?q=${email}`);

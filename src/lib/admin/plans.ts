@@ -2,6 +2,7 @@ import { and, asc, eq, sql } from "drizzle-orm";
 import { getDb } from "@/db";
 import { withPlatformScope } from "@/db/rls";
 import { plan, planPrice, subscription } from "@/db/schema";
+import { planOrganizations } from "@/lib/admin/org-links";
 import { MANUAL_PROVIDER } from "@/lib/billing/constants";
 import { loadSettings, saveSettings } from "@/lib/billing/settings";
 import type {
@@ -44,17 +45,24 @@ export async function listPlans() {
     .select()
     .from(planPrice)
     .orderBy(asc(planPrice.interval), asc(planPrice.provider));
-  const usage = await withPlatformScope("admin: uso dos planos", (tx) =>
-    tx
+  const { usage, links } = await withPlatformScope("admin: uso dos planos", async (tx) => ({
+    usage: await tx
       .select({ planId: subscription.planId, tenants: sql<number>`count(*)::int` })
       .from(subscription)
       .groupBy(subscription.planId),
-  );
+    // admin-crud A: nome das organizações de cada plano (as 3 primeiras e o resto).
+    links: await planOrganizations(
+      tx,
+      plans.map(({ id }) => id),
+    ),
+  }));
 
   return plans.map((row) => ({
     ...row,
     prices: prices.filter(({ planId }) => planId === row.id),
     tenants: usage.find(({ planId }) => planId === row.id)?.tenants ?? 0,
+    organizations: links.get(row.id)?.organizations ?? [],
+    more: links.get(row.id)?.more ?? 0,
   }));
 }
 

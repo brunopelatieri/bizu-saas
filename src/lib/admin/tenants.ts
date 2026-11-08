@@ -49,6 +49,7 @@ export type AdminTenantRow = {
 export async function listTenants(input: {
   q?: string;
   status?: BillingState;
+  plan?: string;
   page: number;
 }) {
   const term = input.q ? `%${escapeLike(input.q)}%` : null;
@@ -60,6 +61,8 @@ export async function listTenants(input: {
     );
   }
   if (input.status) filters.push(sql`${stateSql} = ${input.status}`);
+  // admin-crud A: "+N" de /admin/planos leva às organizações do plano.
+  if (input.plan) filters.push(eq(subscription.planId, input.plan));
 
   const where = filters.length ? and(...filters) : undefined;
 

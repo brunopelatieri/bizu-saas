@@ -172,6 +172,8 @@ const search = z.string().trim().max(100).optional();
 export const tenantsQuerySchema = z.object({
   q: search,
   status: z.enum(billingStates).optional(),
+  // admin-crud A: organizações de um plano.
+  plan: z.uuid("Plano inválido.").optional(),
   page,
 });
 

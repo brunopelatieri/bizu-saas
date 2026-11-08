@@ -4,11 +4,13 @@ import {
   useAdminQuery,
   useIsPlatformOwner,
 } from "@/components/admin/admin-api";
+import { OrgList, type OrgRef } from "@/components/admin/org-list";
 import { Pager } from "@/components/admin/pager";
 import { QueryState } from "@/components/admin/query-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { CUSTOMER_STATUS_LABELS, type CustomerStatus } from "@/lib/tenant/customer-constants";
 import {
   Table,
   TableBody,
@@ -23,7 +25,8 @@ type PortalUser = {
   name: string;
   email: string;
   emailVerified: boolean;
-  tenants: number;
+  organizations: OrgRef[];
+  more: number;
   sessions: number;
 };
 
@@ -61,7 +64,7 @@ export function PortalUsersCard({
                     <TableHead>Nome</TableHead>
                     <TableHead>E-mail</TableHead>
                     <TableHead>Situação</TableHead>
-                    <TableHead className="text-right">Organizações</TableHead>
+                    <TableHead>Organizações</TableHead>
                     <TableHead className="text-right">Sessões</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -76,7 +79,17 @@ export function PortalUsersCard({
                           <Badge variant="outline">Sem verificação</Badge>
                         )}
                       </TableCell>
-                      <TableCell className="text-right">{user.tenants}</TableCell>
+                      <TableCell>
+                        <OrgList
+                          organizations={user.organizations}
+                          more={user.more}
+                          label={(org) =>
+                            org.status
+                              ? (CUSTOMER_STATUS_LABELS[org.status as CustomerStatus] ?? org.status)
+                              : null
+                          }
+                        />
+                      </TableCell>
                       <TableCell className="text-right">{user.sessions}</TableCell>
                       <TableCell className="text-right">
                         {owner && user.sessions > 0 ? (

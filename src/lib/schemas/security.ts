@@ -57,5 +57,7 @@ export type AuditQuery = z.infer<typeof auditQuerySchema>;
 
 export const adminAuditQuerySchema = auditQuerySchema.extend({
   tenant: z.uuid().optional(),
+  // admin-crud A: busca pelo nome da organização (`ilike`), no lugar de colar o id.
+  tenantQ: z.string().trim().max(100).optional(),
 });
 export type AdminAuditQuery = z.infer<typeof adminAuditQuerySchema>;

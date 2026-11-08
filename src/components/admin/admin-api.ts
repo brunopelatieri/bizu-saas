@@ -90,6 +90,9 @@ export type AdminPlan = {
   sortOrder: number;
   prices: AdminPlanPrice[];
   tenants: number;
+  // admin-crud A: as primeiras organizações do plano e quantas faltam.
+  organizations: { id: string; name: string }[];
+  more: number;
 };
 
 export type AdminSettings = {
