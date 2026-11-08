@@ -63,7 +63,11 @@ porque muda a construção da instância (`docs/specs/cobranca-manual/spec.md`).
 Nas duas posições o cadastro tem `autoSignIn: false`: a resposta não tem cookie e é a mesma para
 e-mail novo e existente (o Better Auth devolve a resposta genérica e `onExistingUserSignUp` avisa o
 dono). Desligada, o login logo após o cadastro revela se o e-mail já tinha conta: é o custo de
-entrar direto. `/verificar-email` continua igual e serve para confirmar depois. Os testes de banco
+entrar direto. `/verificar-email` continua igual e serve para confirmar depois, mas o link só sai
+nas primeiras 24 h do cadastro (`isPendingSignupExpired`, nas duas posições): depois disso, um
+link que a pessoa não pediu e clicasse verificaria a conta de quem cadastrou o e-mail dela
+(RISK-006) e entregaria a essa pessoa os convites do endereço. Quem passou do prazo sem
+confirmar recebe convites pelo link do e-mail, que aceita sem verificação. Os testes de banco
 rodam com a verificação ligada; `tests/db/auth-no-verification.test.ts` cobre o padrão.
 
 Com a verificação ligada:

@@ -118,24 +118,28 @@ export function isLiveStatus(status: SubscriptionStatus) {
 }
 
 /**
- * Pode iniciar um checkout? Só sem cobrança viva no provedor: quem já paga troca de
- * plano, quem está em `past_due` paga a fatura aberta.
+ * Pode iniciar um checkout? Só sem cobrança viva no provedor: quem já paga no provedor troca
+ * de plano, quem está em `past_due` com ele paga a fatura aberta. A cobrança manual (sem
+ * referência, `active` ou `past_due`) pode migrar para o provedor: o primeiro pagamento
+ * ativa a assinatura nele.
  */
 export function canStartCheckout(input: {
   status: SubscriptionStatus;
   providerSubscriptionRef: string | null;
   planIsFree: boolean;
 }) {
+  const manual = input.providerSubscriptionRef === null;
+
   switch (input.status) {
     case "expired":
     case "canceled":
     case "unpaid":
       return true;
     case "active":
-      return input.planIsFree;
+      return input.planIsFree || manual;
     case "trialing":
-      return input.providerSubscriptionRef === null;
     case "past_due":
+      return manual;
     case "paused":
       return false;
   }

@@ -23,10 +23,13 @@ function limitLines(plan: PublicPlan) {
     const value = plan.limits[metric];
     const label = LIMIT_LABELS[metric];
 
-    const unlimited = metric === "organizations" ? "ilimitadas" : "ilimitados";
+    // Organizações sem valor no plano valem 1 (`src/lib/billing/organizations.ts`).
+    if (metric === "organizations" && (value === undefined || value === 1)) {
+      return "1 organização";
+    }
 
     return value === undefined
-      ? `${label[0]?.toUpperCase()}${label.slice(1)} ${unlimited}`
+      ? `${label[0]?.toUpperCase()}${label.slice(1)} ilimitados`
       : `Até ${value.toLocaleString("pt-BR")} ${label}`;
   });
 }

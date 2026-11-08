@@ -30,7 +30,7 @@ import {
 } from "@/lib/auth/permissions";
 import { logError } from "@/api/log";
 import { getEnv } from "@/lib/env";
-import { organizationLimitReached } from "@/lib/billing/organizations";
+
 import { recordSignupConsent } from "@/lib/lgpd/consent";
 import { preferredTenantId } from "@/lib/tenant/membership";
 
@@ -218,9 +218,9 @@ function createAuth() {
           maximumRolesPerOrganization: MAX_CUSTOM_ROLES,
         },
         allowUserToCreateOrganization: (user) => !verify || user.emailVerified,
-        // Mesma regra de `POST /api/tenant` (`plan.limits.organizations`), para quem chamar
-        // `auth.api.createOrganization` direto.
-        organizationLimit: (user) => organizationLimitReached(user.id),
+        // Sem teto aqui: o limite é do plano (`plan.limits.organizations`) e só
+        // `POST /api/tenant` cria organização, com lock por pessoa
+        // (`createOrganizationWithinLimit`).
         invitationExpiresIn: INVITATION_TTL_SECONDS,
         // Sem verificação, aceitar exige o id do convite, que só chega pelo e-mail.
         requireEmailVerificationOnInvitation: verify,

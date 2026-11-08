@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SubscriptionStatus } from "@/db/schema/billing";
-import { addInterval, manualPeriod } from "@/lib/billing/manual";
+import { addInterval, manualPeriod, unpaidPeriod } from "@/lib/billing/manual";
 import {
   type Decision,
   isProviderManaged,
@@ -78,6 +78,48 @@ describe("manualPeriod", () => {
     expect(
       manualPeriod({ status: "active", currentPeriodEnd: null }, "month", NOW).periodStart,
     ).toEqual(NOW);
+  });
+});
+
+describe("manualPeriod: casos de borda", () => {
+  it("a fatura em aberto define o início em dia ou em atraso", () => {
+    const due = new Date("2026-11-08T00:00:00Z");
+    const period = manualPeriod({ status: "past_due", currentPeriodEnd: PERIOD_END }, "month", NOW, due);
+
+    expect(period.periodStart).toEqual(due);
+  });
+
+  it("nunca termina no passado: período devido inteiro já vencido começa agora", () => {
+    const longAgo = new Date("2026-08-01T00:00:00Z");
+    const period = manualPeriod({ status: "past_due", currentPeriodEnd: longAgo }, "month", NOW);
+
+    expect(period.periodStart).toEqual(NOW);
+  });
+
+  it("em somente leitura ignora a fatura antiga", () => {
+    const period = manualPeriod(
+      { status: "unpaid", currentPeriodEnd: PERIOD_END },
+      "month",
+      NOW,
+      new Date("2026-08-01T00:00:00Z"),
+    );
+
+    expect(period.periodStart).toEqual(NOW);
+  });
+});
+
+describe("unpaidPeriod", () => {
+  it("com o período correndo, a falta é do período corrente", () => {
+    const start = new Date("2026-10-20T00:00:00Z");
+    const end = new Date("2026-11-20T00:00:00Z");
+
+    expect(unpaidPeriod({ currentPeriodStart: start, currentPeriodEnd: end }, "month", NOW).periodStart).toEqual(start);
+  });
+
+  it("vencido, a falta é do período devido, que começa no vencimento", () => {
+    expect(
+      unpaidPeriod({ currentPeriodStart: null, currentPeriodEnd: PERIOD_END }, "month", NOW).periodStart,
+    ).toEqual(PERIOD_END);
   });
 });
 

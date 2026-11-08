@@ -41,6 +41,7 @@ type AdminSubscription = {
   status: SubscriptionStatus;
   provider: keyof typeof PROVIDER_LABELS | null;
   planName: string;
+  planIsFree: boolean;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
   graceUntil: string | null;
@@ -171,7 +172,9 @@ export function AdminSubscriptionsPage() {
                         <TableCell>
                           {row.linked && row.provider
                             ? PROVIDER_LABELS[row.provider]
-                            : "Manual"}
+                            : row.planIsFree
+                              ? "Gratuito"
+                              : "Manual"}
                         </TableCell>
                         <TableCell>{formatDate(row.currentPeriodEnd)}</TableCell>
                         <TableCell>

@@ -103,10 +103,12 @@ backfill; faturas antigas ficam com período nulo.
 Depois disso, `past_due → unpaid + read_only` é o `billing.dunning` de sempre, com os avisos
 T-3/T0. Trial manual continua no `billing.trial` (`expired` + `read_only`).
 
-**Período no pagamento:** em `active` ou `past_due` com `current_period_end`, o novo período
-começa nele (quem paga atrasado paga o período que usou; quem paga adiantado não perde dias).
-Nos demais estados, começa agora. O fim soma o intervalo do preço manual (`month` = 1 mês de
-calendário, `year` = 1 ano). Sem preço manual, a ação responde 409 `MANUAL_PRICE_REQUIRED`.
+**Período no pagamento:** em `active` ou `past_due`, o novo período começa no início da fatura
+aberta ou no vencimento (quem paga atrasado paga o período que usou; quem paga adiantado não
+perde dias). Nos demais estados, começa agora. Nunca termina no passado: se terminaria, começa
+agora. O fim soma o intervalo do preço escolhido (`month` = 1 mês de calendário, `year` = 1 ano),
+e a fatura paga é corrigida para esse período e valor. Sem preço manual, a ação responde 409
+`MANUAL_PRICE_REQUIRED`.
 
 ### Faturas manuais (`src/lib/billing/manual.ts`)
 
@@ -145,11 +147,11 @@ o job grava `billing.subscription_changed` com ator `system`.
   `deleted`.
 - O limite da pessoa é o maior entre as organizações que ela já tem. Cada uma vale o
   `organizations` do plano só com assinatura `active` ou `past_due` e tenant `active`; em
-  trial, vencida, cancelada, suspensa ou sem assinatura, vale **1**. Sem organização nenhuma, a
-  primeira sempre passa.
-- `POST /api/tenant` chama `assertCanCreateOrganization` antes do plugin: 403
-  `PLAN_LIMIT_REACHED`. O `organizationLimit` do plugin usa a mesma função (defesa para quem
-  chamar `auth.api.createOrganization` direto); o teto fixo `MAX_TENANTS_PER_USER` sai.
+  trial, vencida, cancelada, suspensa ou sem assinatura, vale **1**. Plano sem valor (chave
+  ausente ou `null`) também vale 1. Sem organização nenhuma, a primeira sempre passa.
+- `POST /api/tenant` cria por `createOrganizationWithinLimit`: lock por pessoa e contagem na
+  mesma transação, 403 `PLAN_LIMIT_REACHED`. O teto fixo `MAX_TENANTS_PER_USER` sai e o plugin
+  fica sem `organizationLimit`.
 
 ## 5. Seed
 

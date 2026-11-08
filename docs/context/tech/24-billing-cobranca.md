@@ -37,10 +37,16 @@ provedor não é tocada.
   aberta) e passa a `past_due` com `grace_until = vencimento + grace_days` (`manual.due`). Daí é o
   `billing.dunning` de sempre. Sem preço manual, só transita e loga.
 - **Pagou** (`manual.paid`): fatura aberta (ou nova) `paid`; `active` + `full`, sem carência nem avisos,
-  `provider` e referência nulos. O período continua do vencimento em `active`/`past_due` e começa agora
-  nos demais estados; o fim soma o intervalo do preço (`addInterval`, mês de calendário).
+  `provider` e referência nulos. O período (`manualPeriod`) continua do início da fatura aberta ou do
+  vencimento em `active`/`past_due` e começa agora nos demais estados (em somente leitura o tenant não
+  usou nada); se ainda assim terminasse no passado, começa agora. O fim soma o intervalo do preço
+  (`addInterval`, mês de calendário). A fatura paga passa a dizer o período, e o valor quando o admin
+  escolhe o preço.
 - **Não pagou** (`manual.unpaid`): fatura `failed`; `active`/`trialing` → `past_due` com carência a
-  partir de agora, ou `unpaid` + `read_only` com `immediate`.
+  partir de agora, ou `unpaid` + `read_only` com `immediate`. Sem fatura aberta, a nova cobre o período
+  corrente se ele ainda corre, ou o devido se já venceu (`unpaidPeriod`).
+- **Para o provedor:** com um módulo ligado, a assinatura manual (`active` ou `past_due`, sem
+  referência) pode fazer checkout (`canStartCheckout`); o primeiro pagamento a liga ao provedor.
 - **Auditoria:** `admin.manual_payment_recorded`, `admin.manual_payment_missed` e
   `billing.subscription_changed` (ator `platform`; no job, `system`).
 

@@ -26,7 +26,7 @@ alwaysApply: false
 - `/api/billing/*` segue aberta em `read_only`. Erro do provedor chega ao cliente como 502 genérico; nenhuma resposta traz referência do provedor (`tech/24-billing-cobranca.md`).
 - Falar com o provedor vem antes da transação local, nunca dentro dela.
 - `/api/admin/*` usa `requireAuth` + `requirePlatform()` e, nas escritas, `requirePlatform(["platform_owner"])` antes da validação; tabela de tenant só dentro de `withPlatformScope` (`tech/22-admin.md`).
-- Limite do plano: `assertWithinLimit(tenantId, metric)` antes de criar; organizações por dono, `assertCanCreateOrganization(userId)` (`tech/23-billing-planos.md`).
+- Limite do plano: `assertWithinLimit(tenantId, metric)` antes de criar; organizações por dono, só por `createOrganizationWithinLimit(userId, create)` (`tech/23-billing-planos.md`).
 - Cobrança manual: só `platform_owner` marca pagamento (`/api/admin/subscriptions/:id/manual-*`); assinatura viva no provedor nunca é marcada à mão (`isProviderManaged`).
 - Teste rotas com `api.request()` em `src/api/*.test.ts`; com banco real, em `tests/db/`.
 - Leia variáveis por `getEnv()` (`src/lib/env.ts`), não por `process.env` espalhado.

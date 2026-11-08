@@ -55,8 +55,8 @@ Cobrança manual e verificação opcional:
 1. `npm run db:migrate` aplica `0020_cobranca_manual` (só colunas novas e nulas em `invoice`).
 2. **A verificação de e-mail passa a ser desligada por padrão.** Para manter o comportamento antigo,
    ponha `EMAIL_VERIFICATION_REQUIRED=true` no `.env.local` e no `docker/.env.prod`.
-3. Planos sem `limits.organizations` ficam ilimitados para quem paga; trial e vencida valem 1.
-   Defina o valor em `/admin/planos/:id` (o seed preenche os planos dele).
+3. Planos sem `limits.organizations` valem 1 organização por dono, como trial e vencida. Defina o
+   valor em `/admin/planos/:id` (o seed preenche os planos dele).
 4. Cadastre um preço `Manual` nos planos pagos para registrar pagamentos sem provedor.
 
 Node e dependências (sem migration nem variável nova). Para projetos derivados:

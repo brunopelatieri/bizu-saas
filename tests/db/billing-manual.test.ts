@@ -187,7 +187,9 @@ describe("vencimento, carência e pagamento", () => {
     expect((await subscriptionState(owner, tenantId)).status).toBe("unpaid");
     expect(await accessModeOf(owner, tenantId)).toBe("read_only");
 
-    // O admin registra o pagamento: a fatura aberta vira paga e o período é o devido.
+    // O admin registra o pagamento: a fatura aberta vira paga. Em `unpaid` o tenant estava em
+    // somente leitura, então o período novo começa agora.
+    const paidAt = Date.now();
     const response = await send(
       platformOwner,
       "POST",
@@ -199,12 +201,14 @@ describe("vencimento, carência e pagamento", () => {
     const active = await subscriptionState(owner, tenantId);
     expect(active.status).toBe("active");
     expect(active.grace_until).toBeNull();
-    expect(active.current_period_end?.getTime()).toBe(opened?.period_end?.getTime());
+    expect(active.current_period_end?.getTime()).toBeGreaterThan(paidAt + 27 * DAY);
     expect(await accessModeOf(owner, tenantId)).toBe("full");
 
     const invoices = await invoicesOf(tenantId);
     expect(invoices).toHaveLength(1);
     expect(invoices[0]).toMatchObject({ status: "paid" });
+    // A fatura passa a dizer o período pago.
+    expect(invoices[0]?.period_end?.getTime()).toBe(active.current_period_end?.getTime());
 
     const actions = await auditActions(tenantId);
     expect(actions).toContain("admin.manual_payment_recorded");
@@ -235,6 +239,73 @@ describe("vencimento, carência e pagamento", () => {
     expect(await invoicesOf(tenantId)).toMatchObject([
       { provider: "manual", status: "paid", amount_cents: 49000 },
     ]);
+  });
+
+  it("pagar atrasado mais de um período não gera período já vencido", async () => {
+    // Venceu há 40 dias e ficou em `past_due` (job parado): o período devido inteiro já passou.
+    const periodEnd = new Date(Date.now() - 40 * DAY);
+    const { tenantId } = await manualTenant(periodEnd, "past_due");
+    const { id } = await subscriptionState(owner, tenantId);
+    const paidAt = Date.now();
+
+    const response = await send(
+      platformOwner,
+      "POST",
+      `/api/admin/subscriptions/${id}/manual-payment`,
+      {},
+    );
+    expect(response.status).toBe(200);
+
+    const state = await subscriptionState(owner, tenantId);
+    expect(state.status).toBe("active");
+    expect(state.current_period_end?.getTime()).toBeGreaterThan(paidAt + 27 * DAY);
+    // E o job não o devolve a `past_due`.
+    expect((await runBillingPeriodEnd(new Date(), only(tenantId))).manualDue).toBe(0);
+  });
+
+  it("preço anual escolhido sobre fatura mensal aberta reprecifica a fatura", async () => {
+    const periodEnd = new Date(Date.now() - 1000);
+    const { tenantId } = await manualTenant(periodEnd);
+    await updateSubscription(owner, tenantId, { plan_price_id: monthPriceId });
+    await runBillingPeriodEnd(new Date(), only(tenantId));
+    const [yearly] = await owner<{ id: string }[]>`
+      select id from plan_price where plan_id = ${paidPlan.id} and provider = 'manual' and interval = 'year'
+    `;
+    const { id } = await subscriptionState(owner, tenantId);
+
+    const response = await send(
+      platformOwner,
+      "POST",
+      `/api/admin/subscriptions/${id}/manual-payment`,
+      { planPriceId: yearly?.id },
+    );
+    expect(response.status).toBe(200);
+
+    const [paid] = await invoicesOf(tenantId);
+    const expectedEnd = new Date(periodEnd);
+    expectedEnd.setUTCFullYear(expectedEnd.getUTCFullYear() + 1);
+    expect(paid).toMatchObject({ status: "paid", amount_cents: 49000 });
+    expect(paid?.period_start?.getTime()).toBe(periodEnd.getTime());
+    expect(paid?.period_end?.toISOString()).toBe(expectedEnd.toISOString());
+    expect((await subscriptionState(owner, tenantId)).plan_price_id).toBe(yearly?.id);
+  });
+
+  it("marcar como não pago com o período correndo cobra o período corrente", async () => {
+    const periodEnd = new Date(Date.now() + 10 * DAY);
+    const { tenantId } = await manualTenant(periodEnd);
+    const state = await subscriptionState(owner, tenantId);
+
+    const response = await send(
+      platformOwner,
+      "POST",
+      `/api/admin/subscriptions/${state.id}/manual-unpaid`,
+      {},
+    );
+    expect(response.status).toBe(200);
+
+    const [failed] = await invoicesOf(tenantId);
+    expect(failed?.status).toBe("failed");
+    expect(failed?.period_start?.getTime()).toBe(periodEnd.getTime() - 30 * DAY);
   });
 
   it("marcar como não pago abre a carência; sem carência bloqueia na hora", async () => {
@@ -373,6 +444,27 @@ describe("limite de organizações", () => {
     const third = await send(user, "POST", "/api/tenant", { name: "Terceira" });
     expect(third.status).toBe(403);
     expect((await bodyOf(third)).code).toBe("PLAN_LIMIT_REACHED");
+  });
+
+  it("plano pago sem a chave `organizations` vale 1", async () => {
+    const legacy = await createPlanRow(owner, { isFree: false, limits: { members: 5 } });
+    user = await createUser(owner);
+    const first = await createTenant(user, "Plano antigo");
+    await ensureSubscription(owner, first.id, legacy.id, "active");
+
+    const second = await send(user, "POST", "/api/tenant", { name: "Outra antiga" });
+    expect(second.status).toBe(403);
+    expect((await bodyOf(second)).code).toBe("PLAN_LIMIT_REACHED");
+  });
+
+  it("duas criações simultâneas não furam o limite", async () => {
+    user = await createUser(owner);
+    const responses = await Promise.all([
+      send(user, "POST", "/api/tenant", { name: "Corrida A" }),
+      send(user, "POST", "/api/tenant", { name: "Corrida B" }),
+    ]);
+
+    expect(responses.map(({ status }) => status).sort()).toEqual([201, 403]);
   });
 
   it("vencida volta a valer 1", async () => {

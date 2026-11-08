@@ -46,19 +46,40 @@ export function addInterval(start: Date, interval: PriceInterval): Date {
 }
 
 /**
- * Período que um pagamento cobre. Em `active` ou `past_due`, continua do vencimento: quem
- * paga atrasado paga o período que usou, e quem paga adiantado não perde dias. Nos demais
- * estados (trial, vencida, cancelada), começa agora.
+ * Período que um pagamento cobre. Em `active` ou `past_due`, continua do vencimento (ou do
+ * início da fatura em aberto, `due`): quem paga atrasado paga o período que usou, e quem paga
+ * adiantado não perde dias. Nos demais estados (trial, vencida, cancelada), começa agora:
+ * em somente leitura o tenant não usou nada. Nunca termina no passado: um período inteiro já
+ * vencido devolveria o tenant a `past_due` na hora seguinte, e ele seria bloqueado de novo
+ * depois de pagar.
  */
 export function manualPeriod(
   current: Pick<SubscriptionRow, "status" | "currentPeriodEnd">,
   interval: PriceInterval,
   now: Date,
+  due?: Date | null,
 ) {
-  const continues =
-    (current.status === "active" || current.status === "past_due") &&
-    current.currentPeriodEnd !== null;
-  const periodStart = continues && current.currentPeriodEnd ? current.currentPeriodEnd : now;
+  const continues = current.status === "active" || current.status === "past_due";
+  let periodStart = continues ? (due ?? current.currentPeriodEnd ?? now) : now;
+  if (addInterval(periodStart, interval).getTime() <= now.getTime()) periodStart = now;
+
+  return { periodStart, periodEnd: addInterval(periodStart, interval) };
+}
+
+/**
+ * Período de uma fatura marcada como não paga. Com o período corrente ainda correndo, é ele
+ * que não foi pago (o pagamento anterior não aconteceu ou foi registrado por engano); vencido,
+ * é o período devido, que começa no vencimento.
+ */
+export function unpaidPeriod(
+  current: Pick<SubscriptionRow, "currentPeriodStart" | "currentPeriodEnd">,
+  interval: PriceInterval,
+  now: Date,
+) {
+  const end = current.currentPeriodEnd;
+  const running = end !== null && end.getTime() > now.getTime();
+  let periodStart = running ? (current.currentPeriodStart ?? now) : (end ?? now);
+  if (addInterval(periodStart, interval).getTime() <= now.getTime()) periodStart = now;
 
   return { periodStart, periodEnd: addInterval(periodStart, interval) };
 }
@@ -211,11 +232,8 @@ export async function recordManualPayment(
         current: row.planPriceId,
       }),
     );
-    // A fatura em aberto já diz o período devido; sem ela, vale a regra de `manualPeriod`.
-    const period =
-      target?.periodStart && target.periodEnd
-        ? { periodStart: target.periodStart, periodEnd: target.periodEnd }
-        : manualPeriod(row, price.interval, now);
+    // O preço escolhido manda no intervalo; a fatura em aberto, só no início do período.
+    const period = manualPeriod(row, price.interval, now, target?.periodStart);
 
     const decision = transition(
       snapshotOf(row),
@@ -226,7 +244,12 @@ export async function recordManualPayment(
       throw new TenantRuleError(409, "NOT_APPLICABLE", "Nada a registrar nesta assinatura.");
     }
 
-    const paid = await savePaidInvoice(tx, row, target, price, period, input.method, now);
+    const paid = await savePaidInvoice(tx, row, target, price, period, {
+      method: input.method,
+      // Preço escolhido à mão é o valor recebido; sem escolha, vale o que a fatura já dizia.
+      repriced: input.planPriceId !== undefined,
+      now,
+    });
     const updated = await applyDecision(tx, row, decision, {
       source: "admin",
       actor: auditActor(actor),
@@ -251,13 +274,20 @@ async function savePaidInvoice(
   target: InvoiceRow | null,
   price: PriceRow,
   period: { periodStart: Date; periodEnd: Date },
-  method: PaymentMethod | undefined,
-  now: Date,
+  { method, repriced, now }: { method?: PaymentMethod; repriced: boolean; now: Date },
 ) {
   if (target) {
+    // A fatura passa a dizer o que foi pago: período (e valor, se o preço foi escolhido).
     const [updated] = await tx
       .update(invoice)
-      .set({ status: "paid", paidAt: now, paymentMethod: method ?? target.paymentMethod })
+      .set({
+        status: "paid",
+        paidAt: now,
+        paymentMethod: method ?? target.paymentMethod,
+        periodStart: period.periodStart,
+        periodEnd: period.periodEnd,
+        ...(repriced ? { amountCents: price.amountCents, currency: price.currency } : {}),
+      })
       .where(eq(invoice.id, target.id))
       .returning();
     return updated ?? target;
@@ -334,8 +364,7 @@ export async function markManualUnpaid(
       const price = requirePrice(
         await resolveManualPrice(tx, current.id, { current: row.planPriceId }),
       );
-      // O período devido começa no vencimento (ou agora, se não houver).
-      const periodStart = row.currentPeriodEnd ?? now;
+      const { periodStart, periodEnd } = unpaidPeriod(row, price.interval, now);
       const [created] = await tx
         .insert(invoice)
         .values({
@@ -348,7 +377,7 @@ export async function markManualUnpaid(
           attempt: 1,
           dueAt: periodStart,
           periodStart,
-          periodEnd: addInterval(periodStart, price.interval),
+          periodEnd,
         })
         .returning();
       if (!created) throw new Error("Falha ao gravar a fatura manual");

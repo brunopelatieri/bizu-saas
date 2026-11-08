@@ -81,9 +81,12 @@ O banner de `/app` (`BillingBanner`) só informa; quem barra é a API.
 - `organizations` é da **pessoa**, não do tenant (`organizations.ts`): conta as organizações não
   excluídas em que ela é owner e vale o maior limite entre elas. Só assinatura em dia (`active`
   ou `past_due`, tenant ativo) libera o limite do plano; trial, vencida, cancelada, suspensa ou
-  sem assinatura valem 1. A primeira organização sempre passa. `POST /api/tenant` chama
-  `assertCanCreateOrganization` (403 `PLAN_LIMIT_REACHED`) e o `organizationLimit` do plugin
-  repete a conta.
+  sem assinatura valem 1. **Sem valor no plano (chave ausente ou `null`) também vale 1**, ao
+  contrário dos outros limites: plano antigo ou salvo com o campo vazio não libera tenants sem
+  fim. A primeira organização sempre passa. `POST /api/tenant` cria por
+  `createOrganizationWithinLimit` (403 `PLAN_LIMIT_REACHED`): lock por pessoa
+  (`pg_advisory_xact_lock`) e contagem na mesma transação, para duas criações simultâneas não
+  furarem o limite. O plugin não tem `organizationLimit`: é o único caminho de criação.
 
 ## Job `billing.trial`
 

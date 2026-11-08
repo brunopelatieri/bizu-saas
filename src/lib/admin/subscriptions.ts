@@ -38,6 +38,7 @@ export async function listSubscriptions(input: {
         status: subscription.status,
         provider: subscription.provider,
         planName: plan.name,
+        planIsFree: plan.isFree,
         currentPeriodEnd: subscription.currentPeriodEnd,
         cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
         graceUntil: subscription.graceUntil,

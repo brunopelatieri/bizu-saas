@@ -142,7 +142,10 @@ function PlanForm({ plan, readOnly }: { plan: AdminPlan; readOnly: boolean }) {
 
           <fieldset className="grid gap-3 sm:grid-cols-4">
             <legend className="mb-1 text-sm font-medium">
-              Limites <span className="font-normal text-muted-foreground">(vazio = ilimitado)</span>
+              Limites{" "}
+              <span className="font-normal text-muted-foreground">
+                (vazio = ilimitado; organizações vazio = 1)
+              </span>
             </legend>
             {limitMetrics.map((metric) => (
               <Field key={metric} label={LIMIT_LABELS[metric]} className="first-letter:uppercase">
@@ -151,6 +154,8 @@ function PlanForm({ plan, readOnly }: { plan: AdminPlan; readOnly: boolean }) {
                     id={id}
                     type="number"
                     min={0}
+                    // Organizações por dono: vazio vale 1, nunca ilimitado (`organizations.ts`).
+                    placeholder={metric === "organizations" ? "1" : undefined}
                     value={limits[metric] ?? ""}
                     onChange={(e) => setLimits({ ...limits, [metric]: e.target.value })}
                     readOnly={readOnly}

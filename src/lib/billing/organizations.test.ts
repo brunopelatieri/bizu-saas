@@ -19,9 +19,9 @@ describe("organizationLimitOf", () => {
     expect(organizationLimitOf(org({ subscriptionStatus: "past_due" }))).toBe(3);
   });
 
-  it("plano sem a chave é ilimitado, como os demais limites", () => {
-    expect(organizationLimitOf(org({ planLimit: undefined }))).toBeNull();
-    expect(organizationLimitOf(org({ planLimit: null }))).toBeNull();
+  it("plano sem valor vale 1, nunca ilimitado (plano antigo ou campo vazio)", () => {
+    expect(organizationLimitOf(org({ planLimit: undefined }))).toBe(1);
+    expect(organizationLimitOf(org({ planLimit: null }))).toBe(1);
   });
 
   it("trial, vencida, cancelada, sem assinatura ou suspensa valem 1", () => {
@@ -62,9 +62,13 @@ describe("organizationAllowance", () => {
     expect(organizationAllowance([...owned, org({ planLimit: 2 })]).allowed).toBe(false);
   });
 
-  it("um plano ilimitado em dia libera tudo", () => {
-    const owned = [org({ planLimit: null }), org(), org(), org()];
+  it("gratuito antigo sem a chave não libera a segunda", () => {
+    expect(organizationAllowance([org({ planLimit: undefined })]).allowed).toBe(false);
+  });
 
-    expect(organizationAllowance(owned)).toEqual({ limit: null, used: 4, allowed: true });
+  it("limite alto em dia libera muitas", () => {
+    const owned = [org({ planLimit: 100 }), org(), org(), org()];
+
+    expect(organizationAllowance(owned)).toEqual({ limit: 100, used: 4, allowed: true });
   });
 });

@@ -112,8 +112,8 @@ Evento sem tenant só aparece com `withPlatformScope`. Ainda não há tela de le
 `src/lib/auth/constants.ts`: 20 papéis por tenant e convite de 48 h, tetos fixos do plugin. O limite
 de **assentos** vem do plano: convidar e aceitar passam por `assertWithinLimit(tenantId, "members")`
 e respondem 403 `PLAN_LIMIT_REACHED` (`tech/23-billing-planos.md`). Quantas organizações o dono
-pode ter também vem do plano (`limits.organizations`, `src/lib/billing/organizations.ts`): o
-`organizationLimit` do plugin usa a mesma função de `POST /api/tenant`.
+pode ter também vem do plano (`limits.organizations`, `src/lib/billing/organizations.ts`), conferido
+com lock por pessoa em `POST /api/tenant`, o único caminho de criação.
 
 ## Fora desta fase
 
